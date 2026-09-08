@@ -54,14 +54,14 @@ async def _oeffne(p, sichtbar: bool):
 
     Playwrights MITGELIEFERTER Chromium startet auf diesem Windows nur
     unsichtbar; als Fenster scheitert er mit "spawn UNKNOWN". Deshalb geht es
-    ueber ``_starte_profil``, das der Reihe nach Chrome, Edge und zuletzt den
+    ueber ``starte_profil``, das der Reihe nach Chrome, Edge und zuletzt den
     mitgelieferten Browser probiert - und zwar in BEIDEN Faellen, damit
-    Anmeldung und Scraper dasselbe Profil mit demselben Browser benutzen.
+    Anmeldung und Leser dasselbe Profil mit demselben Browser benutzen.
     """
-    from app.integrations.aliexpress_store import _starte_profil
+    from app.browser_profil import starte_profil
 
     PROFIL.mkdir(parents=True, exist_ok=True)
-    ctx, kanal = await _starte_profil(
+    ctx, kanal = await starte_profil(
         p, PROFIL, sichtbar=sichtbar,
         args=["--no-sandbox", "--disable-dev-shm-usage",
               "--disable-blink-features=AutomationControlled"],

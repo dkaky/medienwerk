@@ -288,54 +288,11 @@ async def ebay_gebuehren_aufschluesselung(year: int | None = None):
         raise HTTPException(status_code=502, detail=f"Aufschluesselung fehlgeschlagen: {exc}")
 
 
-@router.get("/originals/abruf-status")
-def beleg_abruf_status():
-    """Laeuft gerade ein Beleg-Abruf? (Dashboard-Anzeige und Helfer-Abfrage)"""
-    from app.services import beleg_abruf
-    return beleg_abruf.status()
-
-
-@router.get("/originals/abruf-signal")
-def beleg_abruf_signal():
-    """Nur ein Ja/Nein fuer den lokalen Helfer: wartet ein Abruf?
-
-    OEFFENTLICH (siehe app/auth.py) und absichtlich inhaltslos. Der Helfer fragt hier
-    im Minutentakt nach, OHNE Browser – so bleibt Chrome zu, bis wirklich jemand den
-    Knopf drueckt. Ausloesen kann hier niemand etwas.
-    """
-    from app.services import beleg_abruf
-    return {"wartet": bool(beleg_abruf.status()["wartet"])}
-
-
-@router.post("/originals/abruf-anfordern")
-def beleg_abruf_anfordern():
-    """Knopf in der Belegablage: Beleg-Abruf beauftragen.
-
-    Holt die Belege NICHT selbst – der Server kommt an keinen angemeldeten
-    AliExpress-Browser heran. Der Auftrag wird hinterlegt; der lokale Helfer
-    (``belege_backfill.py --dienst``) nimmt ihn an und meldet das Ergebnis zurueck.
-
-    Liegt unter /originals, damit der bestehende, bewusst enge Token-Zugang
-    (X-Backfill-Token) greift – ein Helfer ohne Browser-Login kann so pollen.
-    """
-    from app.services import beleg_abruf
-    return beleg_abruf.anfordern()
-
-
-@router.post("/originals/abruf-uebernehmen")
-def beleg_abruf_uebernehmen():
-    """Helfer: Auftrag annehmen. Nur der erste bekommt ihn (kein Doppel-Lauf)."""
-    from app.services import beleg_abruf
-    return beleg_abruf.uebernehmen()
-
-
-@router.post("/originals/abruf-fertig")
-def beleg_abruf_fertig(geholt: int = 0, uebersprungen: int = 0, fehler: int = 0,
-                       rechnungen: int = 0, meldung: str | None = None):
-    """Helfer: Ergebnis zurueckmelden -> steht danach im Dashboard."""
-    from app.services import beleg_abruf
-    return beleg_abruf.fertig(geholt=geholt, uebersprungen=uebersprungen,
-                              fehler=fehler, rechnungen=rechnungen, meldung=meldung)
+# Hier lagen bis 08.09.2026 fuenf Adressen des Beleg-Helfers: Er holte die
+# ORIGINAL-Kaufbelege von AliExpress ueber einen angemeldeten Chrome auf dem
+# Rechner des Nutzers, weil der Server an so eine Anmeldung nicht herankommt.
+# medienwerk kauft nichts ein - die Kosten entstehen bei der Bilderzeugung und
+# beim Druckdienstleister, und beide stellen ihre Belege selbst zu.
 
 
 @router.post("/gebuehren-nachziehen")
@@ -388,17 +345,11 @@ async def belege_vollstaendig_lesen(limit: int = 50, db: Session = Depends(get_d
     return await purchase_invoice.lies_belege_vollstaendig(db, limit=limit)
 
 
-@router.post("/belege/einkauf-verkauf-zuordnen")
-def einkauf_verkauf_zuordnen(limit: int = 100, anwenden: bool = False,
-                             db: Session = Depends(get_db)):
-    """Einkaufs- und Verkaufs-Haelfte desselben Vorgangs zusammenfuehren.
-
-    Ohne ``anwenden=true`` nur Vorschau. Zusammengefuehrt wird ausschliesslich, was
-    ueber Empfaenger + Zeitfenster EINDEUTIG ist; alles andere kommt als „unklar".
-    """
-    from app.services import order_merge
-
-    return order_merge.fuehre_zusammen(db, limit=limit, anwenden=anwenden)
+# „Einkauf und Verkauf zuordnen" ist am 08.09.2026 entfallen. Es fuehrte die
+# AliExpress-Bestellung mit dem passenden eBay-Verkauf zusammen - zwei Haelften
+# desselben Vorgangs. Bei eigenen Motiven gibt es diese Zweiteilung nicht: Der
+# Druckdienstleister produziert erst auf die Bestellung hin, es gibt keinen
+# vorgelagerten Einkauf, der zugeordnet werden muesste.
 
 
 @router.post("/belege/betraege-pruefen")

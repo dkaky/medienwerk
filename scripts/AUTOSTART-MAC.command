@@ -4,7 +4,7 @@
 #   ./AUTOSTART-MAC.command aus
 set -u
 PROJEKT="$(cd "$(dirname "$0")/.." && pwd)"
-LABEL="de.forsetimarketing.belege-helfer"
+LABEL="de.medienwerk.belege-helfer"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 
 if [ "${1:-ein}" = "aus" ]; then

@@ -2057,24 +2057,11 @@ class RealLLMClient(LLMClient):
         # MASS-SCHUTZ auch fuer die Beschreibung: die Groessentabelle kommt aus der
         # Quelle, nicht aus der Deutung des Modells (siehe erzwinge_groessentabelle).
         description = erzwinge_groessentabelle(description, specs, warnings)
-        # RECHTS-SCHUTZ: keine falschen Edelmetall-Behauptungen (925/Sterling/Echtsilber/Echtschmuck) –
-        # die Artikel sind Edelstahl, höchstens silberfarben (Nutzerregel 22.07.). Titel/Beschreibung
-        # entschärfen + Material -> Edelstahl.
-        from app.precious_metal_filter import (contains_precious_metal_claim,
-                                               correct_material_specs, sanitize_description,
-                                               sanitize_title)
-        # VORHER pruefen, ob ueberhaupt eine Edelmetall-Behauptung drinsteht.
-        # sanitize_title meldet "geaendert" auch fuer reine Kosmetik (doppeltes
-        # Leerzeichen, 80-Zeichen-Kuerzung, Satzzeichen am Rand). Ohne diese Pruefung
-        # stand die Warnung an T-Shirts, in denen kein einziges Silberwort vorkam -
-        # ich habe sie deshalb erst fuer einen Fehlalarm gehalten und den echten
-        # Befund dahinter beinahe uebersehen (28.08.2026).
-        war_edelmetall = contains_precious_metal_claim(title, description, str(specifics))
-        title, t_changed = sanitize_title(title)
-        description, _ = sanitize_description(description)
-        specifics, s_changed = correct_material_specs(specifics)
-        if war_edelmetall and (t_changed or s_changed):
-            warnings.append("925/Echtsilber/Sterlingsilber durch 'versilbert' ersetzt")
+        # Hier stand bis 08.09.2026 der Edelmetall-Filter: er ersetzte falsche
+        # 925-/Sterling-/Echtsilber-Behauptungen, weil die Handelsware Edelstahl war,
+        # hoechstens silberfarben. medienwerk bedruckt Textil mit eigenen Motiven -
+        # es gibt keinen Lieferantentext mehr, der Silber behauptet, und damit auch
+        # nichts zu entschaerfen. Der Filter ist mit dem Handelsteil ausgezogen.
         return GeneratedListing(
             title_seo=title, description_clean=description,
             warnings=warnings, strategic_note=(gen.strategic_note or "").strip(),
@@ -2341,12 +2328,8 @@ class RealLLMClient(LLMClient):
                      if a.name and a.value and a.value.strip().lower() not in ("", "keine", "n/a")}
         desc = strip_forbidden_blocks((p.description_clean or current_description).strip(), warnings)
         specifics = specifics or dict(current_specifics or {})
-        # RECHTS-SCHUTZ: keine falschen Edelmetall-Behauptungen (Edelstahl statt 925/Silber).
-        from app.precious_metal_filter import (correct_material_specs, sanitize_description,
-                                               sanitize_title)
-        title, _ = sanitize_title(title)
-        desc, _ = sanitize_description(desc)
-        specifics, _ = correct_material_specs(specifics)
+        # Der Edelmetall-Filter ist mit dem Handelsteil ausgezogen (08.09.2026) -
+        # siehe die Begruendung weiter oben in dieser Datei.
         cat = (p.category_hint or "").strip()
         return {"title_seo": title, "description": desc,
                 "item_specifics": specifics,

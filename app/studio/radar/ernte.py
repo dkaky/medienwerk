@@ -272,17 +272,12 @@ def suchseite(verkaeufer: str, shop_url: str) -> str:
 
 async def _kontext(p):
     """Browser mit dem dauerhaften Profil - dem, an dem die Anmeldungen haengen."""
-    from pathlib import Path
+    from app.browser_profil import START_ARGUMENTE, starte_profil
 
-    from app.integrations.aliexpress_store import _starte_profil
-
-    args = ["--no-sandbox", "--disable-dev-shm-usage",
-            "--disable-blink-features=AutomationControlled"]
-    profil = Path("data/browser_profile")
-    profil.mkdir(parents=True, exist_ok=True)
+    args = list(START_ARGUMENTE)
     try:
-        ctx, _kanal = await _starte_profil(
-            p, profil, args=args, user_agent=_UA, locale="de-DE",
+        ctx, _kanal = await starte_profil(
+            p, args=args, user_agent=_UA, locale="de-DE",
             viewport={"width": 1366, "height": 900})
         return ctx, None
     except Exception:  # noqa: BLE001 - Profil gesperrt/kaputt -> frischer Browser

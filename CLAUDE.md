@@ -2,7 +2,7 @@
 
 ## Was das ist
 
-Handels- und Automatisierungssystem für **Forseti Marketing** (eingetragenes
+Handels- und Automatisierungssystem für **medienwerk** (eingetragenes
 Einzelunternehmen). Store-Marke bei eBay ist **Druckhelden**, das Projekt heißt
 **POD Shop**.
 
@@ -78,7 +78,7 @@ Design-Vorlage dient und **nicht** gestartet wird.
 6. **Marken- und Rechteprüfung** vor der Erzeugung, nicht danach. Ein
    verworfenes Bild kostet trotzdem Geld.
 7. **Keine fremden Keys.** Siehe Herkunft oben.
-8. §19-Kleinbetragsrechnungen, Nummern im Format `FM-JJJJ-NNNN`.
+8. §19-Kleinbetragsrechnungen, Nummern im Format `MW-JJJJ-NNNN`.
 
 ## Offene Punkte
 

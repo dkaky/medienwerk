@@ -37,6 +37,18 @@ class Settings(BaseSettings):
     # Print-on-Demand: kein Lager, keine Vorkasse - gedruckt wird nach dem Verkauf
     printify_token: str = ""
     printify_shop_id: str = ""
+    # Spreadshirt (Public Shop API). Zweiter Verkaufskanal, keine zweite Druckerei:
+    # diese Schnittstelle liest Shop und Artikel und baut Warenkoerbe - Motive
+    # hochladen kann sie nicht. Leer = Kanal aus.
+    # EU-Plattform (api.spreadshirt.net) und NA-Plattform (.com) haben GETRENNTE
+    # Keys; ein EU-Key an der NA-Basis antwortet mit 401.
+    spreadshirt_api_key: str = ""
+    spreadshirt_api_secret: str = ""   # nur fuer signierte Aufrufe (/api/v1)
+    spreadshirt_shop_id: str = ""
+    spreadshirt_base_url: str = "https://api.spreadshirt.net/api/v1"
+    # Pflichtangabe, kein Schmuck: Spreadshirt sperrt Anfragen ohne aussagekraeftigen
+    # User-Agent. Format: "Name/Version (URL; Mail)".
+    spreadshirt_user_agent: str = "medienwerk-POD-Shop/1.0"
     # Dashboard-Login: leer = Auth AUS (lokale Entwicklung/Tests). Fuer Betrieb auf
     # einem Server/VPS ZWINGEND setzen – sonst ist der Shop offen im Netz.
     dashboard_password: str = ""
@@ -75,7 +87,7 @@ class Settings(BaseSettings):
     ebay_use_sandbox: bool = False         # True -> api.sandbox.ebay.com
     # Merchant-Location (Pflicht fuer publishOffer; WAREHOUSE, kein Ladengeschaeft noetig)
     # Bestimmt die "Versand aus"-Angabe der eBay-Listings -> muss der echte Standort sein.
-    ebay_merchant_location_key: str = "FM-DE-01"
+    ebay_merchant_location_key: str = "MW-DE-01"
     ebay_warehouse_address_line: str = ""   # -> .env: EBAY_WAREHOUSE_ADDRESS_LINE
     ebay_warehouse_postal: str = ""        # -> .env: EBAY_WAREHOUSE_POSTAL
     ebay_warehouse_city: str = ""          # -> .env: EBAY_WAREHOUSE_CITY
@@ -358,7 +370,7 @@ class Settings(BaseSettings):
     seller_address: str = ""         # -> .env: SELLER_ADDRESS
     seller_email: str = ""
     seller_tax_id: str = ""          # Steuernummer/USt-IdNr. (bei § 19 optional)
-    invoice_number_prefix: str = "FM"
+    invoice_number_prefix: str = "MW"
     # Empfaenger auf der AliExpress-KAUFRECHNUNG. Bewusst NICHT seller_*: dort steht die
     # eBay-Shop-Marke (Druckhelden), waehrend AliExpress an die bei ihnen
     # hinterlegte Firma mit USt-IdNr. adressiert (so steht es auf der Original-Rechnung).

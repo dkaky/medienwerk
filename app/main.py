@@ -19,17 +19,10 @@ from app.config import get_settings
 from app.database import init_db
 from app.logging_config import setup_logging
 from app.routers import (
-    analytics,
     kontist,
     ebay_notifications,
-    growth,
     invoices,
-    listings,
-    monitoring,
-    orders,
     pricing,
-    products,
-    research,
     system,
 )
 from app.scheduler import shutdown_scheduler, start_scheduler
@@ -52,17 +45,15 @@ async def lifespan(app: FastAPI):
         logger.info("background jobs disabled; dashboard and studio remain available")
         yield
         return
-    # Zombie-Tasks aus frueheren Prozessen abschliessen (haengen sonst ewig "in Arbeit")
+    # Zombie-Tasks aus frueheren Prozessen abschliessen (haengen sonst ewig "in Arbeit").
+    # Die frueher hier ebenfalls aufgeraeumten Lieferanten-Bestellungen gibt es nicht
+    # mehr - medienwerk bestellt nirgends ein.
     try:
         from app.database import SessionLocal
         from app.services.common import cleanup_stale_tasks
         _db = SessionLocal()
         try:
             cleanup_stale_tasks(_db)
-            # Verwaiste 'ordering'-Claims (Crash/CancelledError vor dem Ergebnis) aus
-            # frueheren Prozessen aufraeumen -> Sale needs_manual_review + Alarm.
-            from app.services import order_service
-            order_service.sweep_stale_claims(_db)
         finally:
             _db.close()
     except Exception as exc:  # noqa: BLE001 – Cleanup darf den Start nie verhindern
@@ -71,33 +62,13 @@ async def lifespan(app: FastAPI):
         start_scheduler()
     except Exception as exc:  # noqa: BLE001 – App auch ohne Scheduler lauffaehig
         logger.warning("scheduler not started", extra={"error": str(exc)})
-    # Publish-Warteschlange: Worker starten + nach Neustart haengende Go-Lives
-    # wieder einreihen (frueher gingen die bei jedem Neustart verloren).
+    # Veroeffentlichungs-Warteschlange: Worker starten + nach Neustart haengende
+    # Veroeffentlichungen wieder einreihen (frueher gingen die bei jedem Neustart verloren).
     try:
         from app.services import publish_queue
         await publish_queue.start_worker()
     except Exception as exc:  # noqa: BLE001
         logger.warning("publish queue not started", extra={"error": str(exc)})
-    # Produkt-Ideen-Importe: nach Neustart in 'importing' haengende Ideen wieder einreihen
-    # (der In-Memory-Task starb beim Neustart -> sonst ewig "wird angelegt"). Non-fatal.
-    try:
-        from app.services import product_research_service
-        product_research_service.recover_stuck_imports()
-    except Exception as exc:  # noqa: BLE001 – Recovery darf den Start nie verhindern
-        logger.warning("stuck import recovery failed", extra={"error": str(exc)})
-    # Shop-Import: lief einer beim Neustart noch, wird er AUTOMATISCH fortgesetzt
-    # (Wiederanlauf-Infos in der Status-Datei; bereits Angelegtes wird uebersprungen).
-    # Ohne Wiederanlauf-Infos (Alt-Zustand) wird er als unterbrochen gemeldet.
-    try:
-        from app.services import store_import_service
-        store_import_service.startup_check()
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("store import startup check failed", extra={"error": str(exc)})
-    # HINWEIS: Der frühere Auto-Backfill (925->versilbert per Wort-Ersetzung) ist bewusst ENTFERNT –
-    # reines Ersetzen erzeugte holprige Titel/Beschreibungen („versilbert-versilbert") und liess
-    # KI-Falschbehauptungen (Stempel/Zertifikat/echtes Edelmetall) stehen. Bestehende Listings werden
-    # stattdessen KONTROLLIERT per KI neu generiert (Titel SEO + saubere Beschreibung); der
-    # Generierungs-Filter hält neue Listings sauber.
     yield
     from app.services import publish_queue
     await publish_queue.stop_worker()
@@ -107,8 +78,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="medienwerk",
-    description="Standalone-Automatisierung: Produktupload, Auftragsabwicklung, "
-                "Belegablage, Listing-Optimierung.",
+    description="Eigene Print-on-Demand-Motive: entwerfen, druckfertig machen "
+                "und ueber mehrere Verkaufskanaele anbieten.",
     version=__version__,
     lifespan=lifespan,
 )
@@ -118,17 +89,10 @@ app.add_middleware(AuthMiddleware)
 app.include_router(auth_router)
 
 app.include_router(system.router)
-app.include_router(products.router)
-app.include_router(orders.router)
 app.include_router(invoices.router)
-app.include_router(listings.router)
 app.include_router(pricing.router)
-app.include_router(monitoring.router)
-app.include_router(analytics.router)
-app.include_router(research.router)
 app.include_router(ebay_notifications.router)
 app.include_router(kontist.router)
-app.include_router(growth.router)
 # Studio-Trakt: riegelt sich selbst ab (404), solange STUDIO_ENABLED aus ist.
 from app.studio.router import router as studio_router
 app.include_router(studio_router)

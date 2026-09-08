@@ -1,4 +1,4 @@
-# Allgemeine Geschäftsbedingungen — Forseti Marketing
+# Allgemeine Geschäftsbedingungen — medienwerk
 
 > **Angepasst am 01.09.2026** aus der Fassung der Kaky und Syed GbR.
 > Geändert wurde ausschließlich der Vertragspartner in Ziffer 2.1 sowie ein
@@ -22,7 +22,7 @@ Gegenüber Unternehmern gilt: Verwendet der Unternehmer entgegenstehende oder er
 
 Der Kaufvertrag kommt zustande mit:
 
-**Forseti Marketing**
+**medienwerk**
 Inhaber: [VOLLSTÄNDIGER NAME EINTRAGEN]
 Am Spitzenbach 16A
 53604 Bad Honnef
@@ -176,7 +176,7 @@ Sollten einzelne Klauseln dieser AGB ganz oder teilweise unwirksam sein, so blei
 
 | Ziffer | vorher | jetzt |
 |---|---|---|
-| 2.1 | Kaky und Syed GbR, Johannisstr. 46, 58452 Witten | Forseti Marketing, Am Spitzenbach 16A, 53604 Bad Honnef |
+| 2.1 | Kaky und Syed GbR, Johannisstr. 46, 58452 Witten | medienwerk, Am Spitzenbach 16A, 53604 Bad Honnef |
 | 12 | `https: ec.europa.eu/consumers/odr` (kaputt, `//` fehlte) | `https://ec.europa.eu/consumers/odr` |
 | — | Herkunftsvermerk „erstellt mit dem Trusted Shops Rechtstexter" | entfernt, siehe unten |
 
@@ -190,7 +190,7 @@ Einzelunternehmen muss den vollständigen Namen der verantwortlichen Person nenn
 
 **2. Herkunftsvermerk und Lizenz.** Der Originaltext endete mit „AGB erstellt mit dem
 Trusted Shops Rechtstexter". Solche Lizenzen gelten in der Regel **pro Shop und pro
-Unternehmen** — die Lizenz der GbR deckt Forseti Marketing vermutlich nicht ab. Ich
+Unternehmen** — die Lizenz der GbR deckt medienwerk vermutlich nicht ab. Ich
 habe den Vermerk entfernt, weil er hier sachlich falsch wäre. Kläre mit Trusted Shops,
 ob du den Text weiterverwenden darfst, oder hol eine eigene Lizenz.
 
