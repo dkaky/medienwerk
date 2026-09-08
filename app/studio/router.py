@@ -41,6 +41,8 @@ from app.studio.schemas import (
     LinkOut,
     RadarLaufIn,
     StudioStatus,
+    VeredelnIn,
+    VeredelnOut,
 )
 
 logger = logging.getLogger("app.studio.router")
@@ -143,7 +145,92 @@ def druckcheck(design_id: int, typ: str = Query("tshirt"),
         "format": e.format_key, "moeglich": e.moeglich, "grund": e.grund,
         "breite": e.breite, "hoehe": e.hoehe, "dpi": e.dpi,
         "zielmasse": list(e.zielmasse) if e.zielmasse else None,
+        # Seit 08.09.2026: Ein "nein" allein half niemandem weiter - es traf
+        # JEDES erzeugte Motiv, weil kein Bildmodell die noetigen 2250 Pixel
+        # liefert. Jetzt steht daneben, ob es MIT Vergroesserung ginge.
+        "mit_vergroesserung": e.mit_vergroesserung,
+        "faktor": e.faktor,
+        "noetige_breite": e.noetige_breite,
+        "weich": e.weich,
     }
+
+
+@router.get("/designs/{design_id}/druckcheck-alle")
+def druckcheck_alle(design_id: int, db: Session = Depends(get_db)):
+    """Derselbe Check fuer ALLE Produkttypen auf einmal.
+
+    Beantwortet die Frage, die man beim Motiv wirklich hat: "Wofuer taugt das
+    hier?" Statt viermal einzeln zu fragen, kommt eine Zeile je Produkt.
+    Aendert nichts und kostet nichts - alles rein oertlich gerechnet.
+    """
+    from app.studio import produktweg
+
+    design = service.get_design(db, design_id)
+    if design is None:
+        raise HTTPException(status_code=404, detail="Motiv nicht gefunden")
+
+    ordner = Path(get_settings().studio_image_dir)
+    zeilen = []
+    for typ in produktweg.FORMAT_JE_TYP:
+        try:
+            e = produktweg.pruefe(design, produkttyp_key=typ, bildordner=ordner)
+        except produktweg.MotivFehler as exc:
+            zeilen.append({"produkttyp": typ, "moeglich": False, "grund": str(exc)})
+            continue
+        zeilen.append({
+            "produkttyp": typ, "format": e.format_key, "moeglich": e.moeglich,
+            "grund": e.grund, "dpi": e.dpi, "breite": e.breite, "hoehe": e.hoehe,
+            "mit_vergroesserung": e.mit_vergroesserung, "faktor": e.faktor,
+            "noetige_breite": e.noetige_breite, "weich": e.weich,
+        })
+    return {"design_id": design_id, "produkte": zeilen}
+
+
+@router.post("/designs/{design_id}/svg", status_code=201)
+def als_svg(design_id: int, stufe: str = Query("plakativ"),
+            hochskalieren: bool = Query(False),
+            db: Session = Depends(get_db)):
+    """Aus dem Motiv eine SVG-Datei machen - zum Selberdrucken.
+
+    Eine SVG besteht aus Formen statt Pixeln: beliebig vergroesserbar, ohne weich
+    zu werden. Damit laesst sich das Motiv selbst ausdrucken, auf jede Groesse
+    ziehen und an einen Schneideplotter geben.
+
+    Rein oertlich - kein Netzzugriff, keine Kosten. Deshalb braucht dieser
+    Endpunkt anders als der Printify-Weg KEINE Bestaetigung: Es entsteht eine
+    Datei auf der eigenen Platte, sonst nichts.
+
+    ``stufe``: 'plakativ' (Vorgabe, zum Drucken), 'fein' (naeher am Original,
+    grosse Datei) oder 'schnitt' (einfarbig, fuer Schneideplotter).
+    """
+    from app.studio import produktweg
+    from app.studio.postprocess import vektor
+
+    design = service.get_design(db, design_id)
+    if design is None:
+        raise HTTPException(status_code=404, detail="Motiv nicht gefunden")
+    try:
+        ergebnis = produktweg.erzeuge_svg(
+            design, bildordner=Path(get_settings().studio_image_dir),
+            stufe=stufe, hochskalieren=hochskalieren)
+    except (vektor.VektorFehler, produktweg.MotivFehler) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return {
+        "design_id": design_id, "stufe": ergebnis.stufe, "datei": ergebnis.pfad.name,
+        "pfade": ergebnis.pfade, "bytes": ergebnis.bytes,
+        "zu_gross": ergebnis.zu_gross, "hinweis": ergebnis.hinweis,
+        "url": f"/studio/druckdateien/{ergebnis.pfad.name}",
+    }
+
+
+@router.get("/vektor-stufen")
+def vektor_stufen():
+    """Welche Nachzeichen-Stufen es gibt und wofuer sie taugen."""
+    from app.studio.postprocess import vektor
+
+    return [{"key": s.key, "label": s.label, "zweck": s.zweck}
+            for s in vektor.STUFEN.values()]
 
 
 @router.post("/designs/{design_id}/printify", status_code=201)
@@ -232,6 +319,39 @@ def unlink_listing(listing_id: int, db: Session = Depends(get_db)) -> dict:
 
 # --- Bilderzeugung ------------------------------------------------------------
 
+@router.post("/prompt/veredeln", response_model=VeredelnOut)
+async def prompt_veredeln(body: VeredelnIn) -> VeredelnOut:
+    """Eine Motividee pruefen und zu einem druckfertigen Prompt schaerfen.
+
+    Erzeugt **nichts**: kein Bild, kein Entwurf, kein Datenbankeintrag. Der
+    Rueckgabewert fuellt nur das Eingabefeld; auf "Erzeugen" drueckt weiterhin
+    ein Mensch (Eiserne Regel 1). Deshalb auch 200 statt 201 - es entsteht
+    keine Ressource.
+
+    Das Bildbudget wird nicht angefasst. Die Kostenbremse (Eiserne Regel 5)
+    sitzt an der Bilderzeugung; ein Textaufruf ist um Groessenordnungen
+    billiger und wuerde sie nur unbrauchbar fein machen.
+    """
+    from app.studio.generation import promptveredelung
+
+    try:
+        ergebnis = await promptveredelung.veredle(body.idee, ziel=body.ziel)
+    except promptveredelung.VeredelungFehler as exc:
+        # Fehlendes Regelwerk ist ein Einrichtungsfehler, kein Nutzerfehler -
+        # und ohne Regeln wird nicht veredelt, statt irgendetwas zu liefern.
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return VeredelnOut(
+        prompt=ergebnis.prompt,
+        breite=ergebnis.breite,
+        hoehe=ergebnis.hoehe,
+        stil=ergebnis.stil,
+        ziel=ergebnis.ziel,
+        bericht=ergebnis.bericht,
+        abbruch=ergebnis.abbruch,
+        quelle=ergebnis.quelle,
+    )
+
+
 @router.post("/generate", response_model=GenerateOut, status_code=201)
 def generate_design(body: GenerateIn, db: Session = Depends(get_db)) -> GenerateOut:
     """Ein Motiv erzeugen und als Entwurf ablegen.
@@ -249,6 +369,7 @@ def generate_design(body: GenerateIn, db: Session = Depends(get_db)) -> Generate
             breite=body.breite,
             hoehe=body.hoehe,
             anbieter=body.anbieter,
+            stil=body.stil,
             )
     except gen.MotivGesperrt as exc:
         raise HTTPException(status_code=422, detail=f"Gesperrt: {exc}") from exc

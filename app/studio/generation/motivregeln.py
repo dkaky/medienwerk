@@ -110,6 +110,38 @@ def pruefe_anfrage(prompt: str) -> None:
             )
 
 
+#: Wie lang eine Stilangabe hoechstens sein darf. Das Feld ist fuer "realistisch",
+#: "Comic", "Retro-Linien, zwei Farben" gedacht - nicht fuer eine zweite
+#: Bildbeschreibung. Ein sehr langer Stil verdraengt sonst das eigentliche Motiv.
+MAX_STIL = 200
+
+
+def mit_stil(prompt: str, stil: str | None) -> str:
+    """Die Stilangabe an die Motivbeschreibung haengen.
+
+    Getrennte Felder, weil es zwei verschiedene Fragen sind: WAS zu sehen ist und
+    WIE es aussehen soll. In einem Feld vermischt sich beides - "Dackel im
+    Comicstil" laesst offen, ob der Comic zum Motiv oder zur Machart gehoert.
+
+    Die Stilangabe geht durch DIESELBEN Pruefungen wie die Beschreibung. Sonst
+    waere das Feld die offene Hintertuer: "im Stil eines getragenen T-Shirts"
+    haette den Motivart-Filter umgangen, und ein Markenname darin den
+    Rechtefilter.
+    """
+    beschreibung = (prompt or "").strip()
+    s = (stil or "").strip()
+    if not s:
+        return beschreibung
+    if len(s) > MAX_STIL:
+        raise MotivartFehler(
+            f"Die Stilangabe ist zu lang ({len(s)} Zeichen, erlaubt sind {MAX_STIL}). "
+            "Das Feld ist fuer die Machart gedacht - etwa 'realistisch', 'Comic', "
+            "'Retro-Linien, zwei Farben'. Was zu sehen sein soll, gehoert ins Motivfeld."
+        )
+    pruefe_anfrage(s)
+    return f"{beschreibung.rstrip('.,; ')}. Stil: {s.rstrip('.,; ')}" if beschreibung else s
+
+
 def schaerfe(prompt: str) -> str:
     """Die Druck-Anforderungen an die Beschreibung haengen.
 

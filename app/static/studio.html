@@ -211,6 +211,25 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
           <label>Spruch im Bild (optional)</label>
           <input id="f-overlay" placeholder="TEAM DACKEL">
         </div>
+        <div class="feld" style="flex:1 1 220px">
+          <!-- Getrennt vom Motivfeld, weil es zwei verschiedene Fragen sind:
+               WAS zu sehen ist und WIE es aussehen soll. In einem Feld
+               vermischt sich beides - "Dackel im Comicstil" laesst offen, ob
+               der Comic zum Motiv oder zur Machart gehoert. -->
+          <label>Stil (optional)</label>
+          <input id="f-stil" list="stil-vorschlaege" maxlength="200"
+                 placeholder="realistisch, Comic, Retro-Linien …">
+          <datalist id="stil-vorschlaege">
+            <option value="realistisch, fotografisch">
+            <option value="Comic, kräftige Konturen">
+            <option value="animiert, weiche Formen">
+            <option value="Retro-Linien, zwei Farben">
+            <option value="Vintage, verwaschene Farben">
+            <option value="minimalistisch, flache Flächen">
+            <option value="Aquarell, weiche Verläufe">
+            <option value="Scherenschnitt, einfarbig">
+          </datalist>
+        </div>
         <div class="feld">
           <label>Format</label>
           <!-- Bis 01.09.2026 gab es diese Wahl nicht: der Erzeuger stand fest
@@ -232,7 +251,16 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
             <option value="fal">Flux</option>
           </select>
         </div>
+        <button class="btn" id="b-veredeln" title="Prüft und schärft die Beschreibung. Erzeugt nichts, kostet kein Bildbudget.">Prompt veredeln</button>
         <button class="btn" id="b-erzeugen">Erzeugen</button>
+      </div>
+      <!-- Der Bericht der Veredelung. Steht bewusst UNTER dem Feld und nicht in
+           einer Meldung: er hat mehrere Zeilen, und die Auflösungswarnung soll
+           stehen bleiben, während man das Format ändert. -->
+      <div id="veredel-bericht" class="panel" hidden
+           style="margin-top:12px;background:rgba(0,0,0,.15)">
+        <h4 style="margin:0 0 6px">Prüfbericht <span class="muted" id="veredel-quelle"></span></h4>
+        <ul id="veredel-liste" class="muted" style="margin:0;padding-left:18px"></ul>
       </div>
     </div>
 
@@ -404,6 +432,8 @@ async function ladeMotive() {
         <div class="produktweg" id="pw-${d.id}">
           <button class="btn klein" data-anprobe="${d.id}">Anprobieren</button>
           <button class="btn ghost klein" onclick="druckcheck(${d.id})">Als Produkt?</button>
+          <button class="btn ghost klein" onclick="alsSvg(${d.id})"
+            title="Vektordatei zum Selberdrucken: beliebig vergrößerbar, ohne unscharf zu werden">SVG</button>
         </div>
       </div>
     </div>`).join('');
@@ -711,6 +741,18 @@ async function druckcheck(id) {
         zeilen.push(`<button class="btn klein" onclick="alsProdukt(${id}, '${key}', '${name}')"
                        title="${e.breite}x${e.hoehe}, ${e.dpi} DPI — reicht fuer den Druck">
                        ${name} anlegen</button>`);
+      } else if (e.mit_vergroesserung) {
+        // Seit 08.09.2026: „geht nicht" traf JEDES erzeugte Motiv — kein
+        // Bildmodell liefert die nötigen 2250 Pixel. Statt einer Sackgasse
+        // steht hier jetzt der Weg drumherum, mit ehrlicher Ansage.
+        const warnung = e.weich
+          ? `\\n\\nACHTUNG: ${e.faktor}-fach ist viel — das Motiv wird sichtbar weich.`
+            + `\\nFür den Verkauf besser mit Anbieter „Flux" neu und größer erzeugen.`
+          : '';
+        zeilen.push(`<button class="btn klein ${e.weich ? 'ghost' : ''}"
+                       onclick="alsProdukt(${id}, '${key}', '${name}', ${e.faktor}, ${e.weich})"
+                       title="${e.breite}×${e.hoehe} — braucht ${e.noetige_breite} px. ${e.faktor}-fach vergrößern${e.weich ? ' (wird weich)' : ''}">
+                       ${name}: ${e.faktor}× vergrößern</button>`);
       } else {
         // Der Grund gehoert dazu. "Geht nicht" allein laesst den Betreiber
         // raten, ob das Motiv schuld ist oder das Produkt.
@@ -724,15 +766,25 @@ async function druckcheck(id) {
   kasten.innerHTML = zeilen.join('');
 }
 
-async function alsProdukt(id, key, name) {
+async function alsProdukt(id, key, name, faktor, weich) {
+  // Der Vergrößerungs-Hinweis steht IM Bestätigungsdialog, nicht daneben.
+  // „Aufgeblasen" und „so erzeugt" sind zwei verschiedene Dinge, und wer bei
+  // Printify etwas anlegt, soll wissen, welches davon er gerade hochlädt.
+  let zusatz = '\nDas Motiv wird vorher ins Druckformat gebracht.';
+  if (faktor && faktor > 1) {
+    zusatz = `\n\nDas Motiv wird dafür ${faktor}-fach VERGRÖSSERT.`
+           + `\nVergrößern erfindet keine Bildinformation.`;
+    if (weich) zusatz += `\nBei diesem Faktor wird es sichtbar weich — für den`
+                       + `\nVerkauf besser mit „Flux" neu und größer erzeugen.`;
+  }
   if (!confirm(`${name} bei Printify anlegen?` +
-      `\n\nEs entsteht dort ein ENTWURF — nicht veröffentlicht.` +
-      `\nDas Motiv wird vorher ins Druckformat gebracht.`)) return;
+      `\n\nEs entsteht dort ein ENTWURF — nicht veröffentlicht.` + zusatz)) return;
   const kasten = $('pw-' + id);
   const vorher = kasten.innerHTML;
   kasten.innerHTML = '<span class="muted klein">lege an …</span>';
   try {
-    const e = await hole(`/api/v1/studio/designs/${id}/printify?typ=${key}&bestaetigt=true`,
+    const hoch = faktor && faktor > 1 ? '&hochskalieren=true' : '';
+    const e = await hole(`/api/v1/studio/designs/${id}/printify?typ=${key}&bestaetigt=true${hoch}`,
                          { method: 'POST' });
     melde(`${name} angelegt: ${e.varianten} Varianten, VK ${usd(e.preis_cents / 100)} `
         + `— als Entwurf bei Printify, nicht veroeffentlicht`);
@@ -743,9 +795,111 @@ async function alsProdukt(id, key, name) {
   }
 }
 
+// ---------- SVG zum Selberdrucken ----------
+// Eine SVG besteht aus Formen statt Pixeln: beliebig vergrößerbar, ohne weich zu
+// werden. Damit lässt sich das Motiv selbst ausdrucken, auf jede Größe ziehen und
+// an einen Schneideplotter geben — ohne je wieder über DPI nachzudenken.
+//
+// Rein örtlich: kein Netzzugriff, keine Kosten. Deshalb ohne Bestätigungsfrage —
+// es entsteht eine Datei auf der eigenen Platte, sonst nichts.
+const SVG_STUFEN = [
+  ['plakativ', 'Plakativ', 'Glatte Flächen. Der Normalfall zum Drucken.'],
+  ['fein', 'Fein', 'Näher am Original, große Datei. Zum Ansehen.'],
+  ['schnitt', 'Schnittkontur', 'Einfarbig — für Schneideplotter und Flexfolie.'],
+];
+
+async function alsSvg(id) {
+  const kasten = $('pw-' + id);
+  const vorher = kasten.innerHTML;
+  kasten.innerHTML = SVG_STUFEN.map(([key, name, zweck]) =>
+    `<button class="btn ghost klein" title="${zweck}"
+       onclick="svgErzeugen(${id}, '${key}', '${name}')">${name}</button>`).join('')
+    + `<button class="btn ghost klein" onclick="ladeMotive()">Zurück</button>`;
+}
+
+async function svgErzeugen(id, stufe, name) {
+  const kasten = $('pw-' + id);
+  kasten.innerHTML = '<span class="muted klein">zeichne nach …</span>';
+  try {
+    const e = await hole(`/api/v1/studio/designs/${id}/svg?stufe=${stufe}`,
+                         { method: 'POST' });
+    melde(`SVG „${name}" erzeugt — ${e.hinweis}`, e.zu_gross);
+    // Direkter Download-Link statt nur einer Meldung: Die Datei ist das
+    // Ergebnis, das der Betreiber in der Hand haben will.
+    kasten.innerHTML = `<a class="btn klein" href="${e.url}" download>SVG herunterladen</a>`
+      + `<button class="btn ghost klein" onclick="ladeMotive()">Zurück</button>`
+      + `<div class="muted klein" style="margin-top:6px">${e.hinweis}</div>`;
+  } catch (err) {
+    melde(String(err.message || err), true);
+    kasten.innerHTML = `<button class="btn ghost klein" onclick="ladeMotive()">Zurück</button>`;
+  }
+}
+
 $('b-uebernehmen').onclick = () => entscheide('ready');
 $('b-verwerfen').onclick = () => entscheide('archived');
 $('b-schliessen').onclick = () => { $('anprobe-panel').hidden = true; _anprobe.design = null; };
+
+/* Das gewählte Bildformat sagt, auf welches Produkt gedruckt werden soll —
+   davon hängen Mindest-DPI und Druckbreite ab, also die Auflösungswarnung.
+   Quadrat gilt als Textil (Brustdruck), Querformat als Tasse. */
+const ZIEL_JE_FORMAT = {
+  '1024x1024': 'textil',
+  '1024x1536': 'poster_2_3',
+  '1536x1024': 'tasse',
+};
+
+function zeigeBericht(e) {
+  const kasten = $('veredel-bericht');
+  const liste = $('veredel-liste');
+  liste.textContent = '';
+  // textContent, nicht innerHTML: die Zeilen kommen aus einem Sprachmodell,
+  // das seinerseits eine fremde Eingabe verarbeitet hat.
+  (e.bericht || []).forEach(z => liste.appendChild(el('li', '', z)));
+  $('veredel-quelle').textContent = e.abbruch
+    ? '· abgebrochen, nichts übernommen'
+    : (e.quelle === 'modell' ? '· vom Sprachmodell geschärft' : '· nur nach Regeln, ohne Sprachmodell');
+  kasten.hidden = false;
+}
+
+$('b-veredeln').onclick = async () => {
+  const idee = $('f-prompt').value.trim();
+  const spruch = $('f-overlay').value.trim();
+  if (idee.length < 3) { melde('Bitte erst ein Motiv beschreiben.', true); return; }
+  const knopf = $('b-veredeln');
+  knopf.disabled = true;
+  knopf.textContent = 'Veredle …';
+  try {
+    const e = await hole('/api/v1/studio/prompt/veredeln', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        // Der Spruch geht mit, damit die Regeln ihn prüfen können (Umlaute,
+        // Länge) statt ihn erst beim Erzeugen blind anzuhängen.
+        idee: spruch ? `${idee}. Mit dem Schriftzug "${spruch}" im Bild` : idee,
+        ziel: ZIEL_JE_FORMAT[$('f-format').value] || 'textil',
+      }),
+    });
+    zeigeBericht(e);
+    if (e.abbruch) {
+      // Nichts übernehmen. Ein halber Vorschlag im Feld sähe aus wie ein
+      // Ergebnis und würde beim nächsten Klick erzeugt.
+      melde('Veredelung abgebrochen — siehe Prüfbericht. Nichts geändert.', true);
+      return;
+    }
+    $('f-prompt').value = e.prompt;
+    // Der Spruch steckt jetzt IM Prompt; bliebe er stehen, käme er beim
+    // Erzeugen ein zweites Mal dazu.
+    $('f-overlay').value = '';
+    const wunsch = `${e.breite}x${e.hoehe}`;
+    if ([...$('f-format').options].some(o => o.value === wunsch)) $('f-format').value = wunsch;
+    melde('Prompt veredelt — erzeugt wurde nichts. Prüfen, dann auf Erzeugen.');
+  } catch (err) {
+    melde(String(err.message || err), true);
+  } finally {
+    knopf.disabled = false;
+    knopf.textContent = 'Prompt veredeln';
+  }
+};
 
 $('b-erzeugen').onclick = async () => {
   const prompt = $('f-prompt').value.trim();
@@ -765,6 +919,10 @@ $('b-erzeugen').onclick = async () => {
         // Bild ohne Spruch, ohne jede Meldung.
         prompt: spruch ? `${prompt}. Mit dem Schriftzug "${spruch}" im Bild` : prompt,
         anbieter: $('f-anbieter').value,
+        // Die Machart als EIGENES Feld, nicht an den Prompt geklebt: Der Server
+        // prüft sie getrennt (Rechte- und Motivart-Filter) und hängt sie selbst
+        // als „Stil: …" an. Leer lassen ist erlaubt — dann entscheidet das Modell.
+        stil: $('f-stil').value.trim() || null,
         // Ohne diese zwei Felder greift die Vorgabe des Servers. Das Format war
         // vorher gar nicht wählbar — daher sind alle Altmotive hochkant.
         breite: Number($('f-format').value.split('x')[0]),
@@ -774,6 +932,9 @@ $('b-erzeugen').onclick = async () => {
     melde(`Motiv erzeugt (${e.anbieter}) · ${usd(e.kosten_usd)} · Rest heute ${e.rest_budget_usd == null ? 'unbegrenzt' : usd(e.rest_budget_usd)}`);
     $('f-prompt').value = '';
     $('f-overlay').value = '';
+    // Der Bericht gehörte zum verbrauchten Prompt — stehen bleiben würde er
+    // beim nächsten Motiv als dessen Prüfung gelesen.
+    $('veredel-bericht').hidden = true;
     await Promise.all([ladeStand(), ladeMotive()]);
   } catch (err) {
     melde(String(err.message || err), true);

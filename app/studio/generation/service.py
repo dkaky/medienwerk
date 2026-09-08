@@ -53,6 +53,17 @@ def _schutzfilter() -> IPFilter:
     return _filter_zwischenspeicher
 
 
+def schutzfilter() -> IPFilter:
+    """Derselbe Filter fuer alle, die vor der Erzeugung pruefen wollen.
+
+    Die Promptveredelung braucht ihn, bevor ueberhaupt ein Prompt entsteht. Sie
+    soll dafuer keine zweite Sperrliste laden - zwei Filter heisst frueher oder
+    spaeter zwei Staende, und der veraltete gewinnt genau dann, wenn es darauf
+    ankommt.
+    """
+    return _schutzfilter()
+
+
 def waehle_anbieter(name: str | None = None) -> Any:
     """Anbieter nach Namen; GPT Image 2 ist der produktive Standard."""
     s = get_settings()
@@ -80,6 +91,7 @@ def erzeuge(
     hoehe: int = 1024,
     anbieter: str | None = None,
     transparent: bool = True,
+    stil: str | None = None,
 ) -> Erzeugnis:
     """Ein Motiv erzeugen - mit Schutzfilter, Motivart-Regel und Kostenbremse.
 
@@ -96,16 +108,19 @@ def erzeuge(
     naeher an dem, was auf einer Brust wirkt - waehlbar bleibt beides.
     """
     # 1. Schutzfilter - vor allem anderen. Geprueft wird auch der Spruch, denn
-    #    der landet sichtbar auf dem Produkt.
-    pruefung = _schutzfilter().check(prompt)
+    #    der landet sichtbar auf dem Produkt, UND die Stilangabe: ein Markenname
+    #    darin ("im Stil von Disney") ist genauso heikel wie im Motivfeld.
+    pruefung = _schutzfilter().check(" ".join(x for x in (prompt, stil) if x))
     if not pruefung.allowed:
         logger.info("Motiv gesperrt: %s", pruefung.reason)
         raise MotivGesperrt(pruefung.reason or "Gesperrter Inhalt")
 
     # 1b. Motivart: ein Motiv, kein Foto von einem T-Shirt. Ebenfalls VOR den
     #     Kosten - ein Mockup ist als Druckdatei wertlos, bezahlt waere es
-    #     trotzdem (Eiserne Regel 6).
+    #     trotzdem (Eiserne Regel 6). ``mit_stil`` prueft die Stilangabe mit und
+    #     haengt sie an - sonst waere das Feld die offene Hintertuer.
     motivregeln.pruefe_anfrage(prompt)
+    beschreibung = motivregeln.mit_stil(prompt, stil)
 
     dienst = waehle_anbieter(anbieter)
     voraussichtlich = getattr(dienst, "geschaetzte_kosten", lambda: 0.0)()
@@ -118,7 +133,7 @@ def erzeuge(
     #    Die Pruefung oben faengt die ausgesprochene Bitte um ein Shirt ab,
     #    dieser Zusatz die unausgesprochene Neigung des Modells dazu.
     bild = dienst.generate(
-        ImageRequest(prompt=motivregeln.schaerfe(prompt), width=breite,
+        ImageRequest(prompt=motivregeln.schaerfe(beschreibung), width=breite,
                      height=hoehe, transparent=transparent)
     )
 

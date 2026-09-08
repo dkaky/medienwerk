@@ -77,12 +77,47 @@ class GenerateIn(BaseModel):
     prompt: str = Field(min_length=3, max_length=1000)
     titel: str | None = Field(default=None, max_length=255)
     anbieter: str | None = Field(default=None, pattern="^(mock|openai|fal)$")
+    # Freitext fuer die MACHART - "realistisch", "Comic", "Retro-Linien, zwei
+    # Farben". Bewusst getrennt vom Motivfeld: das eine sagt, WAS zu sehen ist,
+    # das andere WIE. In einem Feld vermischt sich beides. Die Angabe geht durch
+    # denselben Rechte- und Motivart-Filter wie die Beschreibung.
+    stil: str | None = Field(default=None, max_length=200)
     # Quadratisch als Vorgabe. Vorher stand hier Hochformat 1024x1536, ohne dass
     # es je waehlbar gewesen waere - daher sind alle 50 Altmotive hochkant. Das
     # Verhaeltnis 0,667 passt zu nichts: die Druckleinwand hat 0,833, und ein
     # Brustmotiv nutzt davon nur 10-12 von 15 Zoll Breite. Siehe erzeuge().
     breite: int = Field(default=1024, ge=256, le=2048)
     hoehe: int = Field(default=1024, ge=256, le=2048)
+
+
+class VeredelnIn(BaseModel):
+    """Auftrag fuer eine Promptveredelung. Erzeugt nichts."""
+
+    idee: str = Field(min_length=3, max_length=1000)
+    # Bestimmt Format und Aufloesungswarnung. Textil ist die Vorgabe, weil dort
+    # der Grossteil der Ware liegt.
+    ziel: str = Field(default="textil", max_length=40)
+
+
+class VeredelnOut(BaseModel):
+    """Der veredelte Prompt samt Pruefbericht.
+
+    ``abbruch`` heisst: eine der harten Grenzen hat gehalten (fremde Rechte,
+    Ware im Bild). Dann ist ``prompt`` leer und nur der Bericht traegt etwas -
+    absichtlich, damit die Oberflaeche keinen halben Vorschlag anbietet.
+    """
+
+    prompt: str
+    breite: int
+    hoehe: int
+    stil: str
+    ziel: str
+    bericht: list[str]
+    abbruch: bool
+    # "modell" oder "regeln" - der Betreiber soll sehen, ob das Sprachmodell
+    # ueberhaupt beteiligt war. Ein regelbasierter Prompt sieht sonst genauso
+    # fertig aus, ist aber deutlich schwaecher.
+    quelle: str
 
 
 class GenerateOut(BaseModel):

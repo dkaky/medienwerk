@@ -178,6 +178,32 @@ def studio_bild(name: str, breite: int | None = None) -> FileResponse:
     return FileResponse(ziel, media_type="image/png")
 
 
+@app.get("/studio/druckdateien/{name}", include_in_schema=False)
+def studio_druckdatei(name: str):
+    """Eine erzeugte Druckdatei oder SVG herunterladen.
+
+    Getrennt von der Bilder-Route darueber, weil hier etwas anderes ausgeliefert
+    wird: nicht das Motiv zum Ansehen, sondern das ERZEUGNIS daraus zum Drucken.
+    Es geht als Download raus (``attachment``), nicht zur Anzeige im Reiter - wer
+    hier klickt, will die Datei haben.
+
+    ``{name}`` ohne ``:path``: Druckdateien liegen flach in einem Ordner, anders
+    als die Motive. Ein Schraegstrich im Namen ist damit kein gueltiger Fall, und
+    die Sperre unten faengt ihn ab.
+    """
+    from fastapi import HTTPException
+
+    from app.studio.produktweg import DRUCK_ORDNER
+
+    ordner = (Path(get_settings().studio_image_dir) / DRUCK_ORDNER).resolve()
+    ziel = (ordner / name).resolve()
+    if not str(ziel).startswith(str(ordner)) or not ziel.is_file():
+        raise HTTPException(status_code=404, detail="Nicht gefunden")
+
+    typ = "image/svg+xml" if ziel.suffix.lower() == ".svg" else "image/png"
+    return FileResponse(ziel, media_type=typ, filename=ziel.name)
+
+
 @app.get("/favicon.svg", include_in_schema=False)
 def favicon_svg():
     """Tab-Logo (gekreuzte Schwerter, militaerisches Emblem)."""

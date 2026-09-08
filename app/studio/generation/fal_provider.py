@@ -29,6 +29,17 @@ _FAL_MODEL = "fal-ai/flux/schnell"
 # die Kostenbremse soll frueher greifen.
 _PREIS_USD = 0.05
 
+# Groesste Kante, die Flux hier bekommt. Und das ist der eigentliche Grund, warum
+# dieser Anbieter fuer den Druck wichtig ist: GPT Image 2 hoert bei 1536 Pixeln
+# auf, und Textildruck verlangt 2250 (150 DPI ueber 15 Zoll). Flux liefert 2048
+# und kommt damit in Reichweite - der Rest ist eine schonende Vergroesserung um
+# Faktor 1,1 statt einer um 2,3.
+#
+# Darueber wird es unzuverlaessig: Diffusionsmodelle sind auf ihre Trainingsgroesse
+# eingestellt und beginnen jenseits davon, Motive zu verdoppeln (zwei Koepfe, ein
+# zweiter Horizont). Lieber bei 2048 aufhoeren und sauber vergroessern.
+MAX_KANTE = 2048
+
 
 @contextmanager
 def _schluessel_gesetzt(api_key: str):
@@ -69,13 +80,23 @@ class FalProvider:
         except ImportError as exc:  # pragma: no cover - optionale Abhaengigkeit
             raise RuntimeError("fal-client nicht installiert (pip install fal-client).") from exc
 
+        # Auf MAX_KANTE deckeln, aber PROPORTIONAL - ein einzeln gekappter Wert
+        # wuerde das Seitenverhaeltnis verziehen, und genau daran sind die 13
+        # Altmotive kaputtgegangen.
+        breite, hoehe = request.width, request.height
+        laengste = max(breite, hoehe)
+        if laengste > MAX_KANTE:
+            schrumpf = MAX_KANTE / laengste
+            breite = int(round(breite * schrumpf))
+            hoehe = int(round(hoehe * schrumpf))
+
         try:
             with _schluessel_gesetzt(self._api_key):
                 result = fal_client.run(
                     _FAL_MODEL,
                     arguments={
                         "prompt": request.prompt,
-                        "image_size": {"width": request.width, "height": request.height},
+                        "image_size": {"width": breite, "height": hoehe},
                         "seed": request.seed,
                     },
                 )

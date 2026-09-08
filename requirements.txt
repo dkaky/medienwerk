@@ -24,6 +24,13 @@ openai>=1.40.0               # Bilderzeugung und optionale Bildanalyse
 pillow>=10.0.0                # Bildbearbeitung im Studio (Text-Overlay, Skalierung)
 playwright==1.61.0
 
+# Nachzeichnen von Pixeln zu Formen -> die SVG-Datei zum Selberdrucken. Eine SVG
+# laesst sich beliebig vergroessern, ohne weich zu werden; damit ist der Druck
+# unabhaengig von der Aufloesung des erzeugten Motivs. Ohne dieses Paket meldet
+# app/studio/postprocess/vektor.py das im Klartext, statt abzustuerzen - der
+# Rest des Studios laeuft weiter.
+vtracer>=0.6.15
+
 # --- Tests ---
 pytest==8.2.0
 pytest-asyncio==0.23.6
