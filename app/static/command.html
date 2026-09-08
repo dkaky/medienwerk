@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>medienwerk</title><link rel="icon" type="image/svg+xml" href="/favicon.svg?v=7"><style>
+:root{color-scheme:dark;--bg:#101916;--card:#172621;--line:#315145;--ink:#edf4ef;--muted:#a8bbb1;--accent:#d5ad62}
+*{box-sizing:border-box}body{margin:0;font:15px system-ui;background:var(--bg);color:var(--ink)}header{padding:24px max(20px,6vw);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}h1{margin:0;font-size:24px}a{color:var(--accent);text-decoration:none}.wrap{max-width:1200px;margin:0 auto;padding:28px 20px}.sub{color:var(--muted);margin:6px 0 0}.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:22px 0}.card,.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}.number{font-size:26px;font-weight:700;color:var(--accent)}.label{color:var(--muted);font-size:13px}section{margin-top:20px}h2{font-size:17px;margin:0 0 12px}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-top:1px solid var(--line)}th{color:var(--muted);font-size:12px}.empty{color:var(--muted);padding:8px 0}@media(max-width:760px){.grid{grid-template-columns:repeat(2,1fr)}.tablewrap{overflow:auto}}
+</style></head><body>
+<header><div><h1>medienwerk</h1><p class="sub">Betrieb, Produkte und Kennzahlen – kanalneutral.</p></div><a href="/studio">Zum Design-Studio →</a></header>
+<main class="wrap"><div class="grid" id="kpis"></div>
+<section class="panel"><h2>Meine Listings</h2><div class="tablewrap"><table><thead><tr><th>Produkt</th><th>Kanal</th><th>Status</th><th>Preis</th><th>Bestand</th></tr></thead><tbody id="listings"></tbody></table></div></section>
+<section class="panel"><h2>Bestellungen</h2><div class="tablewrap"><table><thead><tr><th>Kanal</th><th>Referenz</th><th>Status</th><th>Umsatz</th><th>Produktionskosten</th></tr></thead><tbody id="orders"></tbody></table></div></section>
+<section class="panel"><h2>Nächste Ausbauschritte</h2><p class="sub">Verkaufs- und Produktionskanäle werden erst lesend angebunden. Preisänderungen, Veröffentlichung und Fulfillment bleiben bestätigungspflichtig.</p><p><a href="/studio">Motiv erstellen oder prüfen</a> · Printify anbinden · eBay / Spreadshirt lesend anbinden · Buchungen importieren</p></section></main>
+<script>
+const euro=n=>n==null?'—':new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(n);
+const row=(cells)=>'<tr>'+cells.map(x=>'<td>'+x+'</td>').join('')+'</tr>';
+fetch('/api/v1/pod/dashboard').then(r=>r.json()).then(d=>{
+ const k=[['Produkte',d.kpis.products],['Aktive Listings',d.kpis.active_listings],['Offene Bestellungen',d.kpis.open_orders],['Umsatz',euro(d.kpis.revenue_eur)],['Deckungsbeitrag',euro(d.kpis.contribution_eur)]];
+ document.querySelector('#kpis').innerHTML=k.map(([a,b])=>`<div class="card"><div class="number">${b}</div><div class="label">${a}</div></div>`).join('');
+ document.querySelector('#listings').innerHTML=d.listings.length?d.listings.map(x=>row([x.product_id,x.channel,x.status,euro(x.price_eur),x.quantity_available??'auf Abruf'])).join(''):'<tr><td colspan="5" class="empty">Noch keine Listings verbunden.</td></tr>';
+ document.querySelector('#orders').innerHTML=d.orders.length?d.orders.map(x=>row([x.channel,x.external_id??'—',x.status,euro(x.sale_total_eur),euro(x.fulfillment_cost_eur)])).join(''):'<tr><td colspan="5" class="empty">Noch keine Bestellungen importiert.</td></tr>';
+});
+</script></body></html>

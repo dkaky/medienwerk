@@ -1,0 +1,30 @@
+# --- Core ---
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+sqlalchemy==2.0.30
+pydantic==2.7.1
+pydantic-settings==2.2.1
+python-dotenv==1.0.1
+apscheduler==3.10.4
+httpx==0.27.0
+python-multipart==0.0.9
+
+openai>=1.40.0               # Bilderzeugung und optionale Bildanalyse
+
+# --- Shop-Scraper (Headless-Browser) ---
+# Die AliExpress-Shop-Seite ist bot-geschuetzt und laesst sich nur mit einem echten Browser
+# lesen; die DS-API kann NICHT nach Shop filtern. Nach der Installation zusaetzlich noetig:
+#   playwright install chromium
+#
+# 1.61 statt 1.44 (26.08.2026): Der Chromium zu 1.44 (Build 1117, Chrome 125)
+# startet auf Windows nicht - "Side-by-Side-Konfiguration ungueltig", ihm fehlt
+# eine Visual-C++-Laufzeit. Der Browser zu 1.61 laeuft ohne Zusatz. Playwright
+# liefert Version und Browser immer als Paar; wer hier zurueckgeht, muss den
+# passenden Browser mitnehmen.
+pillow>=10.0.0                # Bildbearbeitung im Studio (Text-Overlay, Skalierung)
+playwright==1.61.0
+
+# --- Tests ---
+pytest==8.2.0
+pytest-asyncio==0.23.6
+pytest-cov==5.0.0

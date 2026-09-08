@@ -1,0 +1,56 @@
+# Secrets
+.env
+scripts/backfill_token.txt
+# Enthaelt einen OpenAI-Schluessel im Klartext. Stand bis 08.09.2026 NICHT hier
+# drin - beim ersten Commit waere er mitgegangen. Der Schluessel gehoert in die
+# .env, diese Datei darf weg, sobald das feststeht.
+api chatgpt.txt
+# Ein Schluessel in einer losen Textdatei passiert wieder. Deshalb die Gattung.
+*api*key*.txt
+*token*.txt
+
+# Daten / Laufzeit
+data/
+logs/
+# Chrome-Profil fuer den Belege-Backfill (Browser-Cache, mehrere hundert MB) - NIE committen
+chrome-belege-profil/
+*.db
+*.sqlite3
+/var/
+backups/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.venv-mcp/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+.env.produktion.backup
+
+# Betriebssystem (Finder-/Explorer-Ansichtsdaten, gehoeren niemandem ins Repo)
+.DS_Store
+Thumbs.db
+
+# Persoenliche Unterlagen - gehoeren NICHT in die Versionierung.
+# Ausweis und Gewerbeanmeldung waren versehentlich mitversioniert. Sie liegen
+# weiterhin im Ordner, aber Git fasst sie nicht mehr an. Wichtig, falls dieses
+# Archiv jemals zu GitHub geschoben wird.
+uebernommen/Marketingagentur/Alte Anmeldung/
+
+# Kopie der Einstellungsdatei des alten POD-Shop-Ordners. Sie enthaelt Zugaenge
+# und war schon dort nie versioniert. Die noch benoetigten Werte stehen laengst
+# in der eigenen .env - diese Kopie ist nur ein Sicherheitsnetz und darf weg,
+# sobald feststeht, dass nichts fehlt.
+uebernommen/env-alt-podshop.txt
+
+# Sperrdateien von Word/Excel (entstehen, solange ein Dokument geoeffnet ist).
+# Eine davon ist versehentlich mitcommittet worden.
+~$*

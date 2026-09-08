@@ -1,0 +1,38 @@
+# Sperrliste fuer den IP-/Content-Filter. Bewusst konservativ und erweiterbar.
+# Kategorien -> Liste gesperrter Begriffe/Phrasen (Gross/Kleinschreibung egal).
+# WICHTIG: Das ist ein Startpunkt, keine Rechtsberatung. Vor dem Live-Gang
+# regelmaessig erweitern und mit manueller Stichprobe kombinieren.
+
+marken:
+  - nike
+  - adidas
+  - puma
+  - gucci
+  - louis vuitton
+  - coca cola
+  - red bull
+  - disney
+  - lego
+  - apple
+
+promis:
+  - taylor swift
+  - cristiano ronaldo
+  - lionel messi
+  - elon musk
+  - kanye west
+
+franchises:
+  - star wars
+  - harry potter
+  - pokemon
+  - marvel
+  - superman
+  - batman
+  - minecraft
+  - fortnite
+
+verbotene_inhalte:
+  - hakenkreuz
+  - ss runen
+  - naziglorifizierung
