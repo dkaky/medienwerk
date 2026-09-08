@@ -2,7 +2,7 @@
 
 ## Was das ist
 
-Handels- und Automatisierungssystem für **medienwerk** (eingetragenes
+Handels- und Automatisierungssystem für **Medienwerk** (eingetragenes
 Einzelunternehmen). Store-Marke bei eBay ist **Druckhelden**, das Projekt heißt
 **POD Shop**.
 
@@ -15,37 +15,26 @@ Zwei Verkaufsspuren:
 
 Später geplant: weitere Verkaufskanäle (Etsy und andere).
 
-## Herkunft — bitte genau lesen
+## Eigenständig
 
-Dieses Projekt ist eine **Kopie** eines erprobten eBay-Systems, das einer GbR
-(Maison d'Aristide / Kaky & Syed GbR) gehört. Kopiert wurde ausschließlich
-**Code**. Nicht kopiert und niemals zu verwenden:
+Dieses Projekt gehört **Medienwerk** und steht für sich. Es gibt kein
+Mutterprojekt, keinen geteilten Server und keine fremden Konten.
 
-- Zugangsdaten, Konten, Schlüssel der GbR
-- deren Geschäftsdaten
-- deren Deploy-Ziele
+Es gibt eine Vorgeschichte: Teile des Handelsteils und der Studio-Trakt stammen
+aus früheren eigenen Arbeiten und sind hier erprobt weitergeführt worden. Was
+davon übrig ist, steht in diesem Verzeichnis — sonst nirgends.
 
-**Das Original liegt unter `C:\Users\HP\Projekte\eBay-Automation` und läuft auf
-einem VPS der GbR. Dieses Projekt hat damit nichts zu tun.** Wer hier einen
-Deploy-Vorgang findet, der auf `/opt/ebay-automation` zeigt, hat einen Fehler
-gefunden — nicht eine Anleitung.
-
-Ein zweites Vorprojekt lag unter `C:\Users\HP\Projekte\POD-Shop` (kleiner,
-12.000 Zeilen). Es ist **abgeräumt**: alles Brauchbare steckt im Studio-Trakt,
-seine Versionsgeschichte liegt als Bündel unter
-`uebernommen/pod-shop-historie.bundle`, seine 33 Motive in `studio_designs`.
-Der Ordner selbst wurde gelöscht. Wer in einer Datei noch einen Verweis darauf
-findet, hat einen Rest gefunden — kein gültiges Ziel.
-
-Alles aus dem Vorprojekt, das nicht in den laufenden Code wanderte, liegt unter
-`uebernommen/`. Darunter `web-referenz/` — die alte React-Oberfläche, die als
-Design-Vorlage dient und **nicht** gestartet wird.
+Daraus folgt eine Regel, die nicht verhandelbar ist: **keine fremden
+Zugangsdaten, keine fremden Deploy-Ziele.** Wer in einer Datei einen Schlüssel,
+einen Server oder einen Pfad findet, der nicht zu diesem Projekt gehört, hat
+einen Rest gefunden — kein gültiges Ziel. Solche Funde gehören entfernt, nicht
+benutzt.
 
 ## Start und Tests
 
 - Umgebung: `.venv\Scripts\python.exe` (Python 3.11)
-- **Port 8030.** Nicht 8000 — das ist der Server der GbR. (8010 gehörte dem
-  gelöschten Vorprojekt und ist jetzt frei, bleibt aber gemieden.)
+- **Port 8030.** 8000 und 8010 werden gemieden — dort lagen früher andere
+  Server, ein Zahlendreher soll nicht im falschen Dienst landen.
 - Start: `START-DASHBOARD.bat`
 - Tests: `python -m pytest -q` — über 1400 Tests, müssen vor jedem Commit grün
   sein. Ein voller Lauf dauert rund 15 Minuten.
@@ -91,14 +80,13 @@ Design-Vorlage dient und **nicht** gestartet wird.
   `/dashboard/summary`, sondern aus dem materialisierten `reprice-report`, der
   veralten kann.
 - Eigener Server für Nachtjobs und den Shop-Scanner (braucht einen Browser).
-  Soll mit KakyOS zusammen laufen.
 - LUCID-Registrierung und Rechtstexte vor dem ersten Verkauf.
 - **Vor dem ersten Push nach außen:** Die Historie enthält in frühen Commits
-  einen Ausweis-Scan und die Gewerbeanmeldung (`uebernommen/Marketingagentur/
-  Alte Anmeldung/`). Aus der Nachverfolgung sind sie raus, aus der Geschichte
-  nicht. Entweder bereinigen oder das Archiv frisch aufsetzen.
+  einen Ausweis-Scan und die Gewerbeanmeldung. Aus der Nachverfolgung sind sie
+  raus, aus der Geschichte nicht. Entweder bereinigen oder das Archiv frisch
+  aufsetzen.
 - **Keine Sicherung außer Haus.** Weder dieses Projekt noch das gebündelte
-  Vorprojekt (`uebernommen/pod-shop-historie.bundle`) liegen irgendwo sonst.
+  Vorprojekt (`docs/vorprojekt/pod-shop-historie.bundle`) liegen irgendwo sonst.
 
 ## Erledigt, damit es niemand doppelt sucht
 
@@ -107,10 +95,10 @@ Design-Vorlage dient und **nicht** gestartet wird.
 - Kategorie: Das native Backend ermittelt sie selbst (eBay-Vorschlag zum Titel)
   und meldet klar, wenn keine zu finden ist. Die „0" geht nirgends mehr raus.
 - Der Live-Knopf verlangt `bestaetigt=true` und fragt vorher nach.
-- 33 Motive aus dem Vorprojekt sind übernommen
-  (`scripts/uebernimm_altmotive.py`), das Vorprojekt ist gelöscht.
-- Spuren des fremden Betriebs sind aus Oberfläche, Favicon und Code entfernt;
-  der Kontist-Rückruf zeigt nicht mehr auf dessen Server.
+- 33 Motive aus dem Vorprojekt liegen in `studio_designs`; die einmaligen
+  Übernahme-Skripte sind nach getaner Arbeit gelöscht.
+- Spuren fremder Betriebe sind aus Oberfläche, Favicon, Code, Tests und
+  Rechtstexten entfernt; der Kontist-Rückruf hat keine Vorgabe mehr.
 - Startseite „Heute": Aufgabenband statt Jahresumsatz. Kacheln mit 0
   verschwinden, jede springt vorgefiltert an die zuständige Stelle.
 - Der Probebetrieb (`MOCK_EBAY=true`) hält **jeden Schreibzugriff** auf eBay an,

@@ -1,6 +1,6 @@
 """Zeitgesteuerte Hintergrundlaeufe.
 
-**Am 08.09.2026 auf medienwerk umgestellt.** Vorher standen hier 18 Jobs, von
+**Am 08.09.2026 auf Medienwerk umgestellt.** Vorher standen hier 18 Jobs, von
 denen 12 den Dropshipping-Betrieb bedienten: Lieferantenpreise ueberwachen,
 Sendungsnummern von AliExpress nach eBay melden, Trendprodukte suchen, fremde
 Shops ernten, Mengenrabatte pflegen, Bestellungen automatisch beim Lieferanten
@@ -108,22 +108,10 @@ async def _listing_stats_job() -> None:
         db.close()
 
 
-async def _publish_retry_job() -> None:
-    """Selbstheilung: fehlgeschlagene Veroeffentlichungen nachholen.
-
-    Kein neuer Entschluss - nur die Wiederholung einer Veroeffentlichung, die ein
-    Mensch bereits freigegeben hatte und die an einem Netzfehler scheiterte.
-    """
-    db = SessionLocal()
-    try:
-        from app.services import golive_service
-        result = await golive_service.retry_failed_publishes(db)
-        if result.get("candidates"):
-            logger.info("scheduler: publish retry done", extra=result)
-    except Exception as exc:  # noqa: BLE001
-        logger.error("scheduler: publish retry failed", extra={"error": str(exc)})
-    finally:
-        db.close()
+# Der Job "haengende Veroeffentlichungen nachholen" ist am 08.09.2026 entfallen.
+# Er lief ueber golive_service, das Lieferantenware auf eBay stellte und mit dem
+# Handelsteil ausgezogen ist. Er kommt zurueck, sobald der Print-on-Demand-Weg
+# steht - dann fuer alle Kanaele, nicht nur eBay.
 
 
 async def _kontist_bank_sync_job() -> None:
@@ -197,8 +185,6 @@ def start_scheduler() -> AsyncIOScheduler:
     sched.add_job(_category_backfill_job,
                   DateTrigger(run_date=datetime.now(timezone.utc) + timedelta(minutes=3)),
                   id="category_backfill_startup", replace_existing=True)
-    sched.add_job(_publish_retry_job, CronTrigger(minute="5,25,55"),
-                  id="publish_retry", replace_existing=True)
 
     sched.start()
     _scheduler = sched

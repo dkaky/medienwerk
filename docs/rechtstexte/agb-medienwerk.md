@@ -1,6 +1,6 @@
-# Allgemeine Geschäftsbedingungen — medienwerk
+# Allgemeine Geschäftsbedingungen — Medienwerk
 
-> **Angepasst am 01.09.2026** aus der Fassung der Kaky und Syed GbR.
+> **Angepasst am 01.09.2026** aus einer fremden Vorlage.
 > Geändert wurde ausschließlich der Vertragspartner in Ziffer 2.1 sowie ein
 > kaputter Link in Ziffer 12. Der übrige Text ist unverändert.
 >
@@ -22,10 +22,10 @@ Gegenüber Unternehmern gilt: Verwendet der Unternehmer entgegenstehende oder er
 
 Der Kaufvertrag kommt zustande mit:
 
-**medienwerk**
-Inhaber: [VOLLSTÄNDIGER NAME EINTRAGEN]
-Am Spitzenbach 16A
-53604 Bad Honnef
+**Medienwerk**
+Inhaber: Aleyna Nur Aydin
+Hauptstraße 439
+53639 Königswinter
 
 ### 2.2 Vertragsschluss
 
@@ -176,7 +176,7 @@ Sollten einzelne Klauseln dieser AGB ganz oder teilweise unwirksam sein, so blei
 
 | Ziffer | vorher | jetzt |
 |---|---|---|
-| 2.1 | Kaky und Syed GbR, Johannisstr. 46, 58452 Witten | medienwerk, Am Spitzenbach 16A, 53604 Bad Honnef |
+| 2.1 | Vertragspartner der Vorlage | Medienwerk, Inhaber Aleyna Nur Aydin, Hauptstraße 439, 53639 Königswinter |
 | 12 | `https: ec.europa.eu/consumers/odr` (kaputt, `//` fehlte) | `https://ec.europa.eu/consumers/odr` |
 | — | Herkunftsvermerk „erstellt mit dem Trusted Shops Rechtstexter" | entfernt, siehe unten |
 
@@ -184,15 +184,17 @@ Der übrige Text ist **wörtlich unverändert**.
 
 ## Was du noch klären musst
 
-**1. Inhabername fehlt.** In Ziffer 2.1 steht ein Platzhalter. Ein eingetragenes
-Einzelunternehmen muss den vollständigen Namen der verantwortlichen Person nennen
-(§ 5 DDG) — der Firmenname allein genügt nicht.
+**1. Inhabername steht drin.** Ziffer 2.1 nennt jetzt Firma, Inhaber und Anschrift
+(§ 5 DDG verlangt den vollständigen Namen der verantwortlichen Person, der Firmenname
+allein genügt nicht). Prüfe, dass die Schreibweise exakt der Gewerbeanmeldung entspricht.
 
-**2. Herkunftsvermerk und Lizenz.** Der Originaltext endete mit „AGB erstellt mit dem
-Trusted Shops Rechtstexter". Solche Lizenzen gelten in der Regel **pro Shop und pro
-Unternehmen** — die Lizenz der GbR deckt medienwerk vermutlich nicht ab. Ich
-habe den Vermerk entfernt, weil er hier sachlich falsch wäre. Kläre mit Trusted Shops,
-ob du den Text weiterverwenden darfst, oder hol eine eigene Lizenz.
+**2. Herkunftsvermerk und Lizenz — ungeklärt.** Der Text stammt aus einer fremden
+Vorlage, die mit dem Trusted Shops Rechtstexter erstellt wurde. Solche Lizenzen gelten
+in der Regel **pro Shop und pro Unternehmen**, decken Medienwerk also vermutlich nicht
+ab. Den Herkunftsvermerk habe ich entfernt, weil er hier sachlich falsch wäre — das
+löst die Lizenzfrage aber nicht. Kläre mit Trusted Shops, ob du den Text
+weiterverwenden darfst, oder hol eine eigene Lizenz. Bis dahin ist dieser Text nicht
+veröffentlichungsreif.
 
 **3. Zahlungsarten müssen stimmen.** Ziffer 6.2 listet PayPal, Lastschrift, Apple Pay,
 Google Pay, Kreditkarte und drei Klarna-Varianten. Was dein eBay-Konto **tatsächlich**

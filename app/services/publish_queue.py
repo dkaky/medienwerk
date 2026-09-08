@@ -58,9 +58,6 @@ async def enqueue_all_drafts(db, *, dry_run: bool = True, limit: int = 500,
                              freigeben: bool = False) -> dict:
     """ALLE Entwuerfe live stellen - einer nach dem anderen ueber dieselbe Warteschlange.
 
-    Uebernommen aus dem Original-Projekt (eBay-Automation), wo dieser Weg schon laeuft;
-    unsere Kopie ist aelter und hatte ihn noch nicht.
-
     Bewusst KEIN Sammel-Call an eBay: die Warteschlange arbeitet ein Listing nach dem
     anderen ab, ist neustartfest und wiederholt voruebergehende Fehler von selbst.
     Bleibt eines haengen, laufen die uebrigen weiter; der harte Fehler steht danach als
@@ -151,12 +148,26 @@ async def enqueue(listing_id: int) -> dict:
 
 
 async def _publish_once(listing_id: int) -> dict:
-    from app.services import golive_service
-    db = SessionLocal()
-    try:
-        return await golive_service.publish_listing_live(db, listing_id=listing_id)
-    finally:
-        db.close()
+    """Einen Auftrag tatsaechlich veroeffentlichen.
+
+    Hier stand bis 08.09.2026 ``golive_service.publish_listing_live``. Der Dienst
+    ist mit dem Handelsteil ausgezogen: Er stellte LIEFERANTENWARE auf eBay -
+    mit Varianten aus dem Lieferantenkatalog, dessen Versandprofilen und dessen
+    Einkaufspreisen. Ein eigenes Motiv hat nichts davon.
+
+    Die Warteschlange selbst bleibt, denn an ihr haengt nichts Handelsspezifisches:
+    ein Auftrag je Klick, Wiederholversuche, Freigabepruefung, Wiedereinreihen nach
+    einem Neustart. Genau diese Mechanik braucht der neue Weg auch - und zwar fuer
+    mehrere Kanaele gleichzeitig.
+
+    Bis der Print-on-Demand-Weg steht, scheitert ein Auftrag hier mit einer klaren
+    Meldung. Das ist Absicht: Eine stille Erfolgsmeldung waere schlimmer - der
+    Nutzer haelte ein Angebot fuer veroeffentlicht, das nie entstanden ist.
+    """
+    raise PersistentError(
+        "Veroeffentlichen ist gerade nicht moeglich: Der eBay-Weg wird fuer eigene "
+        "Motive neu gebaut. Der alte Weg stellte Lieferantenware ein und passt nicht."
+    )
 
 
 def _finish(listing_id: int, *, error: str | None) -> None:

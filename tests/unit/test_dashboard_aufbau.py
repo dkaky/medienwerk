@@ -11,7 +11,7 @@ Zwei Dinge werden festgehalten:
    sind es wieder neun.
 
 2. **Nichts vom fremden Betrieb steht mehr sichtbar da.** Dieses System ist die
-   Kopie eines Systems der GbR. Deren Bildsprache - Wappen mit Gruendungsjahr,
+   Kopie eines fremden Systems. Dessen Bildsprache - Wappen mit Gruendungsjahr,
    "Kriegsmaschine", "Oberkommando", ein Kriegsmotto, ein Foto startender
    Militaerraketen - stand bis zuletzt auf dem Bildschirm eines
    Print-on-Demand-Shops. Das ist keine Geschmacksfrage: es ist ein anderes
@@ -102,7 +102,7 @@ def test_anlegen_steht_unter_neues_listing(feld):
 # ------------------------------------------------------- Reste des Vorbesitzers
 #: Sichtbare Spuren des Betriebs, aus dem dieses System kopiert wurde.
 FREMDE_SPUREN = [
-    ("MMXXIV", "Gruendungsjahr der GbR im Wappen"),
+    ("MMXXIV", "fremdes Gruendungsjahr im Wappen"),
     ("Kriegsmaschine", "Eigenname der Engine im fremden Betrieb"),
     ("Oberkommando", "Selbstbezeichnung des fremden Betriebs"),
     ("para bellum", "Kriegsmotto auf der Anmeldeseite"),

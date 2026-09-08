@@ -27,7 +27,7 @@ WURZEL = Path(__file__).resolve().parents[1]
 ZIEL = WURZEL / "app" / "static" / "favicon.ico"
 
 # Dieselben Werte wie in der Oberflaeche: dunkles Cyan als Grund, helles als
-# Zeichen. Nicht die alten Gruen-Gold-Werte der GbR.
+# Zeichen. Nicht die alten Gruen-Gold-Werte.
 GRUND = (18, 51, 60, 255)      # #12333c
 ZEICHEN = (25, 167, 189, 255)  # #19a7bd
 

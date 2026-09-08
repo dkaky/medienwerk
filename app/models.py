@@ -398,7 +398,7 @@ class BankTransaction(TimestampMixin, Base):
     # Kontist-Abgleich (bank_sync_service): {"kind","rule","order_ids","ae_order_ids"}.
     # Gesetzt beim automatischen AliExpress-Matching; bank_ref traegt "kontist:<Tx-ID>".
     match_info: Mapped[Optional[dict]] = mapped_column(JSONType)
-    # Kontierung (kontierung_service, Grundstein fuer Wajjahats Buchhaltungs-System):
+    # Kontierung (kontierung_service, Grundstein des Buchhaltungs-Teils):
     # interner Kategorie-Schluessel (KATEGORIEN) + Quelle regel|manuell.
     # Regeln ueberschreiben NIE manuell gesetzte Werte.
     kontierung: Mapped[Optional[str]] = mapped_column(String(40))

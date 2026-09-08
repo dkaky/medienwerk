@@ -8,7 +8,7 @@ verwendet.
 Die Factory-Funktionen sind der einzige Einstiegspunkt - Services importieren
 nie eine konkrete Implementierung direkt.
 
-**Am 08.09.2026 sind AliExpress und AutoDS hier ausgezogen.** medienwerk
+**Am 08.09.2026 sind AliExpress und AutoDS hier ausgezogen.** Medienwerk
 verkauft eigene Motive, keine Handelsware; ein Lieferantenclient hat damit
 keinen Zweck mehr. eBay bleibt - nicht als Bezugsquelle, sondern als
 VERKAUFSKANAL fuer die eigenen Print-on-Demand-Produkte.

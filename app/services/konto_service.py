@@ -91,7 +91,7 @@ def _art(tx: BankTransaction) -> str:
     # ``kontierung == "wareneinkauf"`` — seit Temu und Qksource dieselbe Kategorie
     # tragen, behauptete eine Temu-Buchung „Rechnung liegt vor", obwohl es dort
     # keine gibt. Die Luecke verschwand damit genau aus der Ansicht, in der man sie
-    # bearbeitet haette (von Wajjahat gefunden, 19.08.).
+    # bearbeitet haette (gefunden am 19.08.).
     if _ALIEXPRESS.search(tx.counterparty_name or ""):
         return "zuordnung_offen"
     return "offen"
@@ -298,11 +298,11 @@ async def belege_von_kontist(db: Session, *, seit: datetime | None = None,
                              anwenden: bool = False, limit: int = 200) -> dict:
     """In Kontist hinterlegte Belege in die Belegablage uebernehmen.
 
-    Wajjahat pflegt Rechnungen teils direkt in Kontist ein (Beispiel: Shine Germany
+    Rechnungen werden teils direkt in Kontist gepflegt (Beispiel: Shine Germany
     GmbH, 04.08.). Die liegen dort als Anhang an der Buchung — statt sie ein zweites
     Mal von Hand hochzuladen, holt das Programm sie ab.
 
-    ``seit`` grenzt bewusst ein: Wajjahat wollte das „nicht fuer alte Sachen, aber
+    ``seit`` grenzt bewusst ein: gewuenscht war das „nicht fuer alte Sachen, aber
     fuer neue ab jetzt". ``anwenden=False`` zeigt nur, was kaeme.
 
     Uebersprungen wird, was schon einen Beleg hat — der Abruf ist wiederholbar.

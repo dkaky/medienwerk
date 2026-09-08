@@ -280,3 +280,24 @@ def test_bewirtung_vorschlaege_bleiben_auch_bei_vielen_belegen_erhalten(client, 
     # Themen wiederholen sich ueber die Zeit – aber nie zweimal direkt hintereinander.
     assert len(set(gesehen)) < len(gesehen), "Wiederholung ist ausdruecklich erlaubt"
     assert all(a != b for a, b in zip(gesehen, gesehen[1:])), "aber nicht am Stueck"
+
+
+def test_anschrift_wird_an_den_strichen_umgebrochen(db, monkeypatch):
+    """Eine .env-Zeile kann keinen Zeilenumbruch tragen.
+
+    Deshalb trennt "|" die Anschriftzeilen. Ohne diese Umsetzung stuende die
+    komplette Anschrift samt Strichen in einer Zeile auf jeder Rechnung.
+    """
+    from app.config import get_settings
+
+    s = get_settings()
+    monkeypatch.setattr(
+        s, "seller_address",
+        "Inhaber: Aleyna Nur Aydin | Hauptstraße 439 | 53639 Königswinter",
+    )
+    sale = _sale(db, tx="TX-INV-ADR")
+    r = invoice_service.generate_sale_invoice(db, sale_id=sale.id)
+    data, _, _ = invoice_service.read_invoice_file(db, invoice_id=r["id"])
+    html = data.decode("utf-8")
+    assert "Inhaber: Aleyna Nur Aydin<br>Hauptstraße 439<br>53639 Königswinter" in html
+    assert "|" not in html.split("<h1>")[0]

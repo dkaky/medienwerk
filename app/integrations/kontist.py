@@ -186,10 +186,10 @@ def is_connected() -> bool:
 def redirect_uri() -> str:
     """Wohin Kontist nach dem Zustimmen zurueckschickt.
 
-    Hier stand eine fest eingetragene Adresse - der Server der GbR, von der dieses
-    System kopiert wurde. Das war kein Schoenheitsfehler: Bei diesem Rueckruf haengt
-    der Autorisierungscode in der Adresszeile. Er waere also an fremde
-    Infrastruktur gegangen, und wer dort mitliest, kommt damit an das Bankkonto.
+    Hier darf NIE eine fremde Adresse stehen. Das waere kein Schoenheitsfehler:
+    Bei diesem Rueckruf haengt der Autorisierungscode in der Adresszeile. Er ginge
+    also an fremde Infrastruktur, und wer dort mitliest, kommt damit an das
+    Bankkonto.
 
     Fehlt die Einstellung, bricht der Vorgang deshalb ab, statt auf irgendetwas
     zurueckzufallen. Lieber keine Kontoanbindung als eine, die woanders endet.

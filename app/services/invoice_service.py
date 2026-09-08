@@ -149,7 +149,13 @@ def _render_sale_invoice_html(*, number: str, date: datetime, sale: Sale, listin
         if addr.get(k):
             buyer_lines.append(str(addr[k]))
     buyer = "<br>".join(html.escape(x) for x in buyer_lines)
-    seller_addr = html.escape(s.seller_address).replace("\n", "<br>")
+    # Eine .env-Zeile kann keinen Zeilenumbruch tragen, deshalb trennt "|" die
+    # Anschriftzeilen - dieselbe Schreibweise wie bei AE_INVOICE_RECIPIENT.
+    seller_addr = "<br>".join(
+        html.escape(teil.strip())
+        for teil in s.seller_address.replace("|", "\n").split("\n")
+        if teil.strip()
+    )
     tax_line = f"<div>Steuernr./USt-IdNr.: {html.escape(s.seller_tax_id)}</div>" if s.seller_tax_id else ""
     return f"""<!doctype html><html lang="de"><head><meta charset="utf-8">
 <title>Rechnung {html.escape(number)}</title>
@@ -329,7 +335,7 @@ def attach_original_receipt(db: Session, *, file_bytes: bytes, ext: str,
     inv.is_original = True   # echtes Download-Original, kein Platzhalter mehr
     # Ein frueherer Fehlschlag galt der ALTEN Datei. Bleibt der Stempel stehen, haengt
     # der Beleg weiter unter „Problemfaelle", obwohl das Problem behoben ist – genau
-    # das ist Wajjahat am 18.08. passiert, nachdem er den Beleg von Hand nachgereicht
+    # genau das ist am 18.08. passiert, nachdem der Beleg von Hand nachgereicht
     # hatte.
     if (inv.receipt_data or {}).get("problem"):
         inv.receipt_data = {k: v for k, v in dict(inv.receipt_data).items()
@@ -455,7 +461,7 @@ def invoice_summary(db: Session) -> dict:
         # OrderAliexpress hunderte Zeilen OHNE AliExpress-Bestellnummer enthaelt
         # (Verkaeufe, die nie bestellt wurden) und mehrere Positionen sich EINE
         # Bestellnummer und damit EINEN Beleg teilen. Kachel und Liste meinten
-        # Verschiedenes (Wajjahat, 18.08.: "wenn ich drauf klicke, sind das viel weniger").
+        # Verschiedenes (Meldung 18.08.: "wenn ich drauf klicke, sind das viel weniger").
         "purchases_missing": max(0, purchases["count"] - purch_orig),
         "sales_originals": sales_orig, "purchase_originals": purch_orig,
         "other_expenses": other,
@@ -902,7 +908,7 @@ def fehlende_belegzeilen(db: Session, *, jahr: int | None = None,
     Warum es die gibt: die Belegablage kam spaeter als die ersten Bestellungen. Fuer
     diese Kaeufe existiert schlicht keine Zeile — sie tauchen in der Liste nicht auf,
     zaehlen aber in der Kachel „Kaeufe ohne Beleg". Kachel und Liste meinten deshalb
-    Verschiedenes (Wajjahat, 18.08.: „301, beim Klick sind es viel weniger").
+    Verschiedenes (Meldung 18.08.: „301, beim Klick sind es viel weniger").
 
     Ohne ``anwenden`` wird nur gezaehlt — nach Jahr, damit man sieht, was man sich
     einhandelt. ``jahr`` grenzt auf einen Jahrgang ein.

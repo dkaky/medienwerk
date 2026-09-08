@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
         return
     # Zombie-Tasks aus frueheren Prozessen abschliessen (haengen sonst ewig "in Arbeit").
     # Die frueher hier ebenfalls aufgeraeumten Lieferanten-Bestellungen gibt es nicht
-    # mehr - medienwerk bestellt nirgends ein.
+    # mehr - Medienwerk bestellt nirgends ein.
     try:
         from app.database import SessionLocal
         from app.services.common import cleanup_stale_tasks
@@ -77,7 +77,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="medienwerk",
+    title="Medienwerk",
     description="Eigene Print-on-Demand-Motive: entwerfen, druckfertig machen "
                 "und ueber mehrere Verkaufskanaele anbieten.",
     version=__version__,
@@ -133,8 +133,8 @@ def studio_seite() -> FileResponse:
 
     Traegt dieselbe Farbwelt wie das Dashboard - kuehles Anthrazit mit Cyan.
     Frueher stand hier, das Studio gebe den Stil vor und die alten Bereiche
-    wuerden nachgezogen. Es kam umgekehrt: das Dashboard hat die GbR-Palette
-    abgelegt und eine eigene bekommen, das Studio ist gefolgt. Beide teilen
+    wuerden nachgezogen. Es kam umgekehrt: das Dashboard hat die alte, fremde
+    Palette abgelegt und eine eigene bekommen, das Studio ist gefolgt. Beide teilen
     sich jetzt auch die Hell/Dunkel-Wahl ueber denselben Speicherschluessel.
     """
     return FileResponse(STATIC_DIR / "studio.html", headers=_HTML_FRISCH)
@@ -209,7 +209,7 @@ def logo_banner():
 @app.get("/api", tags=["System"])
 def api_info():
     return {
-        "name": "medienwerk",
+        "name": "Medienwerk",
         "version": __version__,
         "dashboard": "/",
         "docs": "/docs",

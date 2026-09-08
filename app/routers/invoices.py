@@ -291,7 +291,7 @@ async def ebay_gebuehren_aufschluesselung(year: int | None = None):
 # Hier lagen bis 08.09.2026 fuenf Adressen des Beleg-Helfers: Er holte die
 # ORIGINAL-Kaufbelege von AliExpress ueber einen angemeldeten Chrome auf dem
 # Rechner des Nutzers, weil der Server an so eine Anmeldung nicht herankommt.
-# medienwerk kauft nichts ein - die Kosten entstehen bei der Bilderzeugung und
+# Medienwerk kauft nichts ein - die Kosten entstehen bei der Bilderzeugung und
 # beim Druckdienstleister, und beide stellen ihre Belege selbst zu.
 
 

@@ -1,8 +1,8 @@
 @echo off
-title medienwerk
+title Medienwerk
 cd /d "%~dp0"
 echo ============================================
-echo  medienwerk startet ...
+echo  Medienwerk startet ...
 echo  Der Browser oeffnet sich, sobald das Dashboard bereit ist.
 echo  Dieses Fenster OFFEN lassen (Schliessen = Server aus)
 echo.

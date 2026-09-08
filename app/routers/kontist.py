@@ -109,7 +109,7 @@ def match_gleicher_tag(anwenden: bool = False, tage: int | None = None,
     """Abbuchung + Bestellung am selben Tag mit demselben Betrag zuordnen.
 
     Ohne ``anwenden=true`` nur Vorschau. Zugeordnet wird nur bei beidseitiger
-    Eindeutigkeit; Kakys Kombinations-Abgleich bleibt unberuehrt.
+    Eindeutigkeit; der Kombinations-Abgleich bleibt unberuehrt.
     """
     from app.services import bank_sync_service
 

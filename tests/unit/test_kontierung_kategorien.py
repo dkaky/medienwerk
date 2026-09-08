@@ -5,7 +5,7 @@ Zeilen. Man kann dort keine Transaktionsliste abgeben, die Betraege muessen grup
 sein. SKR03/SKR04 sind dagegen KEINE Pflicht — es ist der DATEV-Standard, mit dem
 Steuerberater arbeiten, und die Nummern hier sind ausdruecklich Vorschlaege.
 
-Mit Wajjahat abgestimmt am 19.08.2026.
+Abgestimmt am 19.08.2026.
 """
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ def test_kein_aufwand_aber_kategorie(key):
 
 
 def test_umbuchung_wurde_gestrichen():
-    """Wajjahat: „Umbuchen eigenes Konto kann raus."""
+    """Entscheid 19.08.: „Umbuchen eigenes Konto kann raus."""
     assert "umbuchung" not in KATEGORIEN
 
 
@@ -89,27 +89,27 @@ def test_mehrdeutiges_bleibt_offen(name):
     assert _regel_kategorie(_Buchung(name, -100.00)) is None
 
 
-# ------------------------------------------------- GbR: Entnahmen je Gesellschafter
-@pytest.mark.parametrize("key", ["entnahme_wajjahat", "entnahme_dosyar",
-                                 "einlage_wajjahat", "einlage_dosyar"])
-def test_eigenes_konto_je_gesellschafter(key):
-    """GbR: sonst stimmen am Jahresende die Kapitalkonten und die Gewinnverteilung nicht."""
+# ------------------------------------------------- Einzelunternehmen: ein Privatkonto
+@pytest.mark.parametrize("key", ["privatentnahme", "privateinlage"])
+def test_privatkonto_je_richtung(key):
+    """Ein Inhaber, ein Konto je Richtung - keine Konten je Gesellschafter."""
     assert key in KATEGORIEN
 
 
-@pytest.mark.parametrize("name,betrag,erwartet", [
-    ("Wajjahat Ahmad Akhtar Syed", -450.00, "entnahme_wajjahat"),
-    ("Wajjahat Ahmad Akhtar Syed", 300.00, "einlage_wajjahat"),
-    ("Dosyar Kaky", -496.28, "entnahme_dosyar"),
-    ("Dosyar Kaky", 200.00, "einlage_dosyar"),
-    ("Hermes Germany GmbH", -4.90, "porto_versand"),
-])
-def test_regeln_treffen_die_richtige_person(name, betrag, erwartet):
-    """Die Richtung entscheidet: raus = Entnahme, rein = Einlage."""
-    assert _regel_kategorie(_Buchung(name, betrag)) == erwartet
+def test_keine_konten_je_gesellschafter_mehr():
+    """Ein Einzelunternehmen hat keine Gesellschafter.
+
+    Der Test steht hier, damit die alten Konten nicht aus einer Vorlage
+    zurueckwandern - sie trugen die Namen fremder Personen.
+    """
+    assert not [k for k in KATEGORIEN if k.startswith(("entnahme_", "einlage_"))]
 
 
-def test_gesellschafter_konten_ohne_geratene_nummer():
-    """Welche Unterkonten die GbR bekommt, legt der Steuerberater fest."""
-    assert KATEGORIEN["entnahme_wajjahat"]["skr03"] is None
-    assert "Steuerberater" in KATEGORIEN["entnahme_wajjahat"]["hinweis"]
+def test_keine_namensregel_kontiert_automatisch():
+    """Eine Zahlung an eine Person ist nicht automatisch eine Entnahme.
+
+    Frueher trafen feste Vornamen-Regeln. Wer gleich heisst wie die Inhaberin
+    oder der Inhaber, waere damit falsch kontiert worden.
+    """
+    assert _regel_kategorie(_Buchung("Aleyna Nur Aydin", -450.00)) is None
+    assert _regel_kategorie(_Buchung("Hermes Germany GmbH", -4.90)) == "porto_versand"

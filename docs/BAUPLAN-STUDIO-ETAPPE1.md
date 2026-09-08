@@ -1,6 +1,6 @@
 # Bauplan — Studio-Trakt, Etappe 1
 
-**Zielrepo: `C:\Users\HP\Projekte\Druckhelden`** (nicht POD-Shop). Alle untersuchten Berührungspunkte liegen dort; `app\studio\` entsteht dort. POD-Shop bleibt unberührt.
+**Zielrepo: dieses Projekt.** Alle untersuchten Berührungspunkte liegen hier; `app\studio\` entsteht hier.
 
 **Leitidee:** Etappe 1 baut kein Studio, sondern den *Rahmen mit Riegel*. Der Beweis „am Handel läuft nichts anders" gelingt nur, wenn (a) das `listings`-Schema byte-identisch bleibt, (b) keine neue SQL-Bedingung entsteht, solange der Schalter aus ist, und (c) kein neuer Scheduler-Job existiert. Vorbild in jedem Punkt: die Growth Engine (`growth_engine_enabled`, `app\routers\growth.py:18`, `app\scheduler.py:635`).
 

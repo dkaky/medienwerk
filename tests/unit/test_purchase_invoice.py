@@ -35,7 +35,7 @@ BELEG_VAT = {
     "extra_lines": [], "vat_included": 1.82, "total": 11.38, "currency": "EUR",
 }
 
-EMPFAENGER = ["Kaky & Syed Gbr", "Johannisstr. 46", "58452 Witten", "DE365839535"]
+EMPFAENGER = ["Medienwerk", "Hauptstraße 439", "53639 Königswinter"]
 
 
 def test_einfuhrabgaben_werden_addiert_und_gehen_auf():
@@ -79,7 +79,7 @@ def test_rechnung_zeigt_aliexpress_titel_und_beleg_betraege():
     assert "Import Duties" in html
     assert "Product properties:brown,44-45" in html
     assert "3075412823902059" in html
-    assert "Kaky &amp; Syed Gbr" in html
+    assert "Medienwerk" in html
     # nichts dazuerfunden: kein Zusatztext, keine Rabattzeile ohne Rabatt auf dem Beleg
     assert "Discount" not in html
     assert "VAT included" not in html

@@ -1,15 +1,14 @@
-"""Die Farbwelt der GbR darf nicht zurueckkommen.
+"""Die alte, fremde Farbwelt darf nicht zurueckkommen.
 
-Das Design der Oberflaeche war bis zuletzt das der GbR, aus deren System dieses
-Projekt kopiert wurde - Flaschengruen, Messing, Elfenbein, Serifenschrift. Der
-Code sagte es selbst; im Stil-Block standen die Namen der Palette: "Club Nuit"
-und "Maison Ivoire". Die Embleme (Wappen, Siegel MMXXIV, Motto, Raketenbanner)
-waren laengst entfernt, die FARBEN nicht.
+Das Design der Oberflaeche war bis zuletzt ein fremdes - Flaschengruen,
+Messing, Elfenbein, Serifenschrift. Der Code sagte es selbst: im Stil-Block
+standen noch die Namen der fremden Palette. Die Embleme (Wappen, Siegel MMXXIV,
+Motto, Raketenbanner) waren laengst entfernt, die FARBEN nicht.
 
 Dieser Test ist eine Wache, kein Geschmacksurteil. Er haelt drei Dinge fest:
 
 1. Die alten Markenfarben stehen nirgends mehr. Sie kaemen sonst still zurueck -
-   beim naechsten Uebernehmen aus dem Ursprungssystem, oder weil jemand einen
+   beim naechsten Uebernehmen aus einer alten Vorlage, oder weil jemand einen
    Farbwert aus einem alten Bildschirmfoto abliest.
 2. Die Anmeldeseite traegt DIESELBE Palette wie das Dashboard. Sie steckt in
    Python statt in der HTML-Datei und wird deshalb beim Umfaerben leicht
@@ -29,7 +28,7 @@ ANMELDUNG = WURZEL / "app" / "auth.py"
 FAVICON = WURZEL / "app" / "static" / "favicon.svg"
 STUDIO = WURZEL / "app" / "static" / "studio.html"
 
-# Die tragenden Farben der GbR-Palette. Bewusst nur die eindeutigen - ein
+# Die tragenden Farben der alten Palette. Bewusst nur die eindeutigen - ein
 # neutrales Grau wuerde Fehlalarme ausloesen.
 ALTE_MARKENFARBEN = [
     "#5e9a6f",   # Akzent, Flaschengruen
@@ -54,12 +53,12 @@ def _text(p: Path) -> str:
     return p.read_text(encoding="utf-8").lower()
 
 
-def test_dashboard_traegt_keine_gbr_farbe_mehr():
+def test_dashboard_traegt_keine_alte_farbe_mehr():
     gefunden = [f for f in ALTE_MARKENFARBEN if f in _text(SEITE)]
     assert not gefunden, f"Alte Markenfarben zurueck in index.html: {gefunden}"
 
 
-def test_anmeldeseite_traegt_keine_gbr_farbe_mehr():
+def test_anmeldeseite_traegt_keine_alte_farbe_mehr():
     """Sie steckt in Python und wird beim Umfaerben leicht uebersehen."""
     gefunden = [f for f in ALTE_MARKENFARBEN if f in _text(ANMELDUNG)]
     assert not gefunden, f"Alte Markenfarben zurueck in auth.py: {gefunden}"
@@ -74,7 +73,7 @@ def test_anmeldeseite_und_dashboard_teilen_die_markenfarbe():
 def test_favicon_traegt_die_markenfarbe():
     q = _text(FAVICON)
     assert CYAN_DUNKEL in q, "Das Zeichen im Browser-Reiter gehoert zur Marke"
-    assert "#c8a765" not in q, "Das Messing der GbR ist zurueck"
+    assert "#c8a765" not in q, "Das alte Messing ist zurueck"
 
 
 def test_beide_schemata_existieren_weiter():

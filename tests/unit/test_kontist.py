@@ -24,7 +24,7 @@ def test_authorize_url_never_requests_transfers(monkeypatch):
 def test_rueckruf_ohne_einstellung_bricht_ab(monkeypatch):
     """Ohne eigene Rueckruf-Adresse wird gar nichts angemeldet.
 
-    An dieser Stelle stand fest eingetragen der Server der GbR, von der dieses
+    An dieser Stelle stand fest eingetragen ein fremder Server, aus dessen System dieses
     System kopiert wurde. Beim Rueckruf haengt der Autorisierungscode in der
     Adresszeile - er waere also an fremde Infrastruktur gegangen. Ein leerer
     Wert muss deshalb hoerbar abbrechen und darf auf nichts zurueckfallen.

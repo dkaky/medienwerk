@@ -521,7 +521,7 @@ async def test_ein_ausfall_stoppt_die_anderen_schritte_nicht(db, kontist_bereit,
 
 
 # ----------------------- "Zuordnung offen" haengt an der GEGENPARTEI, nicht an der
-#                         Kategorie (Fund von Wajjahat, 19.08.)
+#                         Kategorie (Fund vom 19.08.)
 def test_temu_bleibt_eine_echte_luecke(db):
     """Fuer Temu gibt es KEINE Rechnung in der Belegablage.
 

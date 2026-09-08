@@ -2,7 +2,7 @@
 
 Autor: Claude (Produkt-Architekt/UX). Stand 19.08.2026. Zweck: Codex baut das
 Backend der Growth Engine; DIESES Dokument definiert die Besitzer-Oberflaeche so,
-dass sie sich nativ in den bestehenden POD Shop einfuegt. Der Besitzer (Kaky)
+dass sie sich nativ in den bestehenden POD Shop einfuegt. Die Besitzerseite
 interagiert NIE mit Codex-/Claude-Prompts — nur mit diesem Dashboard.
 
 ## 0. Nicht verhandelbare Rahmenbedingungen (aus der Projekt-Historie)

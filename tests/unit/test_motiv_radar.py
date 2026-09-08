@@ -31,7 +31,7 @@ TITEL = ('Lustiges T-Shirt Herren Spruch "Ich brauche mehr Kaffee" '
 
 @pytest.mark.parametrize("link,plattform,shop", [
     ("https://www.ebay.de/str/druckhelden", "ebay", "druckhelden"),
-    ("https://www.ebay.de/usr/kaky_shop", "ebay", "kaky_shop"),
+    ("https://www.ebay.de/usr/beispiel_shop", "ebay", "beispiel_shop"),
     ("https://www.ebay.de/sch/i.html?_ssn=foo&_sop=12", "ebay", "foo"),
     ("https://www.etsy.com/de/shop/BeispielShop", "etsy", "BeispielShop"),
     ("https://www.redbubble.com/de/people/abc/shop", "redbubble", "abc"),
@@ -52,16 +52,16 @@ def test_unbekannter_link_wird_nicht_geraten():
 def test_shopname_und_nutzername_fuehren_zu_verschiedenen_seiten():
     """/str/ ist der Shopname, _ssn braucht den Nutzernamen - nicht dasselbe."""
     assert "/str/druckhelden" in erkenne("https://www.ebay.de/str/druckhelden").listen_url
-    assert "_ssn=kaky_shop" in erkenne("https://www.ebay.de/usr/kaky_shop").listen_url
+    assert "_ssn=beispiel_shop" in erkenne("https://www.ebay.de/usr/beispiel_shop").listen_url
 
 
 def test_verkauft_filter_ersetzt_die_sortierung_statt_sie_zu_doppeln():
     """Zwei ``_sop`` in einer URL sind Glueckssache - eBay nimmt dann irgendeins."""
-    url = nur_verkauft_url(erkenne("https://www.ebay.de/usr/kaky_shop"))
+    url = nur_verkauft_url(erkenne("https://www.ebay.de/usr/beispiel_shop"))
     assert url.count("_sop=") == 1
     assert "_sop=13" in url and "LH_Sold=1" in url
     assert url.count("?") == 1
-    assert "_ssn=kaky_shop" in url and "_ipg=240" in url
+    assert "_ssn=beispiel_shop" in url and "_ipg=240" in url
 
 
 def test_verkauft_filter_zerlegt_die_adresse_nicht():

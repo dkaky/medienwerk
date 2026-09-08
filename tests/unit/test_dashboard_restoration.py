@@ -62,7 +62,7 @@ def test_full_dashboard_is_restored(client, url):
     for section in ("overview", "products", "pricecheck", "orders", "optimization", "belege"):
         assert f'data-view="{section}"' in response.text
     assert 'href="/studio"' in response.text
-    assert "medienwerk" in response.text
+    assert "Medienwerk" in response.text
 
 
 def test_studio_links_back_to_original_business_sections(client):

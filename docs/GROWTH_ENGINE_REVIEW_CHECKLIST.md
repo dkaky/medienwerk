@@ -106,7 +106,7 @@ adversarische Mehr-Linsen-Review wie bei Snapshot/Liefer-Check). Merge auf
 - [ ] Zwei-Schritte-Bestaetigung bei Geld-/Live-Wirkung (Karte → Drawer →
       Ausfuehren) real implementiert.
 - [ ] Kein Innen-Scroll in Tabellen (stick-scroll-Entscheid); mobile Ansicht
-      funktioniert (Wajjahats Mobile-Anpassung nicht brechen).
+      funktioniert (die bestehende Mobile-Anpassung nicht brechen).
 
 ## 9. Produktions-Schutz
 
@@ -126,8 +126,8 @@ adversarische Mehr-Linsen-Review wie bei Snapshot/Liefer-Check). Merge auf
       begruendet und einzeln reviewt.
 - [ ] Gesamt-Suite gruen (alle bestehenden ~1250+ Tests) auf dem Merge-Stand;
       keine Test-Abschwaechungen ohne Begruendung.
-- [ ] Rebase-/Merge-Konflikte mit Wajjahats parallelem Buchhaltungs-Strang
-      geprueft (CLAUDE-NOTES: beide Bloecke behalten).
+- [ ] Rebase-/Merge-Konflikte mit dem parallelen Buchhaltungs-Strang
+      geprueft (beide Bloecke behalten).
 
 ## 11. PII / Secrets
 

@@ -8,7 +8,7 @@ Zwei Faelle aus der Praxis (18.08.2026):
    an der AliExpress-Nummer und legt den Beleg beim naechsten Abgleich wieder an.
    Deshalb wird die Bestellung mit storniert.
 
-2. Ein Beleg lag unter „Problemfaelle", Wajjahat hat ihn von Hand nachgereicht — und
+2. Ein Beleg lag unter „Problemfaelle", er wurde von Hand nachgereicht — und
    er blieb trotzdem rot stehen. Der Fehlstempel galt der ALTEN Datei.
 """
 from __future__ import annotations

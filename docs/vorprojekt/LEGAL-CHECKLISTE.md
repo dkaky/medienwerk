@@ -7,9 +7,9 @@
 > AliExpress (Drucke, Wandbilder, bedruckte Shirts) statt auf Printify.
 
 ## 0. Pflicht-Merkmal "Hersteller" beim Einstellen (technisch)
-- eBay verlangt je nach Kategorie ein Merkmal "Hersteller". Im GbR-Projekt wird
+- eBay verlangt je nach Kategorie ein Merkmal "Hersteller". Im Handelsteil wird
   es beim Einstellen automatisch geheilt: gefuellt mit der Marke, sonst mit
-  "Sonstige" (app/services/golive_service.py:2248).
+  "Sonstige".
 - [ ] Beim Portieren des Listing-Teils dieselbe Heilung uebernehmen, sonst
       scheitert das Veroeffentlichen an fehlenden Pflicht-Merkmalen.
 
@@ -80,11 +80,9 @@
 - Im Impressum nicht vorgeschrieben, aber ueblich.
 
 ## 4d. Rechtstexte — kostenlos beschaffen
-- Im eBay-Automation-Repo liegen KEINE Rechtstexte; sie sind dort direkt im
-  eBay-Konto der GbR hinterlegt. Uebernehmbar war nur der Beschreibungs-Abschluss
-  (docs/listing-stil.md), und der ist portiert.
-- **Nicht aus dem GbR-Konto kopieren:** Stammen die Texte aus einem Schutzpaket,
-  gilt die Lizenz nur fuer die GbR.
+- Rechtstexte muessen fuer dieses Unternehmen eigens beschafft werden.
+- **Nicht aus einem fremden Konto kopieren:** Stammen die Texte aus einem
+  Schutzpaket, gilt die Lizenz nur fuer den Betrieb, der sie gekauft hat.
 
 Kostenlose Quellen, nach Verlaesslichkeit sortiert:
 

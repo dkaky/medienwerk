@@ -101,7 +101,7 @@ Ein Python-CLI-Tool, das aus Themen (KI-erfunden **und** eigene Konzepte des Bet
 
 ## Validation
 ```bash
-# im Projektordner C:\Users\HP\Projekte\POD-Shop
+# im Projektordner
 pip install -e ".[dev]"
 ruff check src tests
 pytest -q                     # Ziel: alles grün, 80%+ Coverage

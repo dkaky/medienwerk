@@ -1,4 +1,8 @@
-"""Kontierung der Bankbuchungen (Grundstein fuer Wajjahats Buchhaltungs-System, 11.08.).
+"""Kontierung der Bankbuchungen.
+
+Einzelunternehmen, keine Gesellschaft: es gibt genau EINE Person, an die Geld
+privat rausgeht oder von der es reinkommt. Deshalb genuegen "privatentnahme"
+und "privateinlage" - eigene Konten je Gesellschafter waeren hier falsch.
 
 Jede Kontobuchung bekommt eine interne KATEGORIE; die SKR03/SKR04-Nummern sind
 VORSCHLAEGE fuer den Steuerberater — nicht amtlich bestaetigt (Regel-14-Geist:
@@ -63,23 +67,11 @@ KATEGORIEN: dict[str, dict] = {
     # Eine Kategorie brauchen sie trotzdem, sonst haengen sie ewig als "unkontiert".
     "ebay_auszahlung": {"label": "eBay-Auszahlung (netto)",
                         "skr03": "1360", "skr04": "1460"},
-    # GbR: Wajjahat und Kaky sind Gesellschafter, KEINE Angestellten — Zahlungen an
-    # sie sind Entnahmen. Jeder braucht ein EIGENES Konto, sonst stimmen am
-    # Jahresende die Kapitalkonten und die Gewinnverteilung nicht.
-    "entnahme_wajjahat": {"label": "Entnahme Wajjahat", "skr03": None, "skr04": None,
-                          "hinweis": "GbR: je Gesellschafter ein eigenes Privatkonto. "
-                                     "Die konkreten Unterkonten legt der Steuerberater "
-                                     "an (SKR03 1800er-Bereich)."},
-    "entnahme_dosyar": {"label": "Entnahme Dosyar", "skr03": None, "skr04": None,
-                        "hinweis": "GbR: je Gesellschafter ein eigenes Privatkonto. "
-                                   "Die konkreten Unterkonten legt der Steuerberater "
-                                   "an (SKR03 1800er-Bereich)."},
-    "einlage_wajjahat": {"label": "Einlage Wajjahat", "skr03": None, "skr04": None},
-    "einlage_dosyar": {"label": "Einlage Dosyar", "skr03": None, "skr04": None},
-    # Auffangkonten, wenn nicht klar ist, wem die Bewegung zuzurechnen ist.
-    "privatentnahme": {"label": "Privatentnahme (nicht zugeordnet)",
+    # Einzelunternehmen: Geld, das privat rausgeht oder reinkommt, ist Entnahme
+    # bzw. Einlage der Inhaberperson. Ein Konto je Richtung genuegt.
+    "privatentnahme": {"label": "Privatentnahme",
                        "skr03": "1800", "skr04": "2100"},
-    "privateinlage": {"label": "Privateinlage (nicht zugeordnet)",
+    "privateinlage": {"label": "Privateinlage",
                       "skr03": "1890", "skr04": "2180"},
     "steuerzahlung": {"label": "Zahlung ans Finanzamt", "skr03": None, "skr04": None,
                       "hinweis": "OFFEN: Einkommensteuer ist KEINE Betriebsausgabe "
@@ -90,8 +82,7 @@ KATEGORIEN: dict[str, dict] = {
 }
 
 # (Muster auf GEGENPARTEI-Name, Vorzeichen "+"|"-", Kategorie). NUR hochsichere
-# Muster — alles andere bleibt bewusst unkontiert, bis ein Mensch (oder spaeter
-# Wajjahats Kontier-UI) entscheidet.
+# Muster — alles andere bleibt bewusst unkontiert, bis ein Mensch entscheidet.
 _REGELN: list[tuple[re.Pattern, str, str]] = [
     (re.compile(r"aliexpress|alipay", re.IGNORECASE), "-", "wareneinkauf"),
     (re.compile(r"aliexpress|alipay", re.IGNORECASE), "+", "wareneinkauf_erstattung"),
@@ -109,12 +100,9 @@ _REGELN: list[tuple[re.Pattern, str, str]] = [
     (re.compile(r"qksource", re.IGNORECASE), "+", "wareneinkauf_erstattung"),
     (re.compile(r"\bautods\b", re.IGNORECASE), "-", "it_hosting"),
     (re.compile(r"anthropic|openai", re.IGNORECASE), "-", "it_hosting"),
-    # Ueberweisungen an die Gesellschafter. Vorname reicht und ist eindeutig genug;
-    # Richtung entscheidet: raus = Entnahme, rein = Einlage.
-    (re.compile(r"\bwajjahat\b", re.IGNORECASE), "-", "entnahme_wajjahat"),
-    (re.compile(r"\bwajjahat\b", re.IGNORECASE), "+", "einlage_wajjahat"),
-    (re.compile(r"\bdosyar\b", re.IGNORECASE), "-", "entnahme_dosyar"),
-    (re.compile(r"\bdosyar\b", re.IGNORECASE), "+", "einlage_dosyar"),
+    # BEWUSST KEINE Namensregel fuer die eigene Person: eine Ueberweisung auf
+    # das eigene Privatkonto ist eine Entnahme, eine Zahlung an einen
+    # gleichnamigen Dritten nicht. Das entscheidet ein Mensch.
     # BEWUSST KEINE Regel fuer PayPal: das ist ein Zahlweg, keine Kategorie.
     # Was dahintersteckt, sagt nur der jeweilige Beleg — raten waere hier falsch.
 ]

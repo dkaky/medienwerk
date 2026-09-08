@@ -181,7 +181,7 @@ _LOGIN_HTML = """<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Anmelden · medienwerk</title>
+  <title>Anmelden · Medienwerk</title>
   <!-- Fehlte bisher. Die Anmeldeseite ist das Erste, was man sieht -
        und die Seite, die man sich als Lesezeichen anlegt. -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=7">
@@ -190,7 +190,7 @@ _LOGIN_HTML = """<!doctype html>
     :root{
       /* Dieselbe Palette wie das Dashboard: kuehles Anthrazit, Cyan als
          Markenfarbe. Vorher stand hier Flaschengruen mit Messing - die
-         Bildwelt der GbR. Die Anmeldeseite ist das Erste, was man sieht;
+         eine fremde Bildwelt. Die Anmeldeseite ist das Erste, was man sieht;
          sie darf nicht nach einem anderen Betrieb aussehen als der Rest.
          --gold heisst weiter so, traegt aber das Cyan: der Name steckt in
          einem Dutzend Regeln hier drunter. */
@@ -257,8 +257,8 @@ _LOGIN_HTML = """<!doctype html>
         <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="6"/>
         <path d="M27 68V36h9v4c5-7 15-7 20 0 8-9 20-5 20 7v21H66V49c0-9-10-9-10 0v19H46V49c0-9-9-9-9 0v19z" fill="currentColor"/>
       </svg>
-      <div class="kicker">medienwerk</div>
-      <h1>medienwerk</h1>
+      <div class="kicker">Medienwerk</div>
+      <h1>Medienwerk</h1>
       <div class="motto">Print on Demand</div>
       <div class="motto-sub">Eigene Entwürfe und Grafiken an einem Ort</div>
       <div class="rule"><span class="star">✦</span></div>
@@ -267,7 +267,7 @@ _LOGIN_HTML = """<!doctype html>
         <input type="password" name="password" placeholder="Passwort" autofocus autocomplete="current-password">
         <button type="submit">Anmelden</button>
       </form>
-      <div class="foot">Interner Zugang &mdash; <span class="em">medienwerk</span></div>
+      <div class="foot">Interner Zugang &mdash; <span class="em">Medienwerk</span></div>
     </div>
   </div>
 </body>

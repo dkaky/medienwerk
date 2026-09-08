@@ -2059,7 +2059,7 @@ class RealLLMClient(LLMClient):
         description = erzwinge_groessentabelle(description, specs, warnings)
         # Hier stand bis 08.09.2026 der Edelmetall-Filter: er ersetzte falsche
         # 925-/Sterling-/Echtsilber-Behauptungen, weil die Handelsware Edelstahl war,
-        # hoechstens silberfarben. medienwerk bedruckt Textil mit eigenen Motiven -
+        # hoechstens silberfarben. Medienwerk bedruckt Textil mit eigenen Motiven -
         # es gibt keinen Lieferantentext mehr, der Silber behauptet, und damit auch
         # nichts zu entschaerfen. Der Filter ist mit dem Handelsteil ausgezogen.
         return GeneratedListing(

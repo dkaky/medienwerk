@@ -20,7 +20,7 @@ def existing_dashboard() -> bool:
     try:
         with urllib.request.urlopen(URL + "/api", timeout=2) as response:
             info = json.load(response)
-        if info.get("name") != "medienwerk" or info.get("dashboard") != "/":
+        if info.get("name") != "Medienwerk" or info.get("dashboard") != "/":
             raise RuntimeError("Port 8031 ist durch eine andere oder alte Anwendung belegt.")
         return True
     except urllib.error.HTTPError as exc:
@@ -65,7 +65,7 @@ def main() -> None:
 
         if not args.no_browser:
             threading.Thread(target=open_when_ready, daemon=True).start()
-        print("medienwerk: " + URL + " (auch Port 8030); Fenster offen lassen.", flush=True)
+        print("Medienwerk: " + URL + " (auch Port 8030); Fenster offen lassen.", flush=True)
         server.run(sockets=sockets)
     finally:
         stopped.set()

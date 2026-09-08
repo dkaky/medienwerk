@@ -1,12 +1,19 @@
-"""eBay-Import/-Sync: echte aktive Listings (Trading API) + Verkaeufe (getOrders) -> DB.
+"""eBay-Import/-Sync: echte aktive Angebote (Trading API) -> Datenbank.
 
 Liest bewusst ueber einen ECHTEN eBay-Client (unabhaengig von MOCK_EBAY), damit man
-den realen Shop-Bestand ins Dashboard holen kann, waehrend Schreib-/Publish-Flows im
-sicheren Mock bleiben. Upsert ist idempotent (ebay_item_id bzw. orderId).
+den realen Shop-Bestand ins Dashboard holen kann, waehrend Schreibwege im sicheren
+Probebetrieb bleiben. Der Abgleich ist wiederholbar (Schluessel ist die eBay-Artikelnummer).
+
+Am 08.09.2026 haben zwei kleine Helfer hier ein Zuhause bekommen, die vorher aus
+``listing_match_service`` und ``golive_service`` geholt wurden. Beide Module sind mit
+dem Handelsteil ausgezogen; die Helfer selbst haben mit Lieferanten nichts zu tun -
+sie lesen eBay-eigene Angaben. Sie hier zu fuehren ist ehrlicher, als zwei
+Dropshipping-Module am Leben zu halten, damit zwanzig Zeilen erreichbar bleiben.
 """
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 
@@ -24,6 +31,35 @@ logger = logging.getLogger("app.services.ebay_import")
 def _real_ebay():
     from app.integrations.ebay import RealEbayClient
     return RealEbayClient(get_settings())
+
+
+def _value_sig(values) -> str:
+    """Normalisierte Signatur aus den Merkmals-WERTEN einer Variante.
+
+    Achsennamen sind egal, Leerzeichen raus, alles klein. Damit laesst sich eine
+    eBay-Variation ihrer Variante auch dann zuordnen, wenn die Artikelnummern nicht
+    dem Schema ``{basis}-V{i}`` folgen - wir veroeffentlichen die Werte als
+    eBay-Merkmale, und die sind stabiler als die Nummer.
+    """
+    out = []
+    for v in (values or []):
+        if v is None:
+            continue
+        s = re.sub(r"\s+", "", str(v).strip().lower())
+        if s:
+            out.append(s)
+    return "|".join(sorted(out))
+
+
+async def _listing_variant_skus(ebay, listing) -> list[str]:
+    """Artikelnummern eines Angebots: einzeln = Basisnummer, mehrteilig = alle Varianten."""
+    basis = listing.ebay_sku or f"MW-{listing.id}"
+    gruppe = listing.ebay_draft_id or ""
+    if gruppe.endswith("-GRP"):
+        grp = await ebay.get_inventory_item_group(gruppe)
+        skus = (grp or {}).get("variantSKUs") or []
+        return skus or [basis]
+    return [basis]
 
 
 async def sync_ebay_live_prices(db: Session, *, ebay=None, limit: int = 2000,
@@ -61,7 +97,6 @@ async def sync_ebay_live_prices(db: Session, *, ebay=None, limit: int = 2000,
         # richtigen Preis findet: (1) eBay-SKU (falls == {base}-V{i}), (2) Merkmals-WERT-Signatur
         # ("sig:…"), die auch bei abweichenden SKUs zur Variante passt (Fund 17.07.: sonst zeigte
         # der Dialog fuer ALLE Varianten den niedrigsten Preis).
-        from app.services.listing_match_service import _value_sig
         prices = {}
         for v in (info.get("variations") or []):
             pr = v.get("price")
@@ -415,7 +450,6 @@ async def migrate_listing_plus3_free_shipping(db: Session, *, listing_id: int,
     free_policy = str(get_settings().ebay_fulfillment_policy_id)
 
     # 1) Preise erhoehen – Inventory-Listings ueber ihre Offers, Klassik via Trading.
-    from app.services.golive_service import _listing_variant_skus
     skus = await _listing_variant_skus(ebay, listing)
     offers = []
     for sku in skus:
@@ -524,31 +558,32 @@ async def sync_listing_stats(db: Session, *, ebay=None, days: int = 30) -> dict:
 
 async def import_all(db: Session, *, ebay=None, days: int = 90, max_items: int = 10000,
                      max_orders: int = 500) -> dict:
-    """Beides importieren (erst Listings, dann Verkaeufe) + Audit-Log.
+    """Die eigenen eBay-Angebote importieren + Nachweis im Aufgabenprotokoll.
 
-    Verkaeufe laufen ueber ``order_service.sync_ebay_orders`` – den EINEN, line-item-
-    genauen, Storno-/Refund-sicheren, deduplizierten Order-Pfad (gleicher Code wie der
-    5-Min-Scheduler). Frueher gab es hier einen eigenen Order-LEVEL-Import, der bei
-    weitem Zeitfenster Dubletten erzeugte (abgeschnittene tx = orderId, kein lineItem)
-    und bestehende ``refunded``/``cancelled`` bedingungslos ueberschrieb – Datenkorruption
-    (Vorfall 2026-07-06, siehe Orders-Import-Duplikat-Bug). Nie wieder zwei Importer.
+    **Der Verkaufs-Import fehlt hier seit dem 08.09.2026.** Er lief ueber
+    ``order_service.sync_ebay_orders``, und dieser Dienst hat mit dem Handelsteil
+    den Ordner verlassen: Er holte nicht nur die eBay-Bestellung, sondern loeste in
+    derselben Schleife die Nachbestellung beim Lieferanten aus, verfolgte deren
+    Sendung und meldete die Nummer an eBay zurueck. Fuer eigene Motive stimmt an
+    dieser Kette nur noch das erste Glied.
+
+    Der neue Verkaufs-Import kommt mit dem Print-on-Demand-Weg. Bis dahin meldet
+    diese Funktion ehrlich, dass die Verkaufszahlen fehlen, statt eine Null zu
+    liefern, die wie "keine Verkaeufe" aussieht (Eiserne Regel 3: lieber eine
+    Luecke als eine erfundene Zahl).
+
+    ``days`` und ``max_orders`` bleiben in der Signatur, damit die Aufrufer
+    unveraendert bleiben; benutzt werden sie erst wieder vom neuen Import.
     """
-    from app.services import order_service
-
     ebay = ebay or _real_ebay()
     with task_log(db, task_type="ebay_import", reference_id="sync") as tl:
         listings = await import_listings(db, ebay=ebay, max_items=max_items)
-        o = await order_service.sync_ebay_orders(db, days=days, max_orders=max_orders, ebay=ebay)
-        # Nicht-Storno-Umsatz frisch aus der DB (fuer die Toast-Anzeige), rueckwaerts-
-        # kompatible Feldnamen (fetched/created/revenue_eur) fuer das Frontend.
+        # Bereits vorhandener Umsatz aus der Datenbank - nicht neu geholt, nur gezeigt.
         rev = db.scalar(select(func.coalesce(func.sum(Sale.price_eur), 0))
                         .where(Sale.status.notin_(("cancelled", "refunded")))) or 0
         orders = {
-            "fetched": o.get("orders_seen", 0),
-            "created": o.get("sales_created", 0),
-            "cancelled": o.get("sales_cancelled", 0),
-            "refunded": o.get("sales_refunded", 0),
-            "marked_shipped": o.get("marked_shipped", 0),
+            "verfuegbar": False,
+            "hinweis": "Verkaufs-Import wird fuer Print-on-Demand neu gebaut.",
             "revenue_eur": round(float(rev), 2),
         }
         tl.result_data = {"listings": listings, "orders": orders}

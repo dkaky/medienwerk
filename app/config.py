@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     spreadshirt_base_url: str = "https://api.spreadshirt.net/api/v1"
     # Pflichtangabe, kein Schmuck: Spreadshirt sperrt Anfragen ohne aussagekraeftigen
     # User-Agent. Format: "Name/Version (URL; Mail)".
-    spreadshirt_user_agent: str = "medienwerk-POD-Shop/1.0"
+    spreadshirt_user_agent: str = "Medienwerk-POD-Shop/1.0"
     # Dashboard-Login: leer = Auth AUS (lokale Entwicklung/Tests). Fuer Betrieb auf
     # einem Server/VPS ZWINGEND setzen – sonst ist der Shop offen im Netz.
     dashboard_password: str = ""
@@ -115,10 +115,10 @@ class Settings(BaseSettings):
     kontist_client_id: str = ""
     kontist_client_secret: str = ""
     # Wohin Kontist nach dem Zustimmen zurueckschickt. MUSS gesetzt sein, bevor der
-    # OAuth-Weg benutzt wird: Hier stand frueher die feste Adresse des GbR-Servers,
-    # auf dem das Ursprungssystem laeuft. Ein Rueckruf an fremde Infrastruktur traegt
-    # den Autorisierungscode dorthin - das darf keine Vorgabe sein. Leer heisst
-    # deshalb: die Kontist-Anmeldung bricht mit klarer Meldung ab.
+    # OAuth-Weg benutzt wird. Bei diesem Rueckruf haengt der Autorisierungscode in
+    # der Adresszeile - eine fest eingetragene fremde Adresse wuerde ihn dorthin
+    # tragen. Deshalb gibt es keine Vorgabe: leer heisst, die Kontist-Anmeldung
+    # bricht mit klarer Meldung ab.
     kontist_redirect_uri: str = ""
     # Lokal-Fokus (10.08.): Kampagnen-/Hub-Seite als Kandidaten-Quelle der taeglichen
     # Trend-Suche. AliExpress blockiert Suchseiten fuer den Headless-Harvester und die

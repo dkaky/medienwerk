@@ -296,7 +296,7 @@ def match_gleicher_tag(db: Session, *, anwenden: bool = False,
 
     Zugeordnet wird nur bei BEIDSEITIGER Eindeutigkeit: die Buchung darf genau
     eine passende Bestellung haben und die Bestellung genau diese eine Buchung.
-    Alles andere bleibt offen (fail-open wie gehabt). Kakys Regel bleibt unberuehrt.
+    Alles andere bleibt offen (fail-open wie gehabt). Die Kombi-Regel bleibt unberuehrt.
     """
     offen = [t for t in db.scalars(
         select(BankTransaction)

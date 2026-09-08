@@ -5,14 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=6" />
   <link rel="icon" type="image/x-icon" href="/favicon.ico?v=6" sizes="any" />
-  <title>Dashboard · medienwerk</title>
+  <title>Dashboard · Medienwerk</title>
   <style>
     :root {
       /* Dunkel: kuehles Anthrazit + Cyan.
-         Vorher stand hier "Club Nuit" - Flaschengruen und Messing, dazu Wappen,
-         Siegel und Motto. Das war die Markenwelt der GbR, aus deren System
-         dieses Projekt kopiert wurde; die Embleme sind laengst raus, die Farben
-         waren geblieben. Der Grundton kommt jetzt aus dem Studio (#0f1115), die
+         Vorher stand hier Flaschengruen und Messing, dazu Wappen,
+         Siegel und Motto. Das war eine fremde Markenwelt; die Embleme sind
+         laengst raus, die Farben waren geblieben. Der Grundton kommt jetzt aus dem Studio (#0f1115), die
          Akzentfarbe ist Cyan - eine der vier Druckfarben und damit die einzige,
          die zu einem Laden namens Druckhelden ueberhaupt etwas sagt.
 
@@ -48,7 +47,6 @@
     }
     /* ---- Light-Mode (per Button umschaltbar, in localStorage gemerkt) ---- */
     body.light {
-      /* Hell = "Maison Ivoire": Elfenbein + Waldgrün + Messing */
       /* Hell: kuehles Papiergrau statt Elfenbein. Das Studio kennt nur Dunkel -
          dieses Schema ist deshalb neu gemischt, nicht kopiert. Es haelt sich an
          dieselbe Logik: neutraler Grund, Cyan als Akzent, ein warmer Gegenpol.
@@ -806,8 +804,8 @@
       <div class="marke">
         <!-- Das DH-Monogramm im Kreis - die Marke, die auch auf den Shirts steht
              (siehe uebernommen/ChatGPT Image Aug 14, 2026...png). Das alte Wappen
-             zeigte Lorbeer, Stern und die Jahreszahl MMXXIV: Gruendungszeichen der
-             GbR, nicht dieses Einzelunternehmens. -->
+             zeigte Lorbeer, Stern und die Jahreszahl MMXXIV: ein fremdes
+             Gruendungszeichen, nicht das dieses Einzelunternehmens. -->
         <svg class="crest" viewBox="0 0 100 100" aria-hidden="true">
           <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="6"/>
           <path d="M27 32 h16 a13 13 0 0 1 13 13 v10 a13 13 0 0 1 -13 13 h-16 z
@@ -816,7 +814,7 @@
           <path d="M60 32 h8 v13 h6 v-13 h8 v36 h-8 v-15 h-6 v15 h-8 z" fill="currentColor"/>
         </svg>
         <div class="titles">
-          <b>medienwerk</b>
+          <b>Medienwerk</b>
           <small>Print on Demand · Dashboard</small>
         </div>
       </div>
@@ -1300,7 +1298,7 @@
           <h2>Belegablage <span class="tag">Ausgaben</span>
             <span class="spacer" style="flex:1"></span>
             <a class="btn sm primary" href="/api/v1/invoices/tax-export" title="Komplettes Jahres-Paket für den Steuerberater als ZIP: alle Original-Belege (sauber benannt) + Index-Tabelle + Summen-Seite">Steuerberater-Export (ZIP)</a>
-            <button class="btn sm" id="belAbrufBtn" onclick="belegeAbrufen()" style="margin-left:8px" title="Fehlende AliExpress-Belege abholen. Der Server kann das nicht selbst – er beauftragt den Helfer auf deinem (oder Kakys) Rechner.">Belege abrufen</button>
+            <button class="btn sm" id="belAbrufBtn" onclick="belegeAbrufen()" style="margin-left:8px" title="Fehlende AliExpress-Belege abholen. Der Server kann das nicht selbst – er beauftragt den Helfer auf deinem Rechner.">Belege abrufen</button>
             <span id="belAbrufStatus" class="muted" style="font-size:11.5px;margin-left:8px"></span>
             <button class="btn sm" onclick="openExpenseModal()" style="margin-left:8px" title="Sonstige Betriebsausgabe erfassen (AutoDS-Abo, KI/API, Server-Hosting, Temu, Versand-/Retourenlabel, Domain, …) – optional mit Beleg">Ausgabe erfassen</button>
             <button class="btn sm ghost" onclick="belResetCols()" style="margin-left:8px" title="Spaltenbreiten auf Standard zurücksetzen (Breiten ziehst du an den Spalten-Trennlinien der Kopfzeile)">↔ Spalten</button>
@@ -1597,8 +1595,8 @@
                 <option value="Geschäftlich (Geschäftspartner/Kunden)">Geschäftlich – Geschäftspartner/Kunden (70 % abziehbar)</option>
                 <option value="Arbeitnehmer (nur eigene Mitarbeiter)">Arbeitnehmer – nur eigene Mitarbeiter (100 % abziehbar)</option>
               </select></label>
-              <label>Ort der Bewirtung <span class="muted" style="font-size:10.5px">— Restaurant, Lokal etc.</span><br><input type="text" id="bw_ort" placeholder="z. B. Restaurant Adler, Witten" style="width:100%"></label>
-              <label>Gastgeber <span class="muted" style="font-size:10.5px">— die bewirtende Person</span><br><input type="text" id="bw_gastgeber" value="Wajjahat Syed, Dosyar Kaky (Kaky &amp; Syed GbR)" style="width:100%"></label>
+              <label>Ort der Bewirtung <span class="muted" style="font-size:10.5px">— Restaurant, Lokal etc.</span><br><input type="text" id="bw_ort" placeholder="z. B. Restaurant Adler, Koenigswinter" style="width:100%"></label>
+              <label>Gastgeber <span class="muted" style="font-size:10.5px">— die bewirtende Person</span><br><input type="text" id="bw_gastgeber" value="Aleyna Nur Aydin (Medienwerk)" style="width:100%"></label>
               <label>Gäste / bewirtete Personen<br><input type="text" id="bw_gaeste" placeholder="z. B. Max Mustermann (Lieferant XY)" style="width:100%"></label>
             </div>
             <div style="border-top:1px dashed var(--line);padding-top:9px">
@@ -1948,8 +1946,8 @@
         }
         else if (h.sandbox) { mp.textContent = "eBay-Sandbox"; mp.title = "eBay-Testumgebung (Sandbox), keine echten Verkäufe."; }
         else { mp.classList.remove("warn"); mp.textContent = "Live"; mp.title = `Echtes eBay (Produktion)${h.mock_llm ? " · KI simuliert" : " · echte KI (Claude)"}`; }
-        // "Kriegsmaschine" hiess die Engine im Betrieb der GbR. Hier heisst sie,
-        // was sie ist: die eigene, die ohne AutoDS-Abo direkt auf eBay einstellt.
+        // Die Engine heisst hier, was sie ist: die eigene, die ohne AutoDS-Abo
+        // direkt auf eBay einstellt.
         $("enginePill").textContent = (h.fulfillment_engine === "native" ? "⚙ Eigene Engine" : "AutoDS");
         growthEnabled = h.growth_engine_enabled === true;
         const growthTab = document.querySelector('nav.tabs button[data-view="growth"]');
@@ -4052,7 +4050,7 @@
         await api("POST", `/api/v1/kontist/buchungen/${id}/kategorie?wert=${encodeURIComponent(wert)}`);
         toast(wert ? "✓ kontiert" : "Kategorie entfernt");
         // NICHT neu laden: die Zeile passt danach oft nicht mehr zum Filter und
-        // waere weg — das wirkt, als hätte man Daten verloren (Wajjahat, 19.08.).
+        // waere weg — das wirkt, als hätte man Daten verloren (Vorfall 19.08.).
         // Stattdessen hier markieren; die Kacheln holen wir frisch.
         const zeile = el && el.closest("tr");
         if (zeile) {
@@ -4221,7 +4219,7 @@
         $("b_purch").textContent = st.purchase_invoices.count; $("b_purch_sum").textContent = "Σ " + eur(st.purchase_invoices.sum) + " · " + (st.purchase_originals ?? 0) + " mit Beleg";
         $("b_miss_p").textContent = st.purchases_missing;
         $("b_problem").textContent = st.problems ?? 0;
-        // Stand des Beleg-Abrufs mitziehen (auch ohne Klick, z.B. wenn Kaky ihn ausloest)
+        // Stand des Beleg-Abrufs mitziehen (auch ohne Klick von hier)
         // Stand mitziehen — und wenn noch etwas laeuft, dranbleiben. Ohne das
         // blieb nach einem Seiten-Neuladen ewig "laeuft …" stehen: der Beobachter
         // startete nur beim Klick, und den gab es in dieser Sitzung nie.
@@ -4432,7 +4430,7 @@
           } catch (e) { toast("Beleg gespeichert — Auslesen fehlgeschlagen", true); }
           // Kette zu Ende: aus dem frisch hinterlegten Beleg gleich die Rechnung
           // erzeugen. Sonst blieb der Kauf unter „Problemfälle" stehen, obwohl der
-          // Beleg längst da war (Fall Wajjahat 18.08.).
+          // Beleg längst da war (Vorfall 18.08.).
           try {
             const g = await fetch(`/api/v1/invoices/${zielId}/rechnung`, { method: "POST" });
             if (g.ok) toast("✓ Rechnung erstellt");

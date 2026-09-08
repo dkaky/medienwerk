@@ -2,7 +2,7 @@
 
 Diese Haelfte der Kette lief bisher nur von Hand. Sie ist rein lokal (der Beleg
 liegt schon in der Ablage) und damit unabhaengig davon, WER die Belege eingesammelt
-hat — Wajjahat auf dem Mac oder Kaky unter Windows.
+hat — auf dem Mac oder unter Windows.
 
 Wichtig: ein Fehler hier darf die anderen Punkte des Nachtlaufs (Gebuehren-Sync,
 Finanzbericht-Cache) nicht mitreissen.

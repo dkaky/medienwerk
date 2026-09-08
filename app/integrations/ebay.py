@@ -625,7 +625,7 @@ class RealEbayClient(EbayClient):
         except Exception as exc:  # noqa: BLE001
             raise self._translate(exc) from exc
 
-    async def ensure_ad_campaign(self, *, name: str = "Maison-Aristide-Standard") -> str:
+    async def ensure_ad_campaign(self, *, name: str = "Druckhelden-Standard") -> str:
         """Promoted-Listings-Standard-Kampagne (Cost-per-Sale) finden oder anlegen -> campaignId."""
         if getattr(self, "_campaign_id", None):
             return self._campaign_id

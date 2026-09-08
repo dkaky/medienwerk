@@ -48,18 +48,14 @@ atexit.register(lambda: shutil.rmtree(_TMP, ignore_errors=True))
 from app.database import Base, SessionLocal, engine, init_db  # noqa: E402
 
 
-@pytest.fixture(autouse=True)
-def _isolated_report_file(tmp_path, monkeypatch):
-    """SCHUTZ: Tests duerfen NIE das echte data/reprice_report.json ueberschreiben.
-
-    Vorfall 07/2026: ein Test ohne REPORT_FILE-Patch hat den Produktiv-Report mit
-    2 synthetischen Zeilen geclobbert -> Preis-Check zeigte fast nichts mehr an
-    und "Alle sicheren Anhebungen" haette Fantasie-Sollpreise auf ECHTE Listings
-    gepusht. Autouse-Patch macht das strukturell unmoeglich.
-    """
-    from app.services import listing_match_service as _lm
-    monkeypatch.setattr(_lm, "REPORT_FILE", str(tmp_path / "reprice_report.json"))
-    yield
+# Hier stand bis 08.09.2026 ein Autouse-Schutz, der das echte
+# data/reprice_report.json vor Testschreibzugriffen bewahrte (ein Test hatte es
+# im Juli 2026 mit zwei erfundenen Zeilen ueberschrieben). Der Report gehoerte zu
+# listing_match_service, das mit dem Handelsteil ausgezogen ist - es gibt keine
+# Lieferantenpreise mehr, die gegen eBay-Preise abzugleichen waeren.
+#
+# Sollte der Print-on-Demand-Weg je wieder eine solche materialisierte Datei
+# bekommen, gehoert derselbe Schutz sofort wieder hierher.
 
 
 @pytest.fixture(autouse=True)

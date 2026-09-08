@@ -30,7 +30,7 @@ MINI_JPG = base64.b64decode(
     "5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl/90ABAAB/9oADAMBAAIRAxEAPwDoxS0UUAf/2Q=="
 )
 
-PFLICHT = dict(datum="24.07.2026", ort="Restaurant Adler", gastgeber="Wajjahat Syed",
+PFLICHT = dict(datum="24.07.2026", ort="Restaurant Adler", gastgeber="Aleyna Nur Aydin",
                gaeste="Herr Yilmaz", anlass="Einkaufskonditionen", betrag=86.40,
                trinkgeld=5.60)
 
@@ -84,7 +84,7 @@ def test_alle_pflichtangaben_stehen_auf_dem_blatt():
     pdf = eigenbeleg_pdf.build_eigenbeleg(
         quittung=MINI_JPG, art="Geschäftlich (Geschäftspartner/Kunden)", **PFLICHT)
     text = _sichtbarer_text(pdf)
-    for pflicht in ("24.07.2026", "Restaurant Adler", "Wajjahat Syed", "Herr Yilmaz",
+    for pflicht in ("24.07.2026", "Restaurant Adler", "Aleyna Nur Aydin", "Herr Yilmaz",
                     "Einkaufskonditionen", "Geschäftlich"):
         assert pflicht in text, f"{pflicht!r} fehlt auf dem Eigenbeleg"
     for beschriftung in ("Datum Bewirtung", "Ort der Bewirtung", "Gastgeber",
@@ -103,7 +103,7 @@ def test_gesamtbetrag_wird_gerechnet_nicht_geschaetzt():
 def test_langer_text_wird_umgebrochen_statt_abgeschnitten():
     """Nutzerwunsch: die Kaesten wachsen mit, nichts faellt hinten runter."""
     lang = ("Herr Ahmet Yilmaz (Lieferant Detailing-Zubehör GmbH), Frau Sabine Müller "
-            "(Fotostudio Witten), Herr Klaus Peter Schmidt (Versandpartner)")
+            "(Fotostudio Beispiel), Herr Klaus Peter Schmidt (Versandpartner)")
     pdf = eigenbeleg_pdf.build_eigenbeleg(quittung=MINI_JPG, **(PFLICHT | {"gaeste": lang}))
     text = _sichtbarer_text(pdf)
     for wort in lang.replace(",", " ").split():
@@ -190,7 +190,7 @@ def test_umlaute_und_fremde_buchstaben_bleiben_lesbar():
 
 def _post_eigenbeleg(client, **abweichend):
     daten = {"datum": "2026-07-24", "ort": "Restaurant Adler",
-             "gastgeber": "Wajjahat Syed", "gaeste": "Herr Müller (Lieferant XY)",
+             "gastgeber": "Aleyna Nur Aydin", "gaeste": "Herr Müller (Lieferant XY)",
              "anlass": "Einkaufskonditionen – Gesprächspartner: Herr Müller",
              "betrag": "86.40", "trinkgeld": "5.60",
              "art": "Geschäftlich (Geschäftspartner/Kunden)"}
@@ -235,7 +235,7 @@ def test_betrag_muss_groesser_null_sein(client):
 
 def test_falsches_dateiformat_gibt_klartext_statt_serverfehler(client):
     r = client.post("/api/v1/invoices/bewirtung-eigenbeleg",
-                    data={"datum": "2026-07-24", "ort": "Adler", "gastgeber": "Syed",
+                    data={"datum": "2026-07-24", "ort": "Adler", "gastgeber": "Aydin",
                           "gaeste": "Herr Müller", "anlass": "Einkaufskonditionen",
                           "betrag": "20"},
                     files={"file": ("quittung.webp",
