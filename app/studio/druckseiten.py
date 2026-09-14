@@ -7,15 +7,19 @@ Vorgaben des Betreibers (13./14.09.2026):
 * Je Seite mehrere Motive (Ebenen), jedes verschiebbar und in der Groesse
   einstellbar.
 
-**Druckflaeche.** Jede Seite ist ein Rechteck im Verhaeltnis 3:4 (Tasse 1:1).
-Eine Ebene steht darin mit ``mitte_x`` (0 = linker, 1 = rechter Rand),
-``oben`` (Oberkante, 0 = oberer Rand, 1 = unterer Rand) und ``groesse`` (das
-Motiv passt in ``groesse`` x Flaeche). Was ueber den Rand ragt, wird nicht
-gedruckt. Aus den Ebenen entsteht je Seite ein **Druckbild** (PNG, transparent),
-aus dem die Mockups gerechnet werden und das auch als Druckdatei taugt.
+**Gestaltungsflaeche = die ganze Ware** (Vorgabe vom 14.09.2026): flach von
+vorne bzw. hinten mit Aermeln, bei der Tasse der Koerper ohne Henkel. Eine Ebene
+steht darin mit ``mitte_x`` (0 = linker, 1 = rechter Rand), ``oben`` (Oberkante,
+0 = oberer Rand, 1 = unterer Rand) und ``groesse`` (das Motiv passt in
+``groesse`` x Flaeche). Neben dem Stoff wird nichts gedruckt. Aus den Ebenen
+entsteht je Produkt und Seite ein **Druckbild** (PNG, transparent) im
+Seitenverhaeltnis der Ware, aus dem die Mockups gerechnet werden.
+
+Version 1 (13.09.2026) bezog die Werte auf ein Brustfeld im Format 3:4. Solche
+Gestaltungen werden beim Lesen auf die ganze Ware umgerechnet.
 
 Gespeichert am Motiv in ``meta_json["druck"] = {"vorne": [Ebene...], "hinten": [...]}``.
-Ohne Eintrag gilt: vorne dieses Motiv in voller Groesse oben, hinten leer. Das
+Ohne Eintrag gilt: vorne dieses Motiv mittig auf der Brust (``STANDARD``), hinten leer. Das
 fruehere Format ``{"vorne": id|None, "hinten": id|None}`` wird weiter gelesen.
 """
 from __future__ import annotations
@@ -30,13 +34,15 @@ from app.studio.models import StudioDesign
 
 SEITEN = ("vorne", "hinten")
 MAX_EBENEN = 5
-#: Breite : Hoehe der Druckflaeche.
-SEITENVERHAELTNIS = {"textil": (3, 4), "tasse": (1, 1)}
-#: Lange Kante des Druckbilds in Pixel (Textil: 30 x 40 cm bei rund 250 dpi).
-KANTE = {"textil": 4000, "tasse": 2400}
+VERSION = 2
+#: Lange Kante des Druckbilds in Pixel.
+KANTE = 4000
 ORDNER = "druckbilder"
+#: Lage eines neuen bzw. unbearbeiteten Motivs: mittig auf der Brust.
+STANDARD = {"mitte_x": 0.5, "oben": 0.2, "groesse": 0.4}
 
-_GRENZEN = {"mitte_x": (0.0, 1.0, 0.5), "oben": (-0.5, 1.0, 0.0), "groesse": (0.05, 1.5, 1.0)}
+_GRENZEN = {"mitte_x": (0.0, 1.0, STANDARD["mitte_x"]), "oben": (-0.5, 1.0, STANDARD["oben"]),
+            "groesse": (0.05, 1.5, STANDARD["groesse"])}
 
 
 class DruckseitenFehler(ValueError):
@@ -46,9 +52,9 @@ class DruckseitenFehler(ValueError):
 @dataclass
 class Ebene:
     design: Any
-    mitte_x: float = 0.5
-    oben: float = 0.0
-    groesse: float = 1.0
+    mitte_x: float = STANDARD["mitte_x"]
+    oben: float = STANDARD["oben"]
+    groesse: float = STANDARD["groesse"]
 
     def als_dict(self) -> dict:
         return {"design_id": self.design.id, "title": self.design.title,
@@ -73,13 +79,22 @@ class Druckseiten:
         return {seite: [e.als_dict() for e in getattr(self, seite)] for seite in SEITEN}
 
 
-def _zahl(wert: Any, schluessel: str) -> float:
+def _zahl(wert: Any, schluessel: str, v1: bool = False) -> float:
     unten, oben, standard = _GRENZEN[schluessel]
+    if v1:                                         # Version 1: Motiv oben im Feld, volle Breite
+        standard = {"mitte_x": 0.5, "oben": 0.0, "groesse": 1.0}[schluessel]
     try:
         zahl = float(wert)
     except (TypeError, ValueError):
         return standard
     return round(min(oben, max(unten, zahl)), 4)
+
+
+def _aus_version_1(mitte_x: float, oben: float, groesse: float) -> tuple[float, float, float]:
+    """Brustfeld 3:4 (Version 1) -> ganze Ware. Das Feld lag mittig, rund 40 % der Ware breit."""
+    return (round(min(1.0, max(0.0, 0.5 + (mitte_x - 0.5) * 0.4)), 4),
+            round(min(1.0, max(-0.5, 0.2 + oben * 0.4 * 4 / 3)), 4),
+            round(max(0.05, groesse * 0.4), 4))
 
 
 def _meta(design: Any) -> dict:
@@ -111,6 +126,7 @@ def lese(db, design: Any) -> Druckseiten:
     druck = _meta(design).get("druck")
     if not isinstance(druck, dict):
         return Druckseiten(vorne=[Ebene(design)], hinten=[])
+    alt = druck.get("version") != VERSION
     seiten = {}
     for seite in SEITEN:
         ebenen = []
@@ -118,7 +134,11 @@ def lese(db, design: Any) -> Druckseiten:
             motiv = _motiv(db, design, e.get("design_id"))
             if motiv is None:                      # geloeschtes Motiv -> Ebene faellt weg
                 continue
-            ebenen.append(Ebene(motiv, *(_zahl(e.get(k), k) for k in ("mitte_x", "oben", "groesse"))))
+            if alt:
+                werte = _aus_version_1(*(_zahl(e.get(k), k, v1=True) for k in ("mitte_x", "oben", "groesse")))
+            else:
+                werte = tuple(_zahl(e.get(k), k) for k in ("mitte_x", "oben", "groesse"))
+            ebenen.append(Ebene(motiv, *werte))
         seiten[seite] = ebenen
     return Druckseiten(**seiten)
 
@@ -138,14 +158,17 @@ def setze(db, design: Any, *, vorne: list[dict], hinten: list[dict]) -> Drucksei
                           **{k: _zahl(e.get(k), k) for k in ("mitte_x", "oben", "groesse")}})
         gespeichert[seite] = liste
     meta = _meta(design)
-    meta["druck"] = gespeichert
+    meta["druck"] = {"version": VERSION, **gespeichert}
     design.meta_json = json.dumps(meta, ensure_ascii=False)
     db.commit()
     return lese(db, design)
 
 
-def druckbild(ebenen: list[Ebene], bildordner: Path, *, art: str, ziel_ordner: Path) -> Path | None:
-    """Die Ebenen einer Seite zu einem transparenten PNG zusammensetzen (zwischengespeichert)."""
+def druckbild(ebenen: list[Ebene], bildordner: Path, *, verhaeltnis: float, ziel_ordner: Path) -> Path | None:
+    """Die Ebenen einer Seite zu einem transparenten PNG zusammensetzen (zwischengespeichert).
+
+    ``verhaeltnis`` ist Breite : Hoehe der Ware; die lange Kante hat ``KANTE`` Pixel.
+    """
     if not ebenen:
         return None
     from PIL import Image
@@ -154,15 +177,17 @@ def druckbild(ebenen: list[Ebene], bildordner: Path, *, art: str, ziel_ordner: P
 
     quellen = [produktweg.bildpfad(e.design, bildordner) for e in ebenen]
     schluessel = hashlib.sha1(json.dumps(
-        [art, KANTE[art]] + [[str(q.resolve()), int(q.stat().st_mtime), e.mitte_x, e.oben, e.groesse]
-                             for q, e in zip(quellen, ebenen)]).encode()).hexdigest()[:12]
-    ziel = ziel_ordner / f"{art}-{schluessel}.png"
+        [VERSION, KANTE, round(verhaeltnis, 4)]
+        + [[str(q.resolve()), int(q.stat().st_mtime), e.mitte_x, e.oben, e.groesse]
+           for q, e in zip(quellen, ebenen)]).encode()).hexdigest()[:12]
+    ziel = ziel_ordner / f"druck-{schluessel}.png"
     if ziel.is_file():
         return ziel
 
-    wv, hv = SEITENVERHAELTNIS[art]
-    hoehe = KANTE[art] if hv >= wv else round(KANTE[art] * hv / wv)
-    breite = round(hoehe * wv / hv)
+    if verhaeltnis >= 1:
+        breite, hoehe = KANTE, max(1, round(KANTE / verhaeltnis))
+    else:
+        breite, hoehe = max(1, round(KANTE * verhaeltnis)), KANTE
     leinwand = Image.new("RGBA", (breite, hoehe), (0, 0, 0, 0))
     for quelle, e in zip(quellen, ebenen):
         with Image.open(quelle) as roh:
@@ -179,16 +204,27 @@ def druckbild(ebenen: list[Ebene], bildordner: Path, *, art: str, ziel_ordner: P
 
     ziel_ordner.mkdir(parents=True, exist_ok=True)
     leinwand.save(ziel, "PNG", compress_level=1)
-    for alt in ziel_ordner.glob(f"{art}-*.png"):   # nur der aktuelle Stand bleibt liegen
+    for alt in ziel_ordner.glob("druck-*.png"):    # nur der aktuelle Stand bleibt liegen
         if alt != ziel:
             alt.unlink(missing_ok=True)
     return ziel
 
 
-def druckbilder(seiten: Druckseiten, bildordner: Path, *, textil: bool,
-                design_id: int) -> tuple[Path | None, Path | None]:
-    """Die Druckbilder fuer vorne und hinten (``None`` = unbedruckt)."""
-    art = "textil" if textil else "tasse"
+def druckbilder(seiten: Druckseiten, bildordner: Path, *, produkt: str, textil: bool, design_id: int,
+                vorlagen_ordner: Path | None = None) -> tuple[Path | None, Path | None]:
+    """Die Druckbilder dieses Produkts fuer vorne und hinten (``None`` = unbedruckt)."""
+    from app.studio import mockup_montage
+
+    ordner = Path(vorlagen_ordner) if vorlagen_ordner else mockup_montage.ORDNER
+
+    def verhaeltnis(seite: str) -> float:
+        try:
+            return mockup_montage.seitenverhaeltnis(produkt, seite, textil=textil, ordner=ordner)
+        except (mockup_montage.MontageFehler, OSError):
+            return 3 / 4                           # ohne Vorlage: uebliches Textilformat
+
     basis = Path(bildordner) / ORDNER / str(design_id)
-    return (druckbild(seiten.vorne, bildordner, art=art, ziel_ordner=basis / "vorne"),
-            druckbild(seiten.hinten, bildordner, art=art, ziel_ordner=basis / "hinten"))
+    return (druckbild(seiten.vorne, bildordner, verhaeltnis=verhaeltnis("vorne"),
+                      ziel_ordner=basis / f"{produkt}-vorne"),
+            druckbild(seiten.hinten, bildordner, verhaeltnis=verhaeltnis("hinten"),
+                      ziel_ordner=basis / f"{produkt}-hinten"))

@@ -400,6 +400,7 @@ def test_druckseiten_standard_und_pruefung(db, tmp_path):
     design = _motiv(db, tmp_path)
     seiten = druckseiten.lese(db, design)
     assert [e.design for e in seiten.vorne] == [design] and seiten.hinten == []
+    assert (seiten.vorne[0].mitte_x, seiten.vorne[0].oben, seiten.vorne[0].groesse) == (0.5, 0.2, 0.4)
     with pytest.raises(druckseiten.DruckseitenFehler, match="Mindestens eine Seite"):
         druckseiten.setze(db, design, vorne=[], hinten=[])
     with pytest.raises(druckseiten.DruckseitenFehler):
@@ -421,7 +422,9 @@ def test_altes_druckformat_wird_gelesen(db, tmp_path):
     design.meta_json = json.dumps({"druck": {"vorne": None, "hinten": design.id}})
     db.commit()
     seiten = druckseiten.lese(db, design)
-    assert seiten.vorne == [] and seiten.hinten[0].design is design and seiten.hinten[0].groesse == 1.0
+    assert seiten.vorne == [] and seiten.hinten[0].design is design
+    # Version 1 (Brustfeld, volle Breite oben) -> ganze Ware: mittig auf der Brust
+    assert (seiten.hinten[0].mitte_x, seiten.hinten[0].oben, seiten.hinten[0].groesse) == (0.5, 0.2, 0.4)
 
 
 def test_druckbild_setzt_ebenen_an_ihre_stelle(db, tmp_path):
@@ -432,14 +435,15 @@ def test_druckbild_setzt_ebenen_an_ihre_stelle(db, tmp_path):
     design = _motiv(db, tmp_path)          # rotes Quadrat 200x200 mitten in 400x400, Rest transparent
     seiten = druckseiten.setze(
         db, design, vorne=[{"design_id": design.id, "mitte_x": 0.25, "oben": 0.5, "groesse": 0.4}], hinten=[])
-    vorne, hinten = druckseiten.druckbilder(seiten, tmp_path, textil=True, design_id=design.id)
+    art = dict(produkt="tshirt", textil=True, design_id=design.id, vorlagen_ordner=tmp_path / "keine")
+    vorne, hinten = druckseiten.druckbilder(seiten, tmp_path, **art)
     assert hinten is None
     arr = np.asarray(Image.open(vorne))
-    assert arr.shape[:2] == (400, 300)                       # 3:4, lange Kante 400 (Fixture)
+    assert arr.shape[:2] == (400, 300)                       # ohne Vorlage 3:4, lange Kante 400
     ys, xs = np.nonzero(arr[..., 3] > 128)
     # 0.4 * 300 = 120 px breit, Mitte bei 75 px, Oberkante bei 200 px
     assert abs(xs.min() - 15) <= 2 and abs(xs.max() - 134) <= 2 and abs(ys.min() - 200) <= 2
-    assert druckseiten.druckbilder(seiten, tmp_path, textil=True, design_id=design.id)[0] == vorne
+    assert druckseiten.druckbilder(seiten, tmp_path, **art)[0] == vorne
 
 
 @pytest.fixture(autouse=True)
@@ -447,4 +451,4 @@ def _kleine_druckbilder(monkeypatch):
     """Druckbilder in Testgroesse - die echten 3000 x 4000 Pixel braucht hier niemand."""
     from app.studio import druckseiten
 
-    monkeypatch.setattr(druckseiten, "KANTE", {"textil": 400, "tasse": 300})
+    monkeypatch.setattr(druckseiten, "KANTE", 400)

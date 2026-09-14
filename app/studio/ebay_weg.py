@@ -505,7 +505,8 @@ async def veroeffentliche(db, design: Any, *, produkt_key: str, ebay: Any, s: Se
     try:
         seiten = druckseiten.lese(db, design)
         vorne_pfad, hinten_pfad = await asyncio.to_thread(
-            druckseiten.druckbilder, seiten, bildordner, textil=p.textil, design_id=design.id)
+            druckseiten.druckbilder, seiten, bildordner, produkt=p.key, textil=p.textil,
+            design_id=design.id, vorlagen_ordner=Path(s.mockup_montage_ordner))
         if vorne_pfad is None and hinten_pfad is None:
             raise EbayWegFehler("Weder Vorder- noch Rueckseite hat ein Motiv.")
         fotos = await produktfotos(design, p, s=s, bildordner=bildordner, motiv=vorne_pfad,

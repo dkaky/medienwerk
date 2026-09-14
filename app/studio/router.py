@@ -477,6 +477,35 @@ def mockup_vorlagen() -> dict:
     return {"produkte": produkte}
 
 
+@router.get("/mockups/flaeche")
+async def mockup_flaeche(produkt: str = Query("tshirt"), seite: str = Query("vorne"),
+                         farbe: str = Query("Weiß")) -> dict:
+    """Die leere Ware als Gestaltungsflaeche fuer den Editor - Bild und Seitenverhaeltnis."""
+    import asyncio
+
+    from app.studio import ebay_weg, mockup_montage, mockup_plan
+
+    p = ebay_weg.PRODUKTE.get(produkt)
+    if p is None:
+        raise HTTPException(status_code=404, detail=f"Unbekanntes Produkt: {produkt}")
+    if seite not in ("vorne", "hinten"):
+        raise HTTPException(status_code=422, detail="seite ist vorne oder hinten")
+    if farbe not in ebay_weg.farben(p):
+        farbe = ebay_weg.farben(p)[0]
+    hexwert = mockup_plan.farbe(farbe).hex if p.textil else "#FFFFFF"
+    s = get_settings()
+    bildordner, ordner = Path(s.studio_image_dir), Path(s.mockup_montage_ordner)
+    try:
+        pfad = await asyncio.to_thread(
+            mockup_montage.flaechenbild, p.key, seite, farbe, hexwert, textil=p.textil,
+            ziel_ordner=bildordner / ebay_weg.MOCKUP_ORDNER / "flaechen", ordner=ordner)
+        verhaeltnis = mockup_montage.seitenverhaeltnis(p.key, seite, textil=p.textil, ordner=ordner)
+    except mockup_montage.MontageFehler as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"produkt": p.key, "seite": seite, "farbe": farbe, "breite_zu_hoehe": round(verhaeltnis, 5),
+            "url": "/studio/bilder/" + pfad.resolve().relative_to(bildordner.resolve()).as_posix()}
+
+
 @router.get("/mockups/bilder")
 async def mockup_bilder(produkt: str = Query("tshirt"), farbe: str = Query("Weiß"),
                         design_id: int | None = Query(None),
@@ -516,7 +545,8 @@ async def mockup_bilder(produkt: str = Query("tshirt"), farbe: str = Query("Wei�
 
             seiten = druckseiten.lese(db, design)
             vorne, hinten = await asyncio.to_thread(
-                druckseiten.druckbilder, seiten, bildordner, textil=p.textil, design_id=design.id)
+                druckseiten.druckbilder, seiten, bildordner, produkt=p.key, textil=p.textil,
+                design_id=design.id, vorlagen_ordner=ordner)
             fotos = await asyncio.to_thread(
                 mockup_montage.rendere, vorne, hinten=hinten, produkt=p.key, textil=p.textil,
                 ganzflaeche=True,

@@ -29,6 +29,7 @@ import json
 import logging
 import re
 import unicodedata
+from functools import lru_cache
 import zlib
 from dataclasses import dataclass
 from pathlib import Path
@@ -213,14 +214,79 @@ def _zylinder(motiv: np.ndarray, staerke: float = 0.9) -> np.ndarray:
     return motiv[:, spalten]
 
 
+def produktflaeche(vorlage: Vorlage, produkt: str, ansicht: str | None = None) -> tuple[int, int, int, int]:
+    """Die ganze Ware als Gestaltungsflaeche: (links, oben, breite, hoehe) in Pixeln.
+
+    Textil: der Rahmen um den gruenen Stoff - flach ist das die Ware samt Aermeln,
+    am Model das getragene Kleidungsstueck. Tasse: der Koerper ohne Henkel, volle Hoehe.
+    """
+    ys, xs = np.nonzero(vorlage.maske > 0.5)
+    y0, y1 = int(ys.min()), int(ys.max())
+    x0, x1 = int(xs.min()), int(xs.max())
+    if produkt == "tasse":
+        hoehe = y1 - y0
+        zeilen = vorlage.maske[int(y0 + 0.15 * hoehe):int(y0 + 0.85 * hoehe)] > 0.5
+        voll = np.concatenate([[False], zeilen.mean(axis=0) > 0.95, [False]])
+        kanten = np.flatnonzero(np.diff(voll.astype(np.int8)))
+        laeufe = list(zip(kanten[::2], kanten[1::2]))
+        if laeufe:
+            links, rechts = max(laeufe, key=lambda l: l[1] - l[0])
+            x0, x1 = int(links), int(rechts) - 1
+    return x0, y0, max(1, x1 - x0 + 1), max(1, y1 - y0 + 1)
+
+
+#: Aufloesung, in der die Gestaltungsflaeche vermessen und fuer den Editor gezeigt wird.
+FLAECHE_KANTE = 1200
+
+
+def flaechen_vorlage(produkt: str, seite: str, *, textil: bool, ordner: Path = ORDNER) -> Path:
+    """Die Vorlage, die im Editor als Flaeche dient: die flache Ware von vorne bzw. hinten."""
+    ansicht = "hinten" if textil and seite == "hinten" else "vorne"
+    for quelle in (ordner / f"{produkt}-{ansicht}.png", ordner / f"{produkt}-vorne.png"):
+        if quelle.is_file():
+            return quelle
+    raise MontageFehler(f"{produkt}: keine Vorlage fuer die Gestaltungsflaeche ({ordner})")
+
+
+@lru_cache(maxsize=64)
+def _vermessen(pfad: str, stand: int, produkt: str) -> tuple[int, int, int, int]:
+    return produktflaeche(lade_vorlage(pfad, lange_kante=FLAECHE_KANTE), produkt)
+
+
+def seitenverhaeltnis(produkt: str, seite: str, *, textil: bool, ordner: Path = ORDNER) -> float:
+    """Breite : Hoehe der Gestaltungsflaeche dieser Seite."""
+    quelle = flaechen_vorlage(produkt, seite, textil=textil, ordner=ordner)
+    _, _, breite, hoehe = _vermessen(str(quelle), int(quelle.stat().st_mtime), produkt)
+    return breite / hoehe
+
+
+def flaechenbild(produkt: str, seite: str, name: str, hexwert: str, *, textil: bool,
+                 ziel_ordner: Path, ordner: Path = ORDNER) -> Path:
+    """Die leere Ware in der Farbe, auf die Gestaltungsflaeche zugeschnitten - Hintergrund im Editor."""
+    quelle = flaechen_vorlage(produkt, seite, textil=textil, ordner=ordner)
+    ziel = ziel_ordner / f"{produkt}-{seite}-{farbcode(name)}-{int(quelle.stat().st_mtime)}.jpg"
+    if not ziel.is_file():
+        v = lade_vorlage(quelle, lange_kante=FLAECHE_KANTE)
+        x, y, w, h = produktflaeche(v, produkt)
+        bild = Image.fromarray(np.clip(einfaerben(v, hexwert), 0, 255).astype(np.uint8))
+        ziel_ordner.mkdir(parents=True, exist_ok=True)
+        bild.crop((x, y, x + w, y + h)).save(ziel, "JPEG", quality=88)
+    return ziel
+
+
 def montiere(vorlage: Vorlage, motiv: Image.Image, hexwert: str, feld: Druckfeld,
-             *, zylinder: bool = False, ganzflaeche: bool = False) -> Image.Image:
+             *, zylinder: bool = False, ganzflaeche: bool = False,
+             flaeche: tuple[int, int, int, int] | None = None) -> Image.Image:
     bild = einfaerben(vorlage, hexwert)
     m = motiv.convert("RGBA")
     if ganzflaeche:
-        # Druckbild aus dem Editor: die Lage im Bild ist gewollt - nicht zuschneiden,
-        # die ganze Druckflaeche bekommt die Breite des Druckfelds.
-        m = m.resize((feld.breite, max(1, round(feld.breite * m.height / m.width))), Image.LANCZOS)
+        # Druckbild aus dem Editor: es steht fuer die ganze Ware. Textil: auf die Hoehe
+        # der Ware in dieser Ansicht, mittig. Tasse: auf die Breite des Koerpers.
+        fx, fy, fw, fh = flaeche or produktflaeche(vorlage, "tasse" if zylinder else "")
+        if zylinder:
+            m = m.resize((fw, max(1, round(fw * m.height / m.width))), Image.LANCZOS)
+        else:
+            m = m.resize((max(1, round(fh * m.width / m.height)), fh), Image.LANCZOS)
     else:
         rahmen = m.getbbox()
         if rahmen:
@@ -232,7 +298,10 @@ def montiere(vorlage: Vorlage, motiv: Image.Image, hexwert: str, feld: Druckfeld
     mh, mw = marr.shape[:2]
 
     hoehe, breite = bild.shape[:2]
-    x0, y0 = feld.mitte_x - mw // 2, feld.oben_y
+    if ganzflaeche:
+        x0, y0 = fx + fw // 2 - mw // 2, fy
+    else:
+        x0, y0 = feld.mitte_x - mw // 2, feld.oben_y
     ax0, ay0 = max(0, x0), max(0, y0)
     ax1, ay1 = min(breite, x0 + mw), min(hoehe, y0 + mh)
     if ax1 <= ax0 or ay1 <= ay0:
@@ -323,7 +392,7 @@ def rendere(motiv_pfad: Path | None, *, produkt: str, textil: bool, farben: list
     pfade = vorlagen_pfade(produkt, textil=textil, ordner=ordner)
     reihe = folge(produkt, textil=textil, ordner=ordner,
                   vorne_leer=seiten["vorne"] is None and seiten["hinten"] is not None)
-    geladen: dict[str, tuple[Vorlage, Druckfeld]] = {}
+    geladen: dict[str, tuple] = {}
     ziel_ordner.mkdir(parents=True, exist_ok=True)
 
     ergebnis: dict[str, list[Path]] = {}
@@ -337,13 +406,14 @@ def rendere(motiv_pfad: Path | None, *, produkt: str, textil: bool, farben: list
             if not ziel.is_file():
                 if ansicht not in geladen:
                     v = lade_vorlage(quelle, lange_kante=lange_kante or LANGE_KANTE)
-                    geladen[ansicht] = (v, feste.get(f"{produkt}-{ansicht}") or druckfeld(v, produkt, ansicht))
-                v, feld = geladen[ansicht]
+                    geladen[ansicht] = (v, feste.get(f"{produkt}-{ansicht}") or druckfeld(v, produkt, ansicht),
+                                        produktflaeche(v, produkt, ansicht))
+                v, feld, flaeche = geladen[ansicht]
                 if bilder[seite] is None:
                     bild = Image.fromarray(np.clip(einfaerben(v, hexwert), 0, 255).astype(np.uint8))
                 else:
                     bild = montiere(v, bilder[seite], hexwert, feld, zylinder=not textil,
-                                    ganzflaeche=ganzflaeche)
+                                    ganzflaeche=ganzflaeche, flaeche=flaeche)
                 bild.save(ziel, "JPEG", quality=92)
                 # Aeltere Fassungen derselben Ansicht und Farbe braucht niemand mehr.
                 for alt in ziel_ordner.glob(f"{produkt}-{ansicht}-{farbcode(name)}-*.jpg"):

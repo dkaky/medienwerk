@@ -114,10 +114,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .galerie figure.gross { grid-column: 1 / -1; }
 .galerie h5 { grid-column: 1 / -1; margin: 10px 0 0; font-size: 12px; color: var(--muted);
   text-transform: uppercase; letter-spacing: .06em; }
-.druckflaeche { position: relative; width: 100%; max-width: 300px; aspect-ratio: 3 / 4; margin: 6px 0;
+.druckflaeche { position: relative; width: 100%; max-width: 360px; aspect-ratio: 3 / 4; margin: 6px 0;
   border: 2px dashed var(--border); border-radius: 8px; overflow: hidden; touch-action: none;
   background: repeating-conic-gradient(rgba(127,127,127,.12) 0 25%, transparent 0 50%) 0 0 / 18px 18px; }
 .druckflaeche.tasse { aspect-ratio: 1 / 1; }
+.druckflaeche.mit-ware { background-size: 100% 100%; background-repeat: no-repeat; }
 .druckflaeche img.ebene { position: absolute; cursor: grab; user-select: none; -webkit-user-drag: none;
   outline: 1px dashed transparent; outline-offset: 1px; }
 .druckflaeche img.ebene.aktiv { outline-color: var(--accent); }
@@ -634,8 +635,33 @@ const SEITE_NAME = { vorne: 'Vorderseite', hinten: 'Rückseite' };
 let _speichernTimer = null;
 let _zug = null;
 
+// Die Flaeche ist die ganze Ware: die leere Ware in der gewaehlten Farbe liegt als
+// Hintergrund darunter, ihr Seitenverhaeltnis kommt vom Server.
+let _flaeche = { schluessel: '', url: '', bzh: 0.75 };
+
 function flaechenVerhaeltnis() {       // Hoehe : Breite
-  return _anprobe.ware === 'tasse' ? 1 : 4 / 3;
+  return 1 / (_flaeche.bzh || 0.75);
+}
+
+function flaechenStil() {
+  return `aspect-ratio: ${_flaeche.bzh || 0.75};`
+    + (_flaeche.url ? ` background-image: url('${_flaeche.url}');` : '');
+}
+
+async function ladeFlaeche() {
+  const seite = _anprobe.ware === 'tasse' ? 'vorne' : _anprobe.seite;
+  const schluessel = `${_anprobe.ware}|${seite}|${_anprobe.farbe}`;
+  if (_flaeche.schluessel === schluessel) return;
+  _flaeche = { schluessel, url: '', bzh: _flaeche.bzh };
+  try {
+    const q = new URLSearchParams({ produkt: _anprobe.ware, seite, farbe: _anprobe.farbe });
+    const r = await hole(`/api/v1/studio/mockups/flaeche?${q}`);
+    if (_flaeche.schluessel !== schluessel) return;
+    _flaeche = { schluessel, url: vorschau(r.url, 900), bzh: r.breite_zu_hoehe };
+    zeichneEditor();
+  } catch (e) {
+    melde(e.message, true);
+  }
 }
 
 function ebenen(seite = _anprobe.seite) {
@@ -659,8 +685,10 @@ function zeichneEditor() {
   if (!design || !ziel) return;
   const liste = ebenen();
   if (_anprobe.auswahl >= liste.length) _anprobe.auswahl = Math.max(0, liste.length - 1);
+  if (_anprobe.ware === 'printify') return;
   const aktiv = liste[_anprobe.auswahl];
   const tasse = _anprobe.ware === 'tasse';
+  ladeFlaeche();
   const optionen = ['<option value="">+ Motiv hinzufügen …</option>'].concat(
     _motive.filter((m) => m.image_url).map((m) =>
       `<option value="${m.id}">${esc(m.title)}${m.id === design.id ? ' (dieses Motiv)' : ''}</option>`));
@@ -669,20 +697,20 @@ function zeichneEditor() {
       `<button type="button" data-ed-seite="${s}" aria-pressed="${_anprobe.seite === s}">
          ${SEITE_NAME[s]} (${ebenen(s).length})</button>`).join('')}</div>
     ${tasse ? '<p class="muted klein" style="margin:0">Die Tasse hat eine Druckfläche: sie nimmt die Vorderseite, ist die leer, die Rückseite.</p>' : ''}
-    <div class="druckflaeche${tasse ? ' tasse' : ''}" id="ed-flaeche">
+    <div class="druckflaeche${_flaeche.url ? ' mit-ware' : ''}" id="ed-flaeche" style="${flaechenStil()}">
       ${liste.map((e, i) => `<img class="ebene${i === _anprobe.auswahl ? ' aktiv' : ''}" data-ebene="${i}"
             draggable="false" alt="${esc(e.title || '')}" src="${vorschau(e.image_url, 700)}&zuschnitt=1">`).join('')}
       ${liste.length ? '' : `<p class="muted klein leerhinweis">${SEITE_NAME[_anprobe.seite]} bleibt unbedruckt.<br>Unten ein Motiv hinzufügen.</p>`}
     </div>
-    <p class="muted klein" style="margin:4px 0">Ziehen verschiebt, der Regler ändert die Größe.
-      Was über den gestrichelten Rand ragt, wird nicht gedruckt.</p>
+    <p class="muted klein" style="margin:4px 0">Die Fläche ist das ganze Produkt: ziehen verschiebt,
+      der Regler ändert die Größe. Neben dem Stoff wird nichts gedruckt.</p>
     ${aktiv ? `
       <label class="ed-zeile">Größe
         <input type="range" id="ed-groesse" min="5" max="150" value="${Math.round(aktiv.groesse * 100)}">
         <span id="ed-groesse-wert">${Math.round(aktiv.groesse * 100)} %</span></label>
       <div class="wahl">
         <button type="button" data-ed-aktion="mitte">Zentrieren</button>
-        <button type="button" data-ed-aktion="oben">Nach oben</button>
+        <button type="button" data-ed-aktion="standard">Standardlage</button>
         <button type="button" data-ed-aktion="entfernen">Entfernen</button>
       </div>` : ''}
     <select id="ed-neu" ${liste.length >= 5 ? 'disabled' : ''}>${optionen.join('')}</select>`;
@@ -770,7 +798,7 @@ document.addEventListener('change', (ev) => {
   const liste = ebenen();
   const erstes = !liste.length;
   liste.push({ design_id: m.id, title: m.title, image_url: m.image_url,
-               mitte_x: 0.5, oben: erstes ? 0 : 0.55, groesse: erstes ? 1 : 0.4 });
+               mitte_x: 0.5, oben: erstes ? 0.2 : 0.6, groesse: erstes ? 0.4 : 0.2 });
   _anprobe.auswahl = liste.length - 1;
   zeichneEditor();
   gestaltungSpeichern();
@@ -790,7 +818,7 @@ document.addEventListener('click', (ev) => {
   const e = liste[_anprobe.auswahl];
   if (!e) return;
   if (a.dataset.edAktion === 'mitte') e.mitte_x = 0.5;
-  if (a.dataset.edAktion === 'oben') e.oben = 0;
+  if (a.dataset.edAktion === 'standard') Object.assign(e, { mitte_x: 0.5, oben: 0.2, groesse: 0.4 });
   if (a.dataset.edAktion === 'entfernen') {
     const andere = _anprobe.seite === 'vorne' ? 'hinten' : 'vorne';
     if (liste.length === 1 && !ebenen(andere).length) {

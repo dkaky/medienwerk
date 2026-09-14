@@ -166,13 +166,24 @@ def test_tasse_nimmt_das_motiv_der_rueckseite_wenn_vorne_leer(tmp_path):
 
 
 
-def test_druckbild_behaelt_seine_lage(tmp_path):
+def test_druckbild_steht_fuer_die_ganze_ware(tmp_path):
     v = mm.lade_vorlage(_vorlage(tmp_path / "t.png"), lange_kante=600)
+    x, y, w, h = mm.produktflaeche(v, "tshirt")
+    assert abs(x - 100) <= 2 and abs(y - 120) <= 2 and abs(w - 200) <= 3 and abs(h - 400) <= 3
+    flaeche = Image.new("RGBA", (200, 400), (0, 0, 0, 0))            # gleiches Format wie die Ware
+    flaeche.paste((220, 20, 20, 255), (0, 0, 60, 60))                 # Motiv ganz oben links
     feld = mm.druckfeld(v, "tshirt")
-    flaeche = Image.new("RGBA", (300, 400), (0, 0, 0, 0))
-    flaeche.paste((220, 20, 20, 255), (0, 0, 60, 60))              # Motiv oben links
-    bild = np.asarray(mm.montiere(v, flaeche, "#FFFFFF", feld, ganzflaeche=True))
+    bild = np.asarray(mm.montiere(v, flaeche, "#FFFFFF", feld, ganzflaeche=True, flaeche=(x, y, w, h)))
     ys, xs = np.nonzero((bild[..., 0] > 150) & (bild[..., 1] < 90))
-    assert abs(xs.min() - (feld.mitte_x - feld.breite // 2)) <= 10
-    assert abs(ys.min() - feld.oben_y) <= 10
-    assert xs.max() - xs.min() < feld.breite * 0.35                  # nicht aufgeblasen
+    assert abs(xs.min() - x) <= 10 and abs(ys.min() - y) <= 10       # an der Ecke der Ware, nicht im Brustfeld
+    assert 45 <= xs.max() - xs.min() <= 75
+
+
+def test_flaechenbild_und_seitenverhaeltnis(tmp_path):
+    ordner = tmp_path / "vorlagen"
+    ordner.mkdir()
+    _vorlage(ordner / "hoodie-vorne.png")
+    assert abs(mm.seitenverhaeltnis("hoodie", "hinten", textil=True, ordner=ordner) - 0.5) < 0.02
+    bild = Image.open(mm.flaechenbild("hoodie", "vorne", "Navy", "#1F2A44", textil=True,
+                                      ziel_ordner=tmp_path / "f", ordner=ordner))
+    assert abs(bild.width / bild.height - 0.5) < 0.02
