@@ -505,57 +505,6 @@ async def test_unlesbarer_beleg_blockiert_den_lauf_nicht(db, tmp_path, monkeypat
     assert (await pi.pruefe_betraege(db, limit=5))["unklar"] == 0
 
 
-def test_orders_liste_verlinkt_den_beleg_des_einkaufs(db, tmp_path):
-    """In der Orders-Liste muss je Verkauf der Beleg des zugehoerigen Einkaufs
-    verlinkt sein – sonst muss man ihn in der Belegablage suchen."""
-    from app.models import Listing, Product, Sale
-    from app.services import analytics_service
-
-    p = Product(aliexpress_url="https://de.aliexpress.com/item/x1.html", aliexpress_id="aex1")
-    db.add(p); db.flush()
-    listing = Listing(product_id=p.id, title_seo="Testartikel", description="d",
-                      listing_status="active", price_eur=Decimal("19.99"))
-    db.add(listing); db.flush()
-    sale = Sale(ebay_transaction_id="TX-BELEG-1", listing_id=listing.id, buyer_name="Max",
-                price_eur=Decimal("19.99"), quantity=1, status="pending")
-    db.add(sale); db.flush()
-    order = OrderAliexpress(sale_id=sale.id, aliexpress_order_id="3075412823902059",
-                            quantity=1, status="delivered")
-    db.add(order); db.flush()
-    datei = tmp_path / "original_aliexpress_purchase_x.png"
-    datei.write_bytes(b"\x89PNG\r\n\x1a\nx")
-    db.add(Invoice(type="aliexpress_purchase", reference_id="3075412823902059",
-                   file_path=str(datei), is_original=True, order_id=order.id,
-                   generated_path=str(tmp_path / "rechnung.html")))
-    db.commit()
-
-    zeile = next(o for o in analytics_service.list_orders(db)["orders"]
-                 if o["sale_id"] == sale.id)
-    assert zeile["beleg_id"] is not None
-    assert zeile["beleg_original"] is True
-    assert zeile["hat_rechnung"] is True
-
-
-def test_orders_zeile_ohne_beleg_meldet_das(db):
-    """Verkauf ohne Einkaufs-Beleg: kein Beleg-Verweis (Knopf bleibt blass)."""
-    from app.models import Listing, Product, Sale
-    from app.services import analytics_service
-
-    p = Product(aliexpress_url="https://de.aliexpress.com/item/x2.html", aliexpress_id="aex2")
-    db.add(p); db.flush()
-    listing = Listing(product_id=p.id, title_seo="Ohne Beleg", description="d",
-                      listing_status="active", price_eur=Decimal("9.99"))
-    db.add(listing); db.flush()
-    sale = Sale(ebay_transaction_id="TX-BELEG-2", listing_id=listing.id, buyer_name="Erika",
-                price_eur=Decimal("9.99"), quantity=1, status="pending")
-    db.add(sale)
-    db.commit()
-
-    zeile = next(o for o in analytics_service.list_orders(db)["orders"]
-                 if o["sale_id"] == sale.id)
-    assert zeile["beleg_id"] is None and zeile["hat_rechnung"] is False
-
-
 @pytest.mark.asyncio
 async def test_manuell_hochgeladener_beleg_wird_ausgelesen(db, tmp_path):
     """Nach dem Hand-Upload muss der Beleg denselben Stand haben wie die

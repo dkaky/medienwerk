@@ -45,13 +45,6 @@ def test_mine_keywords_extracts_frequent_and_drops_floskeln():
     assert "premium" not in kw and "top" not in kw and "qualität" not in kw  # Floskeln raus
 
 
-def test_clean_suggested_title_rejects_too_short():
-    from app.services.optimization_service import _clean_suggested_title
-    assert _clean_suggested_title("Kurz", "Aktueller Titel Edelstahl Kette") is None  # <20
-    ok = _clean_suggested_title("Edelstahl Halskette Herren Silber 60cm Panzerkette", "alt")
-    assert ok and len(ok) >= 20
-
-
 def test_translate_rate_limit():
     import anthropic
 

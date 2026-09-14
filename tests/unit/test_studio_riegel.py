@@ -129,6 +129,10 @@ def test_endpunkte_sind_gesperrt_solange_der_schalter_aus_ist(monkeypatch):
         for pfad in ("/api/v1/studio/status", "/api/v1/studio/designs", "/api/v1/studio/links"):
             assert c.get(pfad).status_code == 404, pfad
         assert c.post("/api/v1/studio/designs", json={"title": "X"}).status_code == 404
+        # Die Promptveredelung erzeugt zwar nichts, verraet aber ebenso, dass es
+        # den Studio-Trakt gibt - sie haengt am selben Riegel.
+        assert c.post("/api/v1/studio/prompt/veredeln",
+                      json={"idee": "dackel"}).status_code == 404
         # Der Gesundheitsbericht bleibt erreichbar
         assert c.get("/health").status_code == 200
     get_settings.cache_clear()

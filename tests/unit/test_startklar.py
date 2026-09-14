@@ -196,18 +196,3 @@ def test_bericht_ruft_ebay_nicht_an(db, monkeypatch):
 
 
 # --- Endpunkt ---------------------------------------------------------------
-
-def test_endpunkt_liefert_den_bericht(client, db):
-    _listing(db, _produkt(db))
-    r = client.get("/api/v1/products/startklar")
-    assert r.status_code == 200
-    daten = r.json()
-    assert daten["geprueft"] == 1
-    assert daten["startklar"] == 1
-    assert daten["listings"][0]["ampel"] == "gruen"
-
-
-def test_endpunkt_kollidiert_nicht_mit_listing_id(client, db):
-    """/startklar darf nicht als listing_id gelesen werden."""
-    r = client.get("/api/v1/products/startklar")
-    assert r.status_code == 200

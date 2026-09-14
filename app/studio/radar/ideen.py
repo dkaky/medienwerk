@@ -102,7 +102,8 @@ def speichere(db, quelle: Quelle, funde: Iterable[Fund]) -> dict:
 
 
 def liste(db, *, status: str | None = "neu", min_signal: float | None = None,
-          shop: str | None = None, limit: int = 50) -> list[MotivIdee]:
+          shop: str | None = None, quelle: str | None = None,
+          limit: int = 50) -> list[MotivIdee]:
     """Die Ideen, nach Signal absteigend.
 
     Ideen ohne Signal stehen ganz hinten - aber sie stehen da. Sie sind nicht
@@ -117,11 +118,21 @@ def liste(db, *, status: str | None = "neu", min_signal: float | None = None,
         frage = frage.where(MotivIdee.status == status)
     if shop:
         frage = frage.where(MotivIdee.quelle_shop == shop)
+    # "trend" = Vorschlaege aus der Websuche, "shop" = Funde aus fremden Shops.
+    if quelle == "trend":
+        frage = frage.where(MotivIdee.quelle_plattform == "trend")
+    elif quelle == "shop":
+        frage = frage.where(MotivIdee.quelle_plattform != "trend")
     if min_signal is not None:
         frage = frage.where(MotivIdee.signal.is_not(None),
                             MotivIdee.signal >= float(min_signal))
     treffer = list(db.execute(frage).scalars().all())
-    treffer.sort(key=lambda i: (i.signal is None, -(i.signal or 0.0), i.id))
+    if quelle == "trend":
+        # Trends haben kein Zahlensignal (kein erfundenes Suchvolumen) - geordnet
+        # wird nach dem Rang der Recherche.
+        treffer.sort(key=lambda i: (i.platz is None, i.platz or 0, -i.id))
+    else:
+        treffer.sort(key=lambda i: (i.signal is None, -(i.signal or 0.0), i.id))
     return treffer[:max(1, int(limit))]
 
 

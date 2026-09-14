@@ -108,6 +108,45 @@ async def _listing_stats_job() -> None:
         db.close()
 
 
+async def _ebay_loeschmeldungen_job() -> None:
+    """eBay-Loeschmeldungen von der Supabase-Funktion abholen und verarbeiten.
+
+    Stuendlich, weil eBay bis zu ~1.500 Meldungen am Tag schickt und die Funktion
+    je Abholung hoechstens 500 herausgibt. Nicht eingerichtet -> still ueberspringen.
+    """
+    from app.config import get_settings as _s
+    from app.services import ebay_loeschmeldungen as lm
+    if not lm.ist_eingerichtet(_s()):
+        return
+    db = SessionLocal()
+    try:
+        z = await lm.hole_und_verarbeite(db)
+        if z.get("abgeholt"):
+            logger.info("scheduler: ebay loeschmeldungen", extra=z)
+    except Exception as exc:  # noqa: BLE001 - ein Job darf die Loop nie crashen
+        logger.error("scheduler: ebay loeschmeldungen failed", extra={"error": str(exc)[:200]})
+    finally:
+        db.close()
+
+
+async def _trend_radar_job() -> None:
+    """Morgens im Netz nach Trends suchen und Motive vorschlagen. Erzeugt kein Bild."""
+    from app.config import get_settings as _s
+    s = _s()
+    if not s.trend_radar_taeglich:
+        return
+    db = SessionLocal()
+    try:
+        from app.studio.radar import trends
+        bericht = await trends.lauf(db, s=s)
+        logger.info("scheduler: trend-radar", extra={"neu": bericht.get("neu"),
+                                                     "aufgefrischt": bericht.get("aufgefrischt")})
+    except Exception as exc:  # noqa: BLE001 - ein Job darf die Loop nie crashen
+        logger.error("scheduler: trend-radar failed", extra={"error": str(exc)[:200]})
+    finally:
+        db.close()
+
+
 # Der Job "haengende Veroeffentlichungen nachholen" ist am 08.09.2026 entfallen.
 # Er lief ueber golive_service, das Lieferantenware auf eBay stellte und mit dem
 # Handelsteil ausgezogen ist. Er kommt zurueck, sobald der Print-on-Demand-Weg
@@ -178,6 +217,10 @@ def start_scheduler() -> AsyncIOScheduler:
                   id="kontist_bank_sync", replace_existing=True)
     sched.add_job(_category_backfill_job, CronTrigger(hour=3, minute=35),
                   id="category_backfill", replace_existing=True)
+    sched.add_job(_ebay_loeschmeldungen_job, CronTrigger(minute=10),
+                  id="ebay_loeschmeldungen_stuendlich", replace_existing=True)
+    sched.add_job(_trend_radar_job, CronTrigger(hour=5, minute=30),
+                  id="trend_radar_taeglich", replace_existing=True)
     # Einmalig 3 Min nach dem Start denselben Lauf anstossen, damit ein frischer
     # Start den Rueckstand nicht erst am naechsten Morgen aufholt (gleiche
     # Funktion, gleicher NULL-Filter -> ohne Rueckstand ein reiner

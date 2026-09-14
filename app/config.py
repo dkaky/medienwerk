@@ -66,6 +66,11 @@ class Settings(BaseSettings):
     ebay_client_id: str = ""
     ebay_client_secret: str = ""
     ebay_refresh_token: str = ""
+    # RuName = eBays Name fuer die hinterlegte Weiterleitungs-Adresse der eigenen App
+    # (developer.ebay.com -> User Tokens). KEIN Geheimnis, aber ohne sie laesst sich
+    # der Refresh-Token nicht holen. In der .env, damit scripts.ebay_oauth sie nicht
+    # bei jedem Aufruf als Argument braucht.
+    ebay_runame: str = ""
 
     @field_validator(
         "ebay_client_id", "ebay_client_secret", "ebay_refresh_token",
@@ -83,6 +88,44 @@ class Settings(BaseSettings):
         return v
     ebay_ipn_verification_token: str = "changeme"   # 32-80 Zeichen (Marketplace Account Deletion)
     ebay_deletion_endpoint_url: str = ""   # exakte oeffentliche HTTPS-URL des Deletion-Endpunkts
+    # Loeschmeldungen nimmt eine Supabase-Funktion im Lovable-Projekt an (der PC ist
+    # nicht rund um die Uhr erreichbar); das Programm holt sie hier ab.
+    # Siehe deploy/supabase-ebay-loeschung/ und app/services/ebay_loeschmeldungen.py.
+    ebay_loesch_abhol_url: str = ""
+    ebay_loesch_abhol_token: str = ""
+
+    # --- Motiv -> eBay-Angebot (app/studio/ebay_weg.py) ---
+    # Automatisch nach jeder Erzeugung einstellen. Greift NUR mit MOCK_EBAY=false -
+    # im Probebetrieb bleibt die Schreibsperre fuer Automatik zu, der Knopf im
+    # Studio kommt trotzdem durch.
+    ebay_auto_veroeffentlichen: bool = False
+    # Groessen der Textilien. eBay kennt "2XL", NICHT "XXL" (Taxonomie EBAY_DE,
+    # abgefragt 13.09.2026) - ein freier Wert faellt aus dem Groessenfilter.
+    # Gilt fuer T-Shirt, Polo und Hoodie; Oversize hat seinen eigenen Lauf (S-3XL).
+    ebay_textil_groessen: str = "XS,S,M,L,XL,2XL,3XL"
+    ebay_menge_je_variante: int = 10                 # auf Bestellung gedruckt
+    ebay_produktfarbe: str = "Weiß"                  # Farbe der Ware im Produktbild
+    ebay_marke: str = "medienwerk"
+    # Preise inkl. Versand ueberschreiben, z. B. "tshirt=15.90,tasse=12.90".
+    # Dezimalpunkt, kein Komma - das Komma trennt die Produkte.
+    # Leer -> Preise aus dem Katalog in app/studio/ebay_weg.py.
+    ebay_preise: str = ""
+
+    # --- Echte Produktfotos (app/integrations/dynamic_mockups.py) ---
+    # Ohne Schluessel oder ohne Vorlagen bleiben die gezeichneten Notbilder.
+    dynamic_mockups_api_key: str = ""
+    mockup_vorlagen_datei: str = "./data/mockup_vorlagen.json"
+    # Eigene Chroma-Key-Vorlagen fuer die lokale Montage (app/studio/mockup_montage.py).
+    # Liegen dort alle Ansichten eines Produkts, braucht es keinen Dynamic-Mockups-Schluessel.
+    mockup_montage_ordner: str = "./data/mockup_vorlagen"
+
+    # --- Trend-Radar (app/studio/radar/trends.py) ---
+    # Websuche ueber die OpenAI Responses API. Laut Doku (13.09.2026) koennen das
+    # u. a. gpt-4.1-mini, gpt-4.1 und gpt-5.5 - Vorgabe ist das guenstigste.
+    trend_modell: str = "gpt-4.1-mini"
+    trend_anzahl: int = 12
+    # Taeglich morgens von selbst suchen (braucht BACKGROUND_JOBS_ENABLED=true).
+    trend_radar_taeglich: bool = False
     ebay_marketplace_id: str = "EBAY_DE"   # EBAY_DE | EBAY_US | EBAY_GB | ...
     ebay_use_sandbox: bool = False         # True -> api.sandbox.ebay.com
     # Merchant-Location (Pflicht fuer publishOffer; WAREHOUSE, kein Ladengeschaeft noetig)

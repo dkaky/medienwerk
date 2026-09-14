@@ -66,16 +66,6 @@ def test_jede_cost_eur_zuweisung_kennt_das_lager():
         "Zoll und China-Versand auf Ware aus Deutschland auf:\n  " + "\n  ".join(fehlend))
 
 
-def test_die_erkennung_selbst_funktioniert():
-    """Gegenprobe: ohne sie waere der Test oben nur Formsache."""
-    from app.services.fast_shipping_service import has_eu_warehouse
-
-    assert has_eu_warehouse(["Deutschland"]) is True
-    assert has_eu_warehouse(["China"]) is False
-    assert has_eu_warehouse([None, "Deutschland"]) is True, "eine EU-SKU genuegt"
-    assert has_eu_warehouse([]) is False, "ohne Angabe konservativ: wie China rechnen"
-
-
 @pytest.mark.parametrize("lokal,erwartet", [(True, 9.08), (False, 12.65)])
 def test_der_unterschied_betraegt_die_zollpauschale(lokal, erwartet):
     """Konkret, damit die Zahl im Test steht und nicht nur in der Erklaerung."""

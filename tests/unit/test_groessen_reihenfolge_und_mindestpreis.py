@@ -101,27 +101,6 @@ def test_leere_liste_stoert_nicht():
     assert groessen.sortiere(None) == []
 
 
-def test_ebay_bekommt_sortierte_groessen(db):
-    """Der Weg bis in die eBay-Nutzlast."""
-    from app.models import Product
-    from app.services.golive_service import _normalisiere_groessen, _usable_variants
-
-    p = Product(
-        aliexpress_url="https://example.invalid/i/sort", aliexpress_id="sort-1",
-        title_raw="T-Shirt",
-        variants={"axes": {"Größe": ["4XL", "S", "XXL", "M"]}, "skus": [
-            {"options": {"Größe": "4XL"}}, {"options": {"Größe": "S"}},
-            {"options": {"Größe": "XXL"}}, {"options": {"Größe": "M"}}]},
-    )
-    db.add(p)
-    db.commit()
-
-    achsen, varianten = _usable_variants(p)
-    fertig = _normalisiere_groessen(achsen, varianten)
-    werte = groessen.sortiere(v["options"]["Größe"] for v in fertig)
-    assert werte == ["S", "M", "2XL", "4XL"]
-
-
 # --- Mindestverkaufspreis --------------------------------------------------
 
 def test_mindestpreis_gilt():

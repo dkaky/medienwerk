@@ -22,6 +22,7 @@ openai>=1.40.0               # Bilderzeugung und optionale Bildanalyse
 # liefert Version und Browser immer als Paar; wer hier zurueckgeht, muss den
 # passenden Browser mitnehmen.
 pillow>=10.0.0                # Bildbearbeitung im Studio (Text-Overlay, Skalierung)
+numpy>=2.0                    # Mockup-Montage: Maske, Umfaerben, Faltenverzug (app/studio/mockup_montage.py)
 playwright==1.61.0
 
 # Nachzeichnen von Pixeln zu Formen -> die SVG-Datei zum Selberdrucken. Eine SVG

@@ -57,6 +57,21 @@ def test_ohne_shop_nummer_kein_lesen():
         asyncio.run(client.shop())
 
 
+def test_shopname_statt_shopnummer_wird_erklaert():
+    """Der teuerste Irrtum: Spreadshirt adressiert Shops ueber eine ZAHL.
+
+    Mit dem Namen aus der Adresszeile antwortet die Schnittstelle 404
+    "Not found." - und man sucht den Fehler beim Schluessel statt bei der
+    Nummer. Deshalb faellt es hier auf, bevor gesendet wird.
+    """
+    def handler(_):  # pragma: no cover - darf nie erreicht werden
+        raise AssertionError("Es haette gar nicht erst gesendet werden duerfen")
+
+    client = _client(handler, shop_id="shop.medienwerk")
+    with pytest.raises(SpreadshirtFehler, match="ZAHL des Shops"):
+        asyncio.run(client.shop())
+
+
 # --- Der Kopf ----------------------------------------------------------------
 
 def test_kopf_traegt_schluessel_und_kennung():

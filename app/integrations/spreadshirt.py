@@ -169,8 +169,21 @@ class SpreadshirtClient:
     # --- Lesen ----------------------------------------------------------------
 
     def _shop_pfad(self) -> str:
+        """Der Shop-Pfad - und die Pruefung, die einen ratlosen 404 verhindert.
+
+        Spreadshirt adressiert Shops ueber eine ZAHL, nicht ueber den Namen aus
+        der Adresszeile. Wer "meinshop" eintraegt, bekommt 404 "Not found." und
+        sucht den Fehler beim Schluessel. Die Nummer steht im Partnerbereich in
+        den Shop-Einstellungen.
+        """
         if not self.shop_id:
             raise SpreadshirtFehler("Keine Shop-Nummer gesetzt (SPREADSHIRT_SHOP_ID in der .env).")
+        if not self.shop_id.isdigit():
+            raise SpreadshirtFehler(
+                f"SPREADSHIRT_SHOP_ID ist {self.shop_id!r} - Spreadshirt erwartet hier die "
+                "ZAHL des Shops, nicht seinen Namen. Sie steht im Partnerbereich unter "
+                "den Shop-Einstellungen."
+            )
         return f"/shops/{self.shop_id}"
 
     async def shop(self) -> dict[str, Any]:

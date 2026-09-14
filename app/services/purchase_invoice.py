@@ -178,7 +178,16 @@ def _logo_data_uri() -> str:
     darf spaeter nicht von einer externen URL abhaengen (GoBD/Aufbewahrung).
     """
     pfad = Path(__file__).resolve().parent.parent / "static" / "aliexpress-logo.png"
+    if not pfad.is_file():
+        # Das Logo ging mit dem AliExpress-Abbau (13.09.2026). Rechnungen zu alten
+        # Einkaeufen muessen fuer die Buchhaltung trotzdem entstehen - dann ohne Logo.
+        return ""
     return "data:image/png;base64," + base64.b64encode(pfad.read_bytes()).decode("ascii")
+
+
+def _logo_img() -> str:
+    uri = _logo_data_uri()
+    return f'<img alt="AliExpress" src="{uri}">' if uri else ""
 
 
 # --------------------------------------------------------------- Beleg -> Rechnung
@@ -363,7 +372,7 @@ box-shadow:0 4px 14px rgba(230,46,4,.3)}}
 <button class="pdfbtn" onclick="window.print()">Als PDF speichern</button>
 <div class="sheet">
   <div class="inv-head">
-    <img alt="AliExpress" src="{_logo_data_uri()}">
+    {_logo_img()}
     <div class="company"><div>Alibaba Group</div><div>969 West Wen Yi Road</div>
     <div>Yu Hang District, Hangzhou, Zhejiang 311121, China</div></div>
   </div>

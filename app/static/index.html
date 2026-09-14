@@ -824,7 +824,6 @@
            Alles Seltenere steht unter "Mehr", aber im selben nav.tabs, damit
            showView und der Klick-Delegat es weiter erfassen. -->
       <button data-view="overview" class="active"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M6 21v-6"/><path d="M12 21V8"/><path d="M18 21v-10"/></svg>Heute</button>
-      <button data-view="ideas"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Neues Listing</button>
       <button data-view="products"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 11.4 12 20l-8-8 8.6-8.6H20a.6.6 0 0 1 .6.6v7.4Z"/><circle cx="16.3" cy="7.7" r="1.2"/></svg>Meine Listings</button>
       <button data-view="pricecheck"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15a8 8 0 0 1 16 0"/><path d="M12 15l3.5-3"/><circle cx="12" cy="15" r="1.1"/></svg>Preis &amp; Bestand</button>
       <button data-view="orders"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="M3.2 8 12 13l8.8-5"/><path d="M12 13v8"/></svg>Bestellungen</button>
@@ -1512,6 +1511,7 @@
     const views = {};
     let growthEnabled = false;
     function showView(name) {
+      if (name === "ideas") name = "overview";     // Neues Listing ist aus dem Dashboard entfernt
       if (name === "aliorders") name = "belege";  // alter Tab -> in "Buchhaltung" integriert
       if (name === "growth" && !growthEnabled) name = "optimization";
       if (!document.getElementById("view-" + name)) name = "overview";  // alte/kaputte Anker abfangen
@@ -2002,7 +2002,7 @@
       _heuteZiele = offen.map(a => a.ziel);
       if (!offen.length) {
         const nichts = s.listings?.total ? "Nichts zu tun — alles abgearbeitet."
-                                         : "Noch keine Listings. Leg über „Neues Listing“ das erste an.";
+                                         : "Noch keine Listings.";
         ziel.innerHTML = `<div class="heute-frei">${esc(nichts)}</div>`;
         return;
       }
@@ -3806,12 +3806,66 @@
 
     let prodPoll = null;
     let _prodRows = [];
+    async function loadPodProductsFallback(status) {
+      const [dash, produkte] = await Promise.all([
+        api("GET", "/api/v1/pod/dashboard"),
+        api("GET", "/api/v1/pod/products"),
+      ]);
+      const byId = {};
+      (produkte || []).forEach(p => { byId[p.id] = p; });
+      let rows = (dash.listings || []).map(l => {
+        const p = byId[l.product_id] || {};
+        return {
+          pod: true,
+          listing_id: "pod-" + l.id,
+          title: p.title || ("POD Produkt #" + l.product_id),
+          listing_status: l.status || "active",
+          price_eur: l.price_eur,
+          quantity: l.quantity_available,
+          sales_total: 0,
+          views_30d: null,
+          pod_url: l.url,
+          ebay_item_id: (l.url || "").split("/itm/").pop() || "",
+        };
+      });
+      rows = rows.concat((produkte || [])
+        .filter(p => p.status === "fehler")
+        .map(p => ({
+          pod: true,
+          listing_id: "pod-product-" + p.id,
+          title: p.title,
+          listing_status: "fehler",
+          price_eur: p.target_price_eur,
+          quantity: "–",
+          sales_total: "–",
+          views_30d: "–",
+          publish_error: p.note,
+        })));
+      if (status && status !== "all") {
+        rows = rows.filter(p => status === "draft"
+          ? (p.listing_status === "draft" || p.listing_status === "fehler")
+          : p.listing_status === status);
+      }
+      return {
+        products: rows,
+        stats: {
+          active: (dash.kpis || {}).active_listings || 0,
+          draft: rows.filter(p => p.listing_status === "draft" || p.listing_status === "fehler").length,
+          ended: rows.filter(p => p.listing_status === "ended").length,
+        },
+      };
+    }
     async function loadProducts() {
       const f = $("prodFilter").value;
       try {
         // limit=2000: IMMER alle Artikel laden (das alte 200er-Limit machte Artikel
         // wie NE39 unauffindbar); Suche filtert clientseitig.
-        const d = await api("GET", "/api/v1/dashboard/products?limit=2000&status=" + f);
+        let d;
+        try {
+          d = await api("GET", "/api/v1/dashboard/products?limit=2000&status=" + f);
+        } catch (err) {
+          d = await loadPodProductsFallback(f);
+        }
         // Solange Uploads laufen: Liste alle 10s auffrischen (Status ⏫ -> live)
         const uploading = (d.products || []).some(p => p.publish_queued);
         if (uploading && !prodPoll) prodPoll = setInterval(loadProducts, 10000);
@@ -3845,7 +3899,7 @@
       if (!rows.length) {
         const leer = q ? `kein Treffer für „${esc(q)}"`
                        : (_nurFehler ? "kein Entwurf mit Upload-Fehler — nichts zu tun"
-                                     : "keine Produkte — über „Neues Listing“ anlegen");
+                                     : "keine Produkte");
         body.innerHTML = `<tr><td colspan="9" class="empty">${leer}</td></tr>`; return;
       }
       body.innerHTML = rows.map(p => {
@@ -3860,21 +3914,23 @@
         const marginCell = (multi && p.margin_min != null)
           ? `<span>${pct(p.margin_min)}</span><span class="muted" style="font-size:10.5px">–${pct(p.margin_max)}</span>`
           : ((p.price_eur&&p.profit_eur!=null)?pct(p.profit_eur/p.price_eur):'<span class="muted">–</span>');
-        return `<tr onclick="openListing(${p.listing_id})" style="cursor:pointer">
+        const rowClick = p.pod ? "" : ` onclick="openListing(${p.listing_id})"`;
+        const rowCursor = p.pod ? "" : "cursor:pointer";
+        return `<tr${rowClick} style="${rowCursor}">
           <td class="title-cell" title="${esc(p.title)}">${p.image ? `<img src="${esc(p.image)}" style="width:26px;height:26px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:7px" onerror="this.style.display='none'">` : ""}${esc(p.title)}</td>
-          <td><span class="badge ${esc(p.listing_status)}">${esc(p.listing_status)}</span>${p.publish_queued?'<br><span class="pos" style="font-size:10.5px">⏫ lädt hoch…</span>':''}${(!p.publish_queued&&p.publish_error&&p.listing_status==='draft')?`<br><span class="neg" style="font-size:10.5px" title="${esc(p.publish_error)}">Upload-Fehler</span>`:''}</td>
+          <td><span class="badge ${esc(p.listing_status)}">${esc(p.listing_status)}</span>${p.pod?'<br><span class="muted" style="font-size:10.5px">Studio/POD</span>':''}${p.publish_queued?'<br><span class="pos" style="font-size:10.5px">⏫ lädt hoch…</span>':''}${(!p.publish_queued&&p.publish_error)?`<br><span class="neg" style="font-size:10.5px" title="${esc(p.publish_error)}">Upload-Fehler</span>`:''}</td>
           <td class="num">${priceCell}</td>
           <td class="num">${profitCell}</td>
           <td class="num">${marginCell}</td>
           <td class="num">${p.quantity ?? '–'}</td>
           <td class="num ${p.sales_total===0?'muted':''}">${p.sales_total ?? '–'}</td>
           <td class="num ${p.views_30d===0?'muted':''}">${p.views_30d ?? '–'}</td>
-          <td style="white-space:nowrap"><button class="btn sm" onclick="event.stopPropagation();openListing(${p.listing_id})">Öffnen</button>
-            ${p.listing_status==='active'?`<button class="btn sm" title="Preise je Variante anpassen (Marge % oder Gewinn €, Rundung auf x,95)" onclick="event.stopPropagation();openPriceEditor(${p.listing_id})">Preise</button>`:''}
-            ${(p.listing_status==='draft'&&!p.publish_queued&&!p.publish_error)?`<button class="btn sm primary" title="Diesen (lokalen) Entwurf jetzt live auf eBay stellen" onclick="event.stopPropagation();publishListing(${p.listing_id}, ${esc(JSON.stringify(p.title||p.title_seo||''))})">Live</button><button class="btn sm" title="Angebot bei eBay vorbereiten, ohne es zu veröffentlichen. ACHTUNG: im Seller Hub nicht auffindbar – eBay zeigt unveröffentlichte Angebote dort nicht an. Nur als Vorstufe zum Live-Klick sinnvoll." onclick="event.stopPropagation();ebayEntwurf(${p.listing_id})">Bei eBay vorbereiten</button>`:''}
-            ${(!p.publish_queued&&p.publish_error&&p.listing_status==='draft')?`<button class="btn sm primary" title="Live-Stellen erneut versuchen (Fehler: ${esc((p.publish_error||'').slice(0,120))})" onclick="event.stopPropagation();publishListing(${p.listing_id}, ${esc(JSON.stringify(p.title||p.title_seo||''))})">Retry</button>`:''}
-            ${p.listing_status==='active'?`<button class="btn sm" title="Artikel beenden (von eBay nehmen)" onclick="event.stopPropagation();endListing(${p.listing_id}, this)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M6.5 7l1 12.6A1.5 1.5 0 0 0 9 21h6a1.5 1.5 0 0 0 1.5-1.4L17.5 7M10 11v6M14 11v6"/></svg></button>`:''}
-            ${(p.listing_status==='draft'&&!p.publish_queued)?`<button class="btn sm" title="Entwurf endgültig löschen" onclick="event.stopPropagation();deleteDraft(${p.listing_id}, this)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M6.5 7l1 12.6A1.5 1.5 0 0 0 9 21h6a1.5 1.5 0 0 0 1.5-1.4L17.5 7M10 11v6M14 11v6"/></svg></button>`:''}</td>
+          <td style="white-space:nowrap">${p.pod ? (p.pod_url ? `<a class="btn sm" href="${esc(p.pod_url)}" target="_blank" rel="noopener">eBay</a>` : "") : `<button class="btn sm" onclick="event.stopPropagation();openListing(${p.listing_id})">Öffnen</button>`}
+            ${(!p.pod&&p.listing_status==='active')?`<button class="btn sm" title="Preise je Variante anpassen (Marge % oder Gewinn €, Rundung auf x,95)" onclick="event.stopPropagation();openPriceEditor(${p.listing_id})">Preise</button>`:''}
+            ${(!p.pod&&p.listing_status==='draft'&&!p.publish_queued&&!p.publish_error)?`<button class="btn sm primary" title="Diesen (lokalen) Entwurf jetzt live auf eBay stellen" onclick="event.stopPropagation();publishListing(${p.listing_id}, ${esc(JSON.stringify(p.title||p.title_seo||''))})">Live</button><button class="btn sm" title="Angebot bei eBay vorbereiten, ohne es zu veröffentlichen. ACHTUNG: im Seller Hub nicht auffindbar – eBay zeigt unveröffentlichte Angebote dort nicht an. Nur als Vorstufe zum Live-Klick sinnvoll." onclick="event.stopPropagation();ebayEntwurf(${p.listing_id})">Bei eBay vorbereiten</button>`:''}
+            ${(!p.pod&&!p.publish_queued&&p.publish_error&&p.listing_status==='draft')?`<button class="btn sm primary" title="Live-Stellen erneut versuchen (Fehler: ${esc((p.publish_error||'').slice(0,120))})" onclick="event.stopPropagation();publishListing(${p.listing_id}, ${esc(JSON.stringify(p.title||p.title_seo||''))})">Retry</button>`:''}
+            ${(!p.pod&&p.listing_status==='active')?`<button class="btn sm" title="Artikel beenden (von eBay nehmen)" onclick="event.stopPropagation();endListing(${p.listing_id}, this)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M6.5 7l1 12.6A1.5 1.5 0 0 0 9 21h6a1.5 1.5 0 0 0 1.5-1.4L17.5 7M10 11v6M14 11v6"/></svg></button>`:''}
+            ${(!p.pod&&p.listing_status==='draft'&&!p.publish_queued)?`<button class="btn sm" title="Entwurf endgültig löschen" onclick="event.stopPropagation();deleteDraft(${p.listing_id}, this)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M6.5 7l1 12.6A1.5 1.5 0 0 0 9 21h6a1.5 1.5 0 0 0 1.5-1.4L17.5 7M10 11v6M14 11v6"/></svg></button>`:''}</td>
         </tr>`; }).join("");
     }
     async function editProductPrice(listingId, cur, cost) {

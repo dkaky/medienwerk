@@ -127,6 +127,9 @@ class GenerateOut(BaseModel):
     kosten_usd: float
     rest_budget_usd: float | None
     anbieter: str
+    # Was mit eBay passiert (automatisch eingestellt, Probebetrieb, nicht bereit).
+    # Leer, wenn die Automatik aus ist.
+    ebay: str | None = None
 
 
 # --------------------------------------------------------------------------
@@ -200,6 +203,18 @@ class EntwurfOut(BaseModel):
     prompt: str
 
 
+class TrendLaufIn(BaseModel):
+    """Trends im Netz suchen. Es entsteht kein Bild."""
+
+    anzahl: int = Field(default=12, ge=3, le=20)
+
+
+class RadarErzeugenIn(BaseModel):
+    """Aus einem Vorschlag ein Motiv erzeugen - der Klick, der Geld kostet."""
+
+    anbieter: str = Field(default="openai", pattern="^(mock|openai|fal)$")
+
+
 class NutzenIn(BaseModel):
     """Der eine Klick, der die ganze Kette ausloest.
 
@@ -225,3 +240,10 @@ class NutzenOut(BaseModel):
     kosten_usd: float
     rest_budget_usd: float | None
     druckcheck: dict = {}
+
+
+class DruckseitenIn(BaseModel):
+    """Welches Motiv vorne und hinten sitzt. ``None`` = diese Seite bleibt unbedruckt."""
+
+    vorne: Optional[int] = None
+    hinten: Optional[int] = None

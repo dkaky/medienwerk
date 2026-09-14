@@ -459,6 +459,25 @@ class LLMClient(abc.ABC):
         """
         return {"assessments": [], "best_index": None, "note": ""}
 
+    async def veredle_prompt(self, *, idee: str, regelwerk: str,
+                             ziel: str = "textil") -> str:
+        """Eine rohe Motividee zu einem druckfertigen Bild-Prompt schaerfen.
+
+        ``regelwerk`` ist der vollstaendige Text von
+        ``docs/PROMPT-REGELN-BILD.md`` und geht als Systemanweisung hinaus - er
+        traegt die harten Grenzen, den Stilkatalog und das Ausgabeformat. Der
+        Aufrufer legt ihn bei, statt dass dieses Modul ihn laedt: die Regeln
+        gehoeren zum Studio, nicht zur eBay-Integration.
+
+        Rueckgabe: die rohe Modellantwort in den Bloecken PROMPT/FORMAT/STIL/
+        BERICHT, oder "" - dann veredelt der Aufrufer allein nach Regeln.
+        Default (Basis/Mock): leer, damit im Probebetrieb kein erfundener
+        Prompt entsteht, der echt aussieht.
+
+        Propose-only: hier wird nur Text geschrieben, nie ein Bild erzeugt.
+        """
+        return ""
+
     @abc.abstractmethod
     async def suggest_title(self, *, current_title: str, competitor_titles: list[str],
                             internal_titles: list[str] | None = None) -> str:
@@ -2404,6 +2423,38 @@ class RealLLMClient(LLMClient):
                 "sprache": (p.sprache or "").strip()[:5],
                 "zielgruppe": (p.zielgruppe or "").strip()[:120],
                 "note": (p.note or "").strip()[:200]}
+
+    async def veredle_prompt(self, *, idee, regelwerk, ziel="textil"):
+        """Die Motividee vom Modell schaerfen lassen - Regelwerk als System.
+
+        Kein ``response_format``/Schema, obwohl das Haus sonst gern parst: die
+        Antwort ist bewusst ein Textblock in vier Abschnitten, weil dieselbe
+        Datei auch von Hand und im Chat benutzt wird. Zwei Ausgabeformen fuer
+        dieselben Regeln waeren zwei Gelegenheiten zum Auseinanderlaufen.
+
+        Ein Fehlschlag wird NICHT geworfen, sondern als "" zurueckgegeben - der
+        Aufrufer hat einen Regelweg und der Knopf soll bei Anbieterausfall
+        nicht tot sein.
+        """
+        auftrag = (f"Zielprodukt: {ziel}\n\nMotividee des Betreibers:\n"
+                   f"{(idee or '').strip()[:1000]}")
+        try:
+            if self.settings.llm_provider == "openai":
+                client = self._openai_client()
+                resp = await client.chat.completions.create(
+                    model=self.settings.llm_model,
+                    messages=[{"role": "system", "content": regelwerk},
+                              {"role": "user", "content": auftrag}],
+                    max_tokens=1200)
+                return resp.choices[0].message.content or ""
+            client = self._anthropic_client()
+            resp = await client.messages.create(
+                model=self.settings.llm_model, max_tokens=1200, system=regelwerk,
+                messages=[{"role": "user", "content": auftrag}])
+            return "".join(b.text for b in resp.content if b.type == "text")
+        except Exception as exc:  # noqa: BLE001 - Regelweg faengt das auf
+            logger.warning("veredle_prompt failed", extra={"error": str(exc)[:150]})
+            return ""
 
     async def beschreibe_motiv(self, *, product_title, image_urls):
         # EIN Bild genuegt und ist hier sogar besser: das Titelbild zeigt den

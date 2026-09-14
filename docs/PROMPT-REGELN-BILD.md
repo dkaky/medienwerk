@@ -158,12 +158,18 @@ Der Erzeuger kann nur drei Formate. Andere Wünsche kannst du nicht erfüllen.
 
 | Ausrichtung | Pixel | Passt zu |
 |---|---|---|
-| `portrait` | 1024 × 1536 | Textil, Poster, Handyhülle — der Normalfall |
-| `square` | 1024 × 1024 | Tote Bag, Kissen, Sticker |
+| `square` | 1024 × 1024 | **Vorgabe.** Textil (Brustdruck), Tote Bag, Kissen, Sticker |
+| `portrait` | 1024 × 1536 | Poster, Handyhülle, Ganzkörperdruck auf Textil |
 | `landscape` | 1536 × 1024 | Tasse |
 
 Du wählst die Ausrichtung aus dem genannten Zielprodukt. Ist keines genannt,
-nimmst du `portrait` und schreibst diese Annahme in den Bericht.
+nimmst du `square` und schreibst diese Annahme in den Bericht.
+
+**Warum Quadrat und nicht Hochformat bei Textil:** Ein Brustmotiv nutzt nur 10
+bis 12 der 15 Zoll Druckbreite und sitzt oben. Ein randfüllendes Hochformat wäre
+ein Ganzkörperdruck — das ist eine eigene Entscheidung, keine Voreinstellung.
+Hochformat bei Textil also nur, wenn ausdrücklich ein großflächiger Druck
+gewünscht ist.
 
 **Die Auflösungswarnung gehört in jeden Bericht bei Textil.** Der Umrechner
 verlangt bei Textil 150 DPI auf 15 Zoll Druckbreite, also 2250 Pixel Breite. Ein

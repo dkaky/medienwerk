@@ -55,9 +55,13 @@ def test_hoechstens_fuenf_tagesreiter():
 
 
 def test_der_weg_zum_listing_steht_vorn():
-    """Die vier Handgriffe des Tages muessen ohne Umweg erreichbar sein."""
+    """Die Handgriffe des Tages muessen ohne Umweg erreichbar sein.
+
+    Der Reiter "ideas" ist mit dem Neubau entfallen (13.09.2026): Motive entstehen
+    jetzt im Studio, nicht mehr aus fremden Ideen.
+    """
     reiter = _vordere_reiter()
-    for pflicht in ("overview", "ideas", "products", "orders"):
+    for pflicht in ("overview", "products", "orders"):
         assert pflicht in reiter, f"'{pflicht}' fehlt in der Tagesleiste: {reiter}"
 
 
@@ -150,9 +154,14 @@ def test_keine_fremdspur_auf_der_anmeldeseite(spur, warum):
 
 
 def test_marke_steht_da():
-    """Positivprobe: es reicht nicht, das Fremde zu entfernen."""
+    """Positivprobe: es reicht nicht, das Fremde zu entfernen.
+
+    Zwei Namen, zwei Rollen: "Druckhelden" ist die Marke im eBay-Shop, sie steht
+    im Dashboard an den Verkaufsstellen. "Medienwerk" ist der Betrieb - er traegt
+    die Anmeldeseite, denn die ist intern und gehoert keiner Verkaufsmarke.
+    """
     assert "Druckhelden" in INDEX
-    assert "Druckhelden" in AUTH
+    assert "Medienwerk" in AUTH
 
 
 # --------------------------------------------------------------- Hell / Dunkel

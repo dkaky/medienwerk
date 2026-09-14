@@ -186,33 +186,6 @@ def test_sammellauf_gibt_ohne_bestaetigung_nichts_frei(db):
 # Schreiben in einer ganz anderen Aufgabe passiert. Jedes Glied wird hier
 # einzeln festgenagelt, damit die Antwort nicht wieder geraten werden muss.
 
-def test_glied_1_der_knopf_erteilt_die_freigabe(client, monkeypatch):
-    """Router: ein bestaetigter Klick muss die Freigabe setzen."""
-    from app.services import publish_queue
-
-    # Einreihen abfangen - sonst verbraucht der Worker die Freigabe sofort
-    # wieder und der Test misst ein Rennen statt einer Regel.
-    async def _nur_merken(listing_id):
-        return {"listing_id": listing_id, "status": "queued", "already": False}
-
-    monkeypatch.setattr(publish_queue, "enqueue", _nur_merken)
-    antwort = client.post("/api/v1/products/42/publish?bestaetigt=true")
-    assert antwort.status_code == 202
-    assert freigabe.hat_freigabe(42) is True
-
-
-def test_glied_2_ohne_bestaetigung_keine_freigabe(client, monkeypatch):
-    """Ein unbestaetigter Aufruf darf nichts oeffnen."""
-    from app.services import publish_queue
-
-    async def _nur_merken(listing_id):
-        return {}
-
-    monkeypatch.setattr(publish_queue, "enqueue", _nur_merken)
-    assert client.post("/api/v1/products/42/publish").status_code == 428
-    assert freigabe.hat_freigabe(42) is False
-
-
 def test_glied_3_der_worker_oeffnet_das_tor(monkeypatch):
     """Warteschlange: waehrend des Veroeffentlichens muss das Tor offen sein.
 

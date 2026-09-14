@@ -2,18 +2,17 @@
 
 ## Was das ist
 
-Handels- und Automatisierungssystem für **Medienwerk** (eingetragenes
-Einzelunternehmen). Store-Marke bei eBay ist **Druckhelden**, das Projekt heißt
-**POD Shop**.
+Print-on-Demand-System für **Medienwerk** (eingetragenes Einzelunternehmen).
+Store-Marke bei eBay ist **Druckhelden**, das Projekt heißt **POD Shop**.
 
-Zwei Verkaufsspuren:
+**Kein Dropshipping.** Verkauft werden eigene Motive, gedruckt auf Bestellung.
+Es wird nichts eingekauft, nichts weiterverkauft und bei keinem Lieferanten
+bestellt. Wer im Code noch einen Lieferanten-, Einkaufs- oder Bestellweg findet,
+hat einen Rest gefunden — kein gültiges Muster.
 
-1. **Dropshipping** — Handelsware von AliExpress über eBay. Das ist der aktive
-   Schwerpunkt, hier soll das erste Geld verdient werden.
-2. **Print-on-Demand** — eigene KI-Motive über Printify. Im Aufbau
-   („Studio-Trakt", `app/studio/`), noch kein Umsatz.
-
-Später geplant: weitere Verkaufskanäle (Etsy und andere).
+Der Weg: Motiv entwerfen (`app/studio/`) → drucken lassen (Printify) →
+verkaufen (eBay als „Druckhelden", Spreadshirt im Aufbau). Später geplant:
+weitere Verkaufskanäle (Etsy und andere).
 
 ## Eigenständig
 
@@ -41,10 +40,12 @@ benutzt.
 
 ## Aufbau
 
-- `app/` — FastAPI, SQLAlchemy, SQLite. Der Handelsteil, aus dem Original
-  übernommen und erprobt.
-- `app/studio/` — der neue Kreativteil: eigene Motive, Bilderzeugung, Printify.
+- `app/` — FastAPI, SQLAlchemy, SQLite. Der Verkaufsteil: eBay-Anbindung,
+  Preise, Belege, Bank. Erprobt, aber aus der Dropshipping-Zeit — hier stehen
+  noch Reste, die nicht mehr gebraucht werden.
+- `app/studio/` — der Kreativteil: eigene Motive, Bilderzeugung, Printify.
   Standardmäßig **ausgeschaltet** (`STUDIO_ENABLED`).
+- `app/integrations/spreadshirt.py` — zweiter Verkaufskanal, nur lesend.
 - `app/static/index.html` — die alte Oberfläche (5.800 Zeilen, ein Stück).
 - `app/static/studio.html` — der erste Bereich im neuen Design. Weitere Bereiche
   werden nach und nach nachgezogen.
@@ -54,19 +55,19 @@ benutzt.
 ## Eiserne Regeln
 
 1. **Propose-only.** Nichts geht ohne Klick eines Menschen live. Kein Angebot,
-   keine Preisänderung, keine Bestellung.
+   keine Preisänderung, kein Druckauftrag.
 2. **Niemals automatisch löschen** — weder Listings noch Produkte. Nur als
    „Aktion erforderlich" kennzeichnen.
 3. **Keine Schätzungen.** Fehlt ein Wert, bleibt er leer. Lieber eine Lücke als
    eine erfundene Zahl.
-4. **Der Riegel `is_studio()`** trennt Studio von Handel. Wer eine Automatik
-   baut, die Angebote anfasst, hängt ihn ein — sonst behandelt der Handelsteil
-   ein Print-on-Demand-Angebot wie einen China-Artikel.
+4. **Der Riegel `is_studio()`** trennt den Studio-Weg vom alten Verkaufsteil.
+   Solange dort noch Dropshipping-Reste sitzen, muss jede Automatik, die
+   Angebote anfasst, ihn einhängen.
 5. **Kostenbremse.** Bilderzeugung nur mit gesetztem Tagesbudget. Ohne Budget
    wird nichts erzeugt.
 6. **Marken- und Rechteprüfung** vor der Erzeugung, nicht danach. Ein
    verworfenes Bild kostet trotzdem Geld.
-7. **Keine fremden Keys.** Siehe Herkunft oben.
+7. **Keine fremden Keys.** Siehe „Eigenständig“ oben.
 8. §19-Kleinbetragsrechnungen, Nummern im Format `MW-JJJJ-NNNN`.
 
 ## Offene Punkte
@@ -76,10 +77,13 @@ benutzt.
   Umrechner (`app/studio/postprocess/umrechner.py`) bricht dann ab, statt
   heimlich hochzurechnen; das ist Absicht. Was fehlt, ist der Weg drumherum:
   ein Hochskalierer oder eine Neuerzeugung in Druckgröße.
+- **Der Dropshipping-Ausbau läuft noch.** AliExpress-Kern und Bestellimport
+  sind raus; in Preisen, Belegen, Modellen und Tests stehen noch Reste. Bis das
+  fertig ist, ist die Testsuite nicht grün.
 - **Preis & Bestand hängt am Bericht.** Verlust und dünne Marge kommen nicht aus
   `/dashboard/summary`, sondern aus dem materialisierten `reprice-report`, der
   veralten kann.
-- Eigener Server für Nachtjobs und den Shop-Scanner (braucht einen Browser).
+- Eigener Server für Nachtjobs und den Motiv-Radar (braucht einen Browser).
 - LUCID-Registrierung und Rechtstexte vor dem ersten Verkauf.
 - **Vor dem ersten Push nach außen:** Die Historie enthält in frühen Commits
   einen Ausweis-Scan und die Gewerbeanmeldung. Aus der Nachverfolgung sind sie
@@ -110,14 +114,6 @@ benutzt.
 - Varianten-Werkbank unter Optimierung: Bericht, Trockenlauf, Sammelreparatur
   und Bildreparatur je Listing. Von den 15 Varianten-Adressen hatten vorher
   genau zwei einen Knopf.
-- Eine Zählweise für „ausverkauft" statt drei (`lieferstatus()`). Eigenbestand
-  schlägt jetzt jedes Lieferantensignal, gerettete Varianten zählen nicht mehr
-  als ausverkauft, und Kachel und Liste zeigen dieselbe Menge.
-- **Der Shop-Import macht weiter, wo er aufhörte.** 100 Artikel je Lauf bleiben
-  der Deckel; der zweite Lauf beginnt bei 101, der dritte bei 201
-  (`store_gesehen:<shop>` in den Einstellungen). Gescheiterte zählen als
-  durchgesehen — sonst bekäme der nächste Lauf genau die wieder vorgesetzt, die
-  schon einmal nicht funktioniert haben.
 - **Motiv-Radar** (`app/studio/radar/`): Shop-Link rein, Motiv-Ideen raus. Vier
   Stufen — Link erkennen, Browser ernten, Signal rechnen, eigenen Prompt
   entwerfen. Die Grenze ist eine Prüfung, keine Absicht:

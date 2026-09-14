@@ -1109,6 +1109,45 @@ class RealEbayClient(EbayClient):
         except Exception as exc:  # noqa: BLE001
             raise self._translate(exc) from exc
 
+    async def upload_image(self, pfad) -> str:
+        """Ein Bild zu eBay hochladen (Media API createImageFromFile) -> EPS-Bildadresse.
+
+        eBay nimmt in ``product.imageUrls`` nur Adressen, keine Dateien. Die eigenen
+        Motive liegen aber auf der Platte - ohne diesen Schritt gibt es kein Angebot
+        mit Bild.
+
+        Laeuft durch ``_http()`` und damit durch die Schreibsperre: Im Probebetrieb
+        geht auch kein Bild raus. Die Sperre wird bewusst NICHT in einen
+        TransientError umgedeutet - sonst hielte ein Aufrufer sie fuer einen
+        Netzaussetzer und versuchte es immer wieder.
+        """
+        from pathlib import Path
+
+        datei = Path(pfad)
+        host = ("https://apim.sandbox.ebay.com" if self.settings.ebay_use_sandbox
+                else "https://apim.ebay.com")
+        url = f"{host}/commerce/media/v1_beta/image/create_image_from_file"
+        typ = {".png": "image/png", ".jpg": "image/jpeg",
+               ".jpeg": "image/jpeg"}.get(datei.suffix.lower(), "application/octet-stream")
+        headers = await self._auth_headers()   # KEIN json-Content-Type: httpx setzt multipart
+        try:
+            resp = await self._http().post(
+                url, headers=headers, files={"image": (datei.name, datei.read_bytes(), typ)})
+            resp.raise_for_status()
+            daten = resp.json() if resp.content else {}
+            adresse = (daten or {}).get("imageUrl")
+            # Laut Doku steht die Adresse im Rueckgabetext; faellt der leer aus,
+            # verweist der Location-Kopf auf das angelegte Bild.
+            if not adresse and resp.headers.get("location"):
+                abruf = await self._http().get(resp.headers["location"], headers=headers)
+                abruf.raise_for_status()
+                adresse = (abruf.json() or {}).get("imageUrl")
+        except httpx.HTTPError as exc:
+            raise self._translate(exc) from exc
+        if not adresse:
+            raise PersistentError(f"eBay hat fuer {datei.name} keine Bildadresse geliefert.")
+        return adresse
+
     async def delete_inventory_item(self, sku: str) -> None:
         """deleteInventoryItem: verwaistes Inventory-Item entfernen (Rollback)."""
         try:

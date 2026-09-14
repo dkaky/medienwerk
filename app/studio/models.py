@@ -142,6 +142,10 @@ class PodProduct(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     design_id: Mapped[Optional[int]] = mapped_column(ForeignKey("studio_designs.id"))
+    # Welches Produkt aus dem Katalog (app/studio/ebay_weg.py): tshirt, polo,
+    # oversize, hoodie, tasse. Ohne dieses Feld liessen sich T-Shirt- und
+    # Tassen-Angebot DESSELBEN Motivs nicht auseinanderhalten.
+    produktart: Mapped[Optional[str]] = mapped_column(String(30))
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
     provider: Mapped[Optional[str]] = mapped_column(String(40))

@@ -94,18 +94,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
    nachpruefbaren Verhaeltnissen statt nach Augenmass.
    Die Farbe der Ware ist der eigentliche Punkt: ein dunkles Motiv auf
    schwarzem Shirt verschwindet, und genau das soll hier auffallen. */
-.anprobe { display: grid; grid-template-columns: minmax(240px, 340px) 1fr; gap: 20px; align-items: start; }
+.anprobe { display: grid; grid-template-columns: minmax(280px, 560px) 1fr; gap: 20px; align-items: start; }
 @media (max-width: 720px) { .anprobe { grid-template-columns: 1fr; } }
 .buehne { background: var(--bild-grund); border: 1px solid var(--border); border-radius: 11px;
   padding: 14px; display: grid; place-items: center; }
-.buehne svg { width: 100%; height: auto; max-height: 380px; }
-/* Die beiden Ebenen, die aus einem Aufkleber einen Druck machen. Sie liegen
-   ÜBER dem Motiv: Falten und Wölbungen des Stoffs sollen über den Druck
-   wandern, nicht darunter verschwinden.
-   Getrennt, weil Multiplizieren Weiß wirkungslos lässt und Screen Schwarz —
-   in einer gemeinsamen Ebene fiele je nach Modus die Hälfte weg. */
-.buehne .schatten { mix-blend-mode: multiply; filter: blur(1.6px); }
-.buehne .lichter  { mix-blend-mode: screen;   filter: blur(5px); }
 .wahl { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .wahl button { background: transparent; border: 1px solid var(--border); color: var(--muted);
   border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; font-family: inherit; }
@@ -117,6 +109,17 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   border: 2px solid var(--border); transition: transform .12s ease; }
 .farbe:hover { transform: scale(1.1); }
 .farbe[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.galerie { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+.galerie figure { margin: 0; }
+.galerie figure.gross { grid-column: 1 / -1; }
+.galerie h5 { grid-column: 1 / -1; margin: 10px 0 0; font-size: 12px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .06em; }
+.druckwahl { display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  margin-bottom: 8px; font-size: 13px; }
+.druckwahl select { max-width: 230px; flex: 1; }
+.galerie img { width: 100%; display: block; border-radius: 9px; background: #ececec; }
+.galerie figcaption { font-size: 11px; color: var(--muted); margin-top: 4px;
+  text-transform: uppercase; letter-spacing: .05em; }
 .feldname { font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
   color: var(--muted); margin-bottom: 6px; }
 .karten { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
@@ -266,15 +269,19 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 
     <div class="panel" id="anprobe-panel" hidden>
       <h3>Anprobe <span class="muted" id="anprobe-titel"></span></h3>
-      <p class="muted">Das Motiv wird auf den Stoff gerechnet, nicht daraufgelegt:
-        leichter Verzug wie auf Gewebe, Falten und Schatten der Ware wandern darüber.
-        Zum Prüfen gedacht, nicht als Verkaufsbild. Der wichtigste Test ist die Farbe —
+      <p class="muted">Die Produktfotos, wie sie bei eBay erscheinen – in dieser Reihenfolge:
+        <b>1</b> die Ware allein, <b>2</b> am Mann, <b>3</b> an der Frau – danach dieselben drei von hinten.
+        Unter <b>Druck</b> legst du fest, welches Motiv vorne und hinten sitzt; eine Seite darf leer bleiben.
+        Anschauen kostet nichts (lokal gerechnet). Der wichtigste Test ist die Farbe —
         ein dunkles Motiv auf schwarzem Shirt verschwindet.</p>
       <div class="anprobe">
         <div class="buehne" id="buehne"></div>
         <div>
           <div class="feldname">Ware</div>
           <div class="wahl" id="wahl-ware"></div>
+          <div class="feldname">Druck</div>
+          <label class="druckwahl">Vorderseite <select id="druck-vorne"></select></label>
+          <label class="druckwahl">Rückseite <select id="druck-hinten"></select></label>
           <div class="feldname" id="name-farbe">Farbe</div>
           <div class="farben" id="wahl-farbe"></div>
           <div class="feldname">Entscheidung</div>
@@ -290,6 +297,43 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
           </p>
         </div>
       </div>
+      <div class="panel" style="margin-top:14px;background:rgba(0,0,0,.12)">
+        <h4 style="margin:0 0 8px">eBay-Vorschau</h4>
+        <div id="anprobe-ebay"><p class="muted">Wähle ein Motiv aus.</p></div>
+      </div>
+    </div>
+
+    <div class="panel" id="vorlagen-panel">
+      <h3>Produktvorlagen</h3>
+      <p class="muted">So sehen die Produktfotos bei eBay aus: <b>1</b> die Ware allein,
+        <b>2</b> am Mann, <b>3</b> an der Frau – danach dieselben drei von hinten. Hier die leeren Vorlagen – öffnest du ein Motiv
+        (Anprobe), steht genau dieses Motiv drauf. Anschauen kostet nichts; Geld kostet nur
+        das Erzeugen eines Motivs.</p>
+      <div class="anprobe">
+        <div class="buehne" id="v-buehne"></div>
+        <div>
+          <div class="feldname">Produkt</div>
+          <div class="wahl" id="v-ware"></div>
+          <div class="feldname" id="v-farbname">Farbe</div>
+          <div class="farben" id="v-farbe"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Trend-Vorschläge</h3>
+      <p class="muted">Sucht im Netz nach aktuellen und kommenden Trends und schlägt eigene,
+        ausgearbeitete Motive vor. <b>Es entsteht kein Bild</b>, bis du bei einem Vorschlag
+        auf „Erzeugen“ drückst. Eine Suche dauert 1–2 Minuten und kostet ein paar Cent.
+        Marken, Vereine und Figuren sortiert der Rechtefilter vorher aus.</p>
+      <div class="zeile">
+        <div class="feld" style="flex:0 0 130px">
+          <label>Vorschläge</label>
+          <input id="t-anzahl" type="number" min="3" max="20" value="12">
+        </div>
+        <button class="btn" id="b-trends">Trends suchen</button>
+      </div>
+      <div id="t-liste"><p class="muted">Noch keine Trends gesucht.</p></div>
     </div>
 
     <div class="panel">
@@ -434,159 +478,115 @@ async function ladeMotive() {
           <button class="btn ghost klein" onclick="druckcheck(${d.id})">Als Produkt?</button>
           <button class="btn ghost klein" onclick="alsSvg(${d.id})"
             title="Vektordatei zum Selberdrucken: beliebig vergrößerbar, ohne unscharf zu werden">SVG</button>
+          <button class="btn ghost klein" onclick="beiEbay(${d.id})"
+            title="Als T-Shirt-Angebot mit Größen bei eBay einstellen">eBay</button>
         </div>
       </div>
     </div>`).join('');
 }
 
 // ---------- Anprobe ----------
-// Nachgebaut nach dem Verfahren, das Mockup-Werkzeuge benutzen (recherchiert
-// 01.09.2026). Ein Motiv flach ueber ein Kleidungsstueck zu legen sieht immer
-// aufgeklebt aus. Echt wirkt es erst durch drei Schritte:
-//
-//   1. VERZERRUNG  Das Motiv wird leicht verschoben, als laege es auf Stoff.
-//                  Im Original eine Displacement-Map; hier feTurbulence +
-//                  feDisplacementMap - dasselbe Verfahren, im Browser gerechnet.
-//   2. SCHATTEN    Falten und Woelbungen liegen als dunkle Ebene UEBER dem Motiv
-//                  und werden MULTIPLIZIERT. Dadurch wandert der Schattenwurf des
-//                  Stoffs ueber den Druck, statt darunter zu verschwinden.
-//   3. LICHTER     Eine zweite Ebene, aufhellend (screen).
-//
-// Warum zwei GETRENNTE Ebenen: Multiplizieren laesst Weiss wirkungslos, Screen
-// laesst Schwarz wirkungslos. In einer einzigen Ebene verschwaende je nach Modus
-// also die Haelfte. Und beide liegen bewusst OBEN - lagen sie unter dem Motiv,
-// wuerde das Motiv sie verdecken und alles saehe wieder flach aus.
-//
-// Nebenwirkung, die den Ausschlag gab: so wirkt es auf hellen UND dunklen Farben
-// gleich gut, waehrend blosses Multiplizieren auf Schwarz jedes Motiv ausloescht.
-//
-// Die Druckflaechen stammen aus den Herstellerangaben: Druckbereich Shirt
-// 12x16 Zoll auf rund 20 Zoll Brustbreite, ein Motiv wirkt bei 10-12 Zoll Breite
-// ausgewogen und beginnt 2-3 Zoll unter dem Kragen. Auf der Zeichenflaeche
-// (400x480) sind 20 Zoll Brustbreite rund 186 Einheiten - daraus die druck-Werte.
-const LEINWAND = { w: 400, h: 480 };
+// Zeigt die echten Produktfotos (Montage auf eigenen Vorlagen), siehe unten.
 
-// Rauschen fuer den Stoffverzug. Einmal je Zeichnung.
-const DEFS = `
-  <filter id="stoffverzug" x="-10%" y="-10%" width="120%" height="120%">
-    <feTurbulence type="fractalNoise" baseFrequency="0.011 0.019" numOctaves="3"
-                  seed="7" result="rauschen"/>
-    <feDisplacementMap in="SourceGraphic" in2="rauschen" scale="8"
-                       xChannelSelector="R" yChannelSelector="G"/>
-  </filter>`;
-
-const WAREN = {
-  tshirt: {
-    name: 'T-Shirt',
-    druck: { x: 149, y: 96, w: 102, h: 122 },
-    unter: (f) => `
-      <path d="M150,50 C168,80 232,80 250,50 L274,56 L342,94 L357,154 L301,172 L289,144
-               L294,434 L106,434 L111,144 L99,172 L43,154 L58,94 L126,56 Z"
-            fill="${f}" stroke="rgba(0,0,0,.32)" stroke-width="1.6" stroke-linejoin="round"/>
-      <path d="M147,49 C167,84 233,84 253,49" fill="none"
-            stroke="${f}" stroke-width="9" stroke-linecap="round"/>
-      <path d="M147,49 C167,84 233,84 253,49" fill="none"
-            stroke="rgba(0,0,0,.3)" stroke-width="1.4"/>
-      <path d="M150,50 C168,80 232,80 250,50" fill="none"
-            stroke="rgba(0,0,0,.22)" stroke-width="1.2"/>`,
-    schatten: () => `
-      <path d="M111,144 L106,434 L146,434 L140,150 Z" fill="#000" opacity=".14"/>
-      <path d="M289,144 L294,434 L256,434 L261,150 Z" fill="#000" opacity=".10"/>
-      <path d="M147,49 C167,84 233,84 253,49" fill="none" stroke="#000"
-            stroke-width="9" opacity=".14" stroke-linecap="round"/>
-      <path d="M152,60 C170,88 230,88 248,60 L256,74 C232,108 168,108 144,74 Z"
-            fill="#000" opacity=".15"/>
-      <path d="M99,172 L111,144 L133,158 L118,182 Z" fill="#000" opacity=".17"/>
-      <path d="M301,172 L289,144 L267,158 L282,182 Z" fill="#000" opacity=".17"/>
-      <path d="M342,94 L357,154 L339,160 L326,102 Z" fill="#000" opacity=".10"/>
-      <path d="M196,120 C200,220 198,330 200,432" stroke="#000" stroke-width="10"
-            opacity=".06" fill="none"/>
-      <path d="M232,150 C244,250 240,350 236,432" stroke="#000" stroke-width="8"
-            opacity=".05" fill="none"/>
-      <path d="M106,434 L294,434 L293,422 L107,422 Z" fill="#000" opacity=".13"/>`,
-    lichter: () => `
-      <path d="M58,94 L43,154 L61,160 L74,102 Z" fill="#fff" opacity=".14"/>
-      <path d="M168,160 C158,260 162,360 166,432" stroke="#fff" stroke-width="9"
-            opacity=".07" fill="none"/>
-      <ellipse cx="200" cy="150" rx="46" ry="34" fill="#fff" opacity=".06"/>`,
-  },
-
-  hoodie: {
-    name: 'Hoodie',
-    // Kleiner und hoeher als beim Shirt: die Bauchtasche sitzt im Weg.
-    druck: { x: 155, y: 132, w: 90, h: 108 },
-    unter: (f) => `
-      <path d="M144,66 L256,66 L282,74 L352,112 L366,174 L306,192 L294,162
-               L299,442 L101,442 L106,162 L94,192 L34,174 L48,112 L118,74 Z"
-            fill="${f}" stroke="rgba(0,0,0,.32)" stroke-width="1.6" stroke-linejoin="round"/>
-      <path d="M144,66 C142,26 168,10 200,10 C232,10 258,26 256,66
-               C238,92 162,92 144,66 Z"
-            fill="${f}" stroke="rgba(0,0,0,.32)" stroke-width="1.6" stroke-linejoin="round"/>
-      <path d="M156,72 C176,94 224,94 244,72" fill="none"
-            stroke="rgba(0,0,0,.34)" stroke-width="1.6"/>
-      <rect x="140" y="318" width="120" height="76" rx="9" fill="none"
-            stroke="rgba(0,0,0,.3)" stroke-width="1.6"/>
-      <path d="M178,86 C176,104 176,116 178,132 M222,86 C224,104 224,116 222,132"
-            stroke="rgba(0,0,0,.42)" stroke-width="4.5" stroke-linecap="round" fill="none"/>
-      <circle cx="178" cy="134" r="3.4" fill="rgba(0,0,0,.5)"/>
-      <circle cx="222" cy="134" r="3.4" fill="rgba(0,0,0,.5)"/>`,
-    schatten: () => `
-      <path d="M144,66 C142,26 168,10 200,10 C232,10 258,26 256,66
-               C238,92 162,92 144,66 Z" fill="#000" opacity=".12"/>
-      <path d="M156,72 C176,96 224,96 244,72 L252,86 C226,114 174,114 148,86 Z"
-            fill="#000" opacity=".18"/>
-      <path d="M106,162 L101,442 L142,442 L136,170 Z" fill="#000" opacity=".14"/>
-      <path d="M294,162 L299,442 L258,442 L264,170 Z" fill="#000" opacity=".11"/>
-      <path d="M94,192 L106,162 L130,178 L114,204 Z" fill="#000" opacity=".17"/>
-      <path d="M306,192 L294,162 L270,178 L286,204 Z" fill="#000" opacity=".17"/>
-      <rect x="140" y="318" width="120" height="76" rx="9" fill="#000" opacity=".13"/>
-      <path d="M140,318 L260,318 L260,331 L140,331 Z" fill="#000" opacity=".13"/>
-      <path d="M196,150 C200,240 198,330 200,440" stroke="#000" stroke-width="11"
-            opacity=".05" fill="none"/>
-      <path d="M101,442 L299,442 L298,429 L102,429 Z" fill="#000" opacity=".14"/>`,
-    lichter: () => `
-      <path d="M48,112 L34,174 L54,181 L68,120 Z" fill="#fff" opacity=".13"/>
-      <ellipse cx="200" cy="190" rx="42" ry="30" fill="#fff" opacity=".05"/>`,
-  },
-
-  mug: {
-    name: 'Tasse',
-    // Querformat: eine Tasse wird umlaufend bedruckt, nicht hochkant.
-    druck: { x: 112, y: 190, w: 152, h: 116 },
-    unter: (f) => `
-      <path d="M272,196 q62,0 62,52 t-62,52" fill="none"
-            stroke="rgba(0,0,0,.34)" stroke-width="21"/>
-      <path d="M272,196 q62,0 62,52 t-62,52" fill="none" stroke="${f}" stroke-width="15"/>
-      <rect x="84" y="148" width="192" height="232" rx="17"
-            fill="${f}" stroke="rgba(0,0,0,.32)" stroke-width="1.6"/>
-      <ellipse cx="180" cy="150" rx="96" ry="17" fill="${f}"
-               stroke="rgba(0,0,0,.32)" stroke-width="1.6"/>`,
-    schatten: () => `
-      <ellipse cx="180" cy="150" rx="96" ry="17" fill="#000" opacity=".28"/>
-      <ellipse cx="180" cy="151" rx="82" ry="12" fill="#000" opacity=".2"/>
-      <rect x="84" y="148" width="34" height="232" rx="17" fill="#000" opacity=".17"/>
-      <rect x="246" y="148" width="30" height="232" rx="15" fill="#000" opacity=".13"/>
-      <path d="M84,362 L276,362 L276,380 L84,380 Z" fill="#000" opacity=".11"/>`,
-    lichter: () => `
-      <rect x="138" y="152" width="24" height="226" fill="#fff" opacity=".16"/>
-      <rect x="170" y="152" width="9" height="226" fill="#fff" opacity=".08"/>`,
-  },
-};
-
-const FARBEN = {
-  textil: [
-    ['#ffffff', 'Weiß'], ['#12151a', 'Schwarz'], ['#20304f', 'Navy'],
-    ['#9aa1ab', 'Grau meliert'], ['#a8262e', 'Rot'], ['#2f5d3a', 'Flaschengrün'],
-    ['#d8cbb4', 'Sand'],
-  ],
-  tasse: [['#ffffff', 'Weiß'], ['#12151a', 'Schwarz']],
-};
-
-let _anprobe = { design: null, ware: 'tshirt', farbe: '#ffffff' };
-
-function farbwahlFuer(ware) {
-  return ware === 'mug' ? FARBEN.tasse : FARBEN.textil;
+// ---------- Produktfotos: eigene Vorlagen, lokal montiert ----------
+// Kostenlos - der Server setzt das Motiv auf die Vorlagen. Geld kostet nur das
+// Erzeugen eines Motivs. Reihenfolge wie bei eBay: Ware allein, Mann, Frau.
+let _vorlagenInfo = null;
+function vorlagenInfo() {
+  if (!_vorlagenInfo) {
+    _vorlagenInfo = hole('/api/v1/studio/mockups/vorlagen')
+      .catch((e) => { _vorlagenInfo = null; throw e; });
+  }
+  return _vorlagenInfo;
 }
+const ANSICHT_NAME = {
+  vorne: 'Ware allein', mann: 'Mann', frau: 'Frau', seite: 'Seite',
+  hinten: 'Ware hinten', mann_hinten: 'Mann von hinten', frau_hinten: 'Frau von hinten',
+};
+const esc = (x) => String(x).replace(/[&<>"]/g,
+  (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function mockupGalerie(bilder, druck = null) {
+  if (!bilder.length) return '<p class="muted">Für dieses Produkt liegen noch keine Vorlagen.</p>';
+  // Mit Rueckseite: je Seite eine Ueberschrift, das erste Bild jeder Seite gross.
+  const mitSeiten = bilder.some((b) => b.seite === 'hinten');
+  let seite = null;
+  return `<div class="galerie">${bilder.map((b, i) => {
+    let kopf = '';
+    const neu = (b.seite || 'vorne') !== seite;
+    if (neu) {
+      seite = b.seite || 'vorne';
+      const leer = druck && !druck[seite];
+      if (mitSeiten) kopf = `<h5>${seite === 'hinten' ? 'Rückseite' : 'Vorderseite'}${leer ? ' · ohne Motiv' : ''}</h5>`;
+    }
+    const name = esc(ANSICHT_NAME[b.ansicht] || b.ansicht);
+    return `${kopf}
+    <figure class="${neu ? 'gross' : ''}">
+      <a href="${b.url}" target="_blank" rel="noopener">
+        <img src="${vorschau(b.url, neu ? 1100 : 700)}" alt="${name}" loading="lazy">
+      </a>
+      <figcaption>${i + 1} · ${name}</figcaption>
+    </figure>`;
+  }).join('')}</div>`;
+}
+
+async function zeigeMockups(ziel, { produkt, farbe, designId = null }) {
+  const nr = (ziel._nr = (ziel._nr || 0) + 1);      // spaete Antworten ueberholen nicht
+  ziel.innerHTML = '<p class="muted klein" style="padding:20px">Produktfotos werden montiert …</p>';
+  const q = new URLSearchParams({ produkt, farbe });
+  if (designId) q.set('design_id', designId);
+  try {
+    const r = await hole(`/api/v1/studio/mockups/bilder?${q}`);
+    if (ziel._nr !== nr) return;
+    ziel.innerHTML = mockupGalerie(r.bilder, r.druck)
+      + (r.fehlt.length ? `<p class="muted klein">${r.fehlt.map(esc).join(' · ')}</p>` : '');
+  } catch (e) {
+    if (ziel._nr === nr) ziel.innerHTML = `<p class="neg klein">${esc(e.message || e)}</p>`;
+  }
+}
+
+function produktKnoepfe(info, aktiv, attr) {
+  return info.produkte.map((p) =>
+    `<button type="button" data-${attr}="${p.key}" aria-pressed="${aktiv === p.key}">${esc(p.label)}</button>`).join('');
+}
+
+function farbKnoepfe(produkt, aktiv, attr) {
+  return (produkt?.farben || []).map((f) =>
+    `<button type="button" class="farbe" data-${attr}="${esc(f.name)}" title="${esc(f.name)}"
+             aria-label="${esc(f.name)}" aria-pressed="${aktiv === f.name}"
+             style="background:${f.hex}"></button>`).join('');
+}
+
+/** Waehlt Produkt und Farbe gueltig aus (die Tasse gibt es nur in Weiss). */
+function gueltigeWahl(info, zustand) {
+  const produkt = info.produkte.find((p) => p.key === zustand.ware) || info.produkte[0];
+  zustand.ware = produkt.key;
+  if (!produkt.farben.some((f) => f.name === zustand.farbe)) zustand.farbe = produkt.farben[0].name;
+  return produkt;
+}
+
+let _vorlagenSicht = { ware: 'tshirt', farbe: 'Weiß' };
+async function zeichneVorlagen() {
+  let info;
+  try { info = await vorlagenInfo(); }
+  catch (e) { $('v-buehne').innerHTML = `<p class="neg klein">${esc(e.message || e)}</p>`; return; }
+  const produkt = gueltigeWahl(info, _vorlagenSicht);
+  $('v-ware').innerHTML = produktKnoepfe(info, produkt.key, 'vware');
+  $('v-farbe').innerHTML = farbKnoepfe(produkt, _vorlagenSicht.farbe, 'vfarbe');
+  $('v-farbname').textContent = `Farbe – ${_vorlagenSicht.farbe}`;
+  zeigeMockups($('v-buehne'), { produkt: produkt.key, farbe: _vorlagenSicht.farbe });
+}
+
+document.addEventListener('click', (ev) => {
+  const t = ev.target.closest('[data-vware],[data-vfarbe]');
+  if (!t) return;
+  if (t.dataset.vware) _vorlagenSicht.ware = t.dataset.vware;
+  if (t.dataset.vfarbe) _vorlagenSicht.farbe = t.dataset.vfarbe;
+  zeichneVorlagen();
+});
+zeichneVorlagen();
+
+let _anprobe = { design: null, ware: 'tshirt', farbe: 'Weiß', druck: null, druckFuer: null };
 
 /** Gespeicherte Printify-Ansichten eines Motivs, falls es dort ein Produkt gibt.
  *
@@ -603,29 +603,76 @@ function printifyBilder(design) {
   } catch { return { id: '', bilder: [], stand: '' }; }
 }
 
-/** Die Ware-Wahl. Printify steht am Ende und sagt selbst, ob es Bilder hat. */
-function wareKnoepfe(design, ware) {
+/** Die Produkt-Wahl. Printify steht am Ende und sagt selbst, ob es Bilder hat. */
+function wareKnoepfe(design, ware, info) {
   const p = printifyBilder(design);
-  const eigene = Object.entries(WAREN).map(([k, v]) =>
-    `<button type="button" data-ware="${k}" aria-pressed="${ware === k}">${v.name}</button>`);
-  eigene.push(
+  return produktKnoepfe(info, ware, 'ware') +
     `<button type="button" data-ware="printify" aria-pressed="${ware === 'printify'}"
              title="${p.bilder.length
                ? 'Echte Produktfotos von Printify mit deinem Motiv'
                : 'Noch kein Printify-Produkt für dieses Motiv'}">
        Printify${p.bilder.length ? ` (${p.bilder.length})` : ' –'}
-     </button>`);
-  return eigene.join('');
+     </button>`;
 }
 
-function zeichneAnprobe() {
-  const { design, ware, farbe } = _anprobe;
+/** Auswahl fuer eine Druckseite: leer, dieses Motiv oder ein anderes. */
+function druckOptionen(aktiv, design) {
+  const eintraege = [['', 'kein Motiv'], [String(design.id), `dieses Motiv – ${design.title}`]];
+  for (const m of _motive) {
+    if (m.id !== design.id && m.image_url) eintraege.push([String(m.id), m.title]);
+  }
+  if (aktiv && !eintraege.some(([v]) => v === String(aktiv.design_id))) {
+    eintraege.push([String(aktiv.design_id), aktiv.title]);    // z. B. ein archiviertes Motiv
+  }
+  const gewaehlt = aktiv ? String(aktiv.design_id) : '';
+  return eintraege.map(([v, text]) =>
+    `<option value="${v}" ${v === gewaehlt ? 'selected' : ''}>${esc(text)}</option>`).join('');
+}
+
+function zeichneDruckwahl(design) {
+  const druck = _anprobe.druck || { vorne: { design_id: design.id, title: design.title }, hinten: null };
+  $('druck-vorne').innerHTML = druckOptionen(druck.vorne, design);
+  $('druck-hinten').innerHTML = druckOptionen(druck.hinten, design);
+}
+
+document.addEventListener('change', async (ev) => {
+  if (!['druck-vorne', 'druck-hinten'].includes(ev.target.id)) return;
+  const design = _anprobe.design;
   if (!design) return;
+  const wert = (id) => ($(id).value ? Number($(id).value) : null);
+  try {
+    _anprobe.druck = await hole(`/api/v1/studio/designs/${design.id}/druckseiten`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vorne: wert('druck-vorne'), hinten: wert('druck-hinten') }),
+    });
+    melde('Druckseiten gespeichert.');
+  } catch (e) {
+    melde(e.message, true);
+    _anprobe.druckFuer = null;         // gespeicherten Stand neu laden
+  }
+  zeichneAnprobe();
+});
+
+async function zeichneAnprobe() {
+  const { design } = _anprobe;
+  if (!design) return;
+  $('anprobe-titel').textContent = `— ${design.title}`;
+  let info;
+  try { info = await vorlagenInfo(); }
+  catch (e) { $('buehne').innerHTML = `<p class="neg klein">${esc(e.message || e)}</p>`; return; }
+  if (_anprobe.design !== design) return;
+  if (_anprobe.druckFuer !== design.id) {
+    try {
+      _anprobe.druck = await hole(`/api/v1/studio/designs/${design.id}/druckseiten`);
+      _anprobe.druckFuer = design.id;
+    } catch { _anprobe.druck = null; }
+    if (_anprobe.design !== design) return;
+  }
+  zeichneDruckwahl(design);
 
   // Echte Printify-Ansichten, falls dieses Motiv dort schon ein Produkt hat.
-  // Bewusst eine eigene Ware-Wahl statt eines Ersatzes: die Zeichnung geht
-  // sofort und für jedes Motiv, die Printify-Bilder nur nach einem Entwurf.
-  if (ware === 'printify') {
+  if (_anprobe.ware === 'printify') {
     const p = printifyBilder(design);
     $('buehne').innerHTML = p.bilder.length
       ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%">
@@ -633,52 +680,29 @@ function zeichneAnprobe() {
                 style="width:100%;border-radius:8px;background:#fff">`).join('')}
          </div>`
       : `<p class="muted" style="text-align:center;padding:22px 10px">
-           Für dieses Motiv gibt es noch kein Printify-Produkt.<br>
-           Leg über <b>Als Produkt?</b> einen Printify-Entwurf an — danach stehen
-           hier die echten Produktfotos mit deinem Motiv.
+           Für dieses Motiv gibt es noch kein Printify-Produkt.
          </p>`;
-    $('wahl-ware').innerHTML = wareKnoepfe(design, ware);
+    $('wahl-ware').innerHTML = wareKnoepfe(design, 'printify', info);
     $('name-farbe').textContent = 'Farbe';
     $('wahl-farbe').innerHTML =
       '<span class="muted" style="font-size:12px">Die Farben bestimmt Printify beim Produkt.</span>';
-    $('anprobe-titel').textContent = `— ${design.title}`;
     return;
   }
 
-  const w = WAREN[ware];
-  const d = w.druck;
-  // Reihenfolge ist hier die halbe Miete, siehe Erklärung oben bei WAREN:
-  // Ware → Motiv (verzerrt) → Schatten (multiply) → Lichter (screen).
-  const bild = design.image_url
-    ? `<image href="${vorschau(design.image_url, 900)}" x="${d.x}" y="${d.y}"
-              width="${d.w}" height="${d.h}"
-              preserveAspectRatio="xMidYMid meet" filter="url(#stoffverzug)"/>`
-    : '';
-  $('buehne').innerHTML = `
-    <svg viewBox="0 0 ${LEINWAND.w} ${LEINWAND.h}" role="img"
-         aria-label="${w.name} in der gewählten Farbe mit dem Motiv">
-      <defs>${DEFS}</defs>
-      ${w.unter(farbe)}
-      ${bild}
-      <g class="schatten">${w.schatten()}</g>
-      <g class="lichter">${w.lichter()}</g>
-    </svg>`;
-
-  $('wahl-ware').innerHTML = wareKnoepfe(design, ware);
-  $('name-farbe').textContent = ware === 'mug' ? 'Farbe (Tasse)' : 'Farbe (Ware)';
-  $('wahl-farbe').innerHTML = farbwahlFuer(ware).map(([hex, name]) =>
-    `<button type="button" class="farbe" data-farbe="${hex}" title="${name}"
-             aria-label="${name}" aria-pressed="${farbe === hex}"
-             style="background:${hex}"></button>`).join('');
-  $('anprobe-titel').textContent = `— ${design.title}`;
+  const produkt = gueltigeWahl(info, _anprobe);
+  $('wahl-ware').innerHTML = wareKnoepfe(design, produkt.key, info);
+  $('name-farbe').textContent = `Farbe – ${_anprobe.farbe}`;
+  $('wahl-farbe').innerHTML = farbKnoepfe(produkt, _anprobe.farbe, 'farbe');
+  zeigeMockups($('buehne'), { produkt: produkt.key, farbe: _anprobe.farbe, designId: design.id });
 }
 
-function oeffneAnprobe(id) {
+async function oeffneAnprobe(id) {
   const design = _motive.find((d) => d.id === Number(id));
   if (!design) return;
   _anprobe.design = design;
   $('anprobe-panel').hidden = false;
   zeichneAnprobe();
+  await ladeEbayVorschau(id, $('anprobe-ebay'), { kompakt: false });
   $('anprobe-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -704,14 +728,7 @@ document.addEventListener('click', (ev) => {
   const t = ev.target.closest('[data-anprobe],[data-ware],[data-farbe],[data-filter]');
   if (!t) return;
   if (t.dataset.anprobe) { oeffneAnprobe(t.dataset.anprobe); return; }
-  if (t.dataset.ware) {
-    _anprobe.ware = t.dataset.ware;
-    // Die Tasse kennt weniger Farben - eine Textilfarbe waere dort ungueltig.
-    const erlaubt = farbwahlFuer(_anprobe.ware).map(([h]) => h);
-    if (!erlaubt.includes(_anprobe.farbe)) _anprobe.farbe = erlaubt[0];
-    zeichneAnprobe();
-    return;
-  }
+  if (t.dataset.ware) { _anprobe.ware = t.dataset.ware; zeichneAnprobe(); return; }
   if (t.dataset.farbe) { _anprobe.farbe = t.dataset.farbe; zeichneAnprobe(); return; }
   if (t.dataset.filter) { _filter = t.dataset.filter; ladeMotive(); }
 });
@@ -792,6 +809,120 @@ async function alsProdukt(id, key, name, faktor, weich) {
   } catch (err) {
     melde(String(err.message || err), true);
     kasten.innerHTML = vorher;
+  }
+}
+
+// ---------- Motiv als Produkte bei eBay ----------
+// Erst fragen, was ginge (ohne Netz), dann Produkte ankreuzen und mit
+// ausdrücklicher Bestätigung einstellen. Je Produkt ein Angebot, LIVE —
+// eBay kann dafür Gebühren berechnen.
+const euro = (n) => n.toFixed(2).replace('.', ',') + ' €';
+const FOTOQUELLE = {
+  montage: 'Produktfotos (eigene Vorlagen)',
+  mockups: 'echte Fotos',
+  'mockups-teilweise': 'teils echte Fotos',
+  gezeichnet: 'gezeichnete Bilder',
+  blockiert: 'blockiert',
+};
+
+function ebayProduktZeile(p, opts = {}) {
+  const auswahlen = opts.auswahlen !== false;
+  const blockiert = p.fotoquelle === 'blockiert' || (p.fehlende_vorlagen || []).length;
+  const details = [
+    `${euro(p.preis_eur)} inkl. Versand`,
+    p.groessen.length ? p.groessen.join('/') : '',
+    `${p.farben.length} ${p.farben.length === 1 ? 'Farbe' : 'Farben'}`,
+    FOTOQUELLE[p.fotoquelle] || p.fotoquelle,
+  ].filter(Boolean).join(' · ');
+  const fehlt = (p.fehlende_vorlagen || []).length
+    ? `<div class="muted klein" style="margin-top:4px">${p.fehlende_vorlagen.map(x => String(x).replace(/</g, '&lt;')).join(' · ')}</div>`
+    : '';
+  if (p.angebot) {
+    return `<div class="panel" style="padding:10px;margin:8px 0">
+      <div class="klein"><b>${p.label}</b> · ${details}</div>
+      <div class="klein"><a href="${p.angebot.url}" target="_blank" rel="noopener">bei eBay ansehen</a></div>
+    </div>`;
+  }
+  const eingabe = auswahlen
+    ? `<input type="checkbox" data-ebay-produkt="${p.key}" ${blockiert ? 'disabled' : 'checked'}>`
+    : '';
+  const aktion = !auswahlen && !blockiert
+    ? `<button class="btn klein" onclick="ebayEinstellenDirekt(${_anprobe.design?.id || 0}, '${p.key}')">Dieses Produkt einstellen</button>`
+    : '';
+  return `<label class="panel klein" style="display:block;padding:10px;margin:8px 0;${blockiert ? 'opacity:.72' : ''}">
+    ${eingabe} <b>${p.label}</b> · ${details}
+    ${blockiert ? '<div class="neg klein" style="margin-top:4px">Nicht einstellbar: echte Textilfotos fehlen.</div>' : ''}
+    ${fehlt}
+    ${aktion}
+  </label>`;
+}
+
+async function ladeEbayVorschau(id, ziel, { kompakt = true } = {}) {
+  ziel.innerHTML = '<span class="muted klein">lade eBay-Vorschau …</span>';
+  let b;
+  try { b = await hole(`/api/v1/studio/designs/${id}/ebay`); }
+  catch (err) { ziel.innerHTML = `<span class="neg klein">${String(err.message || err)}</span>`; return null; }
+  if (!b.bereit) {
+    ziel.innerHTML = `<div class="neg klein">Noch nicht bereit: ${b.fehlt.join(' · ')}</div>`;
+    return b;
+  }
+  const offen = b.produkte.filter(p => !p.angebot);
+  const blockiert = offen.filter(p => p.fotoquelle === 'blockiert' || (p.fehlende_vorlagen || []).length).length;
+  ziel.innerHTML = (blockiert
+      ? `<div class="hinweis" style="margin-bottom:10px">Textilien werden erst eingestellt, wenn echte Produkt- und Modelbilder hinterlegt sind.</div>`
+      : '')
+    + b.produkte.map(p => ebayProduktZeile(p, { auswahlen: kompakt })).join('')
+    + (kompakt
+      ? `<button class="btn klein" onclick="ebayEinstellen(${id})">Ausgewählte bei eBay einstellen</button>
+         <button class="btn ghost klein" onclick="ladeMotive()">Zurück</button>`
+      : '');
+  return b;
+}
+
+async function beiEbay(id) {
+  const kasten = $('pw-' + id);
+  await ladeEbayVorschau(id, kasten, { kompakt: true });
+}
+
+async function ebayEinstellen(id) {
+  const kasten = $('pw-' + id);
+  const gewaehlt = [...kasten.querySelectorAll('input[data-ebay-produkt]:checked')]
+    .map(x => x.dataset.ebayProdukt);
+  if (!gewaehlt.length) { melde('Kein Produkt ausgewählt.', true); return; }
+  if (!confirm(`${gewaehlt.length} Angebot(e) bei eBay einstellen?\n\n${gewaehlt.join(', ')}`
+      + `\n\nDie Angebote gehen LIVE, eBay kann Gebühren berechnen.`)) return;
+  kasten.innerHTML = '<span class="muted klein">stelle bei eBay ein …</span>';
+  try {
+    const e = await hole(`/api/v1/studio/designs/${id}/ebay?bestaetigt=true&produkte=${encodeURIComponent(gewaehlt.join(','))}`,
+                         { method: 'POST' });
+    kasten.innerHTML = e.ergebnisse.map(r => r.ok
+        ? `<div class="klein"><a href="${r.url}" target="_blank" rel="noopener">${r.produkt}: bei eBay ansehen</a>`
+          + (r.automatisch_ergaenzt && r.automatisch_ergaenzt.length
+             ? ` · prüfen: ${r.automatisch_ergaenzt.join(', ')}` : '') + `</div>`
+        : `<div class="klein">${r.produkt}: ${String(r.fehler).replace(/</g, '&lt;')}</div>`
+      ).join('') + `<button class="btn ghost klein" onclick="ladeMotive()">Zurück</button>`;
+    const ok = e.ergebnisse.filter(r => r.ok).length;
+    melde(`${ok} von ${e.ergebnisse.length} Angeboten bei eBay eingestellt.`, ok < e.ergebnisse.length);
+  } catch (err) {
+    melde(String(err.message || err), true);
+    ladeMotive();
+  }
+}
+
+async function ebayEinstellenDirekt(id, key) {
+  const ziel = $('anprobe-ebay');
+  if (!confirm(`${key} bei eBay einstellen?\n\nDas Angebot geht LIVE, eBay kann Gebühren berechnen.`)) return;
+  ziel.innerHTML = '<span class="muted klein">stelle bei eBay ein …</span>';
+  try {
+    const e = await hole(`/api/v1/studio/designs/${id}/ebay?bestaetigt=true&produkte=${encodeURIComponent(key)}`,
+                         { method: 'POST' });
+    const ok = e.ergebnisse.filter(r => r.ok).length;
+    melde(`${ok} von ${e.ergebnisse.length} Angeboten bei eBay eingestellt.`, ok < e.ergebnisse.length);
+    await ladeEbayVorschau(id, ziel, { kompakt: false });
+    await ladeMotive();
+  } catch (err) {
+    melde(String(err.message || err), true);
+    await ladeEbayVorschau(id, ziel, { kompakt: false });
   }
 }
 
@@ -929,7 +1060,8 @@ $('b-erzeugen').onclick = async () => {
         hoehe: Number($('f-format').value.split('x')[1]),
       }),
     });
-    melde(`Motiv erzeugt (${e.anbieter}) · ${usd(e.kosten_usd)} · Rest heute ${e.rest_budget_usd == null ? 'unbegrenzt' : usd(e.rest_budget_usd)}`);
+    melde(`Motiv erzeugt (${e.anbieter}) · ${usd(e.kosten_usd)} · Rest heute ${e.rest_budget_usd == null ? 'unbegrenzt' : usd(e.rest_budget_usd)}`
+      + (e.ebay ? ` · ${e.ebay}` : ''));
     $('f-prompt').value = '';
     $('f-overlay').value = '';
     // Der Bericht gehörte zum verbrauchten Prompt — stehen bleiben würde er
@@ -1011,9 +1143,95 @@ function radarZeile(idee) {
   return karte;
 }
 
+// ---------- Trend-Vorschläge ----------
+// Text aus der Websuche — kein Bild. Erst „Erzeugen“ kostet ein Bild.
+function trendZeile(label, text) {
+  const z = el('div');
+  z.style.cssText = 'font-size:13px;margin-top:6px';
+  z.append(el('span', 'muted', label), el('span', null, text));
+  return z;
+}
+
+function trendKarte(idee) {
+  const d = idee.beschreibung || {};
+  const karte = el('div', 'panel');
+  karte.style.cssText = 'padding:12px;margin-bottom:10px';
+  const kopf = el('div');
+  kopf.style.cssText = 'display:flex;gap:10px;align-items:baseline;flex-wrap:wrap';
+  kopf.append(el('b', null, `#${idee.platz ?? '?'}`), el('b', null, idee.thema || ''));
+  if (d.zeitraum) kopf.append(el('span', 'muted', d.zeitraum));
+  karte.append(kopf);
+  if (d.warum) karte.append(trendZeile('Warum im Trend: ', d.warum));
+  if (d.zielgruppe) karte.append(trendZeile('Zielgruppe: ', d.zielgruppe));
+  if (d.motiv) karte.append(trendZeile('Motiv: ', d.motiv));
+  if (d.stil) karte.append(trendZeile('Stil: ', d.stil));
+  if (d.spruch) karte.append(trendZeile('Spruch: ', `„${d.spruch}“`));
+  const markt = el('div', 'muted');
+  markt.style.cssText = 'font-size:12px;margin-top:6px';
+  const teile = [];
+  if ((idee.stichworte || []).length) teile.push('Suchbegriffe: ' + idee.stichworte.join(', '));
+  if (d.ebay_angebote != null) teile.push(`eBay: ${d.ebay_angebote} Angebote zu „${d.ebay_suchbegriff}“ (Konkurrenz, keine Verkaufszahl)`);
+  markt.textContent = teile.join(' · ');
+  karte.append(markt);
+  const quellen = (d.quellen || []).slice(0, 3);
+  if (quellen.length) {
+    const q = el('div', 'muted');
+    q.style.cssText = 'font-size:12px;margin-top:4px';
+    q.append(el('span', null, 'Quellen: '));
+    quellen.forEach((url, i) => {
+      const a = el('a', null, `[${i + 1}]`);
+      a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer nofollow';
+      q.append(a, el('span', null, ' '));
+    });
+    karte.append(q);
+  }
+  const knoepfe = el('div', 'wahl');
+  knoepfe.style.marginTop = '10px';
+  for (const [text, tat] of [['Erzeugen', 'erzeugen'], ['Verwerfen', 'verworfen']]) {
+    const b = el('button', null, text);
+    b.type = 'button'; b.dataset.radar = tat; b.dataset.id = String(idee.id);
+    knoepfe.append(b);
+  }
+  karte.append(knoepfe);
+  return karte;
+}
+
+async function ladeTrends() {
+  const ziel = $('t-liste');
+  const daten = await hole('/api/v1/studio/radar/ideen?limit=50&status=neu&quelle=trend');
+  ziel.textContent = '';
+  if (!daten.length) {
+    ziel.append(el('p', 'muted', 'Keine offenen Trend-Vorschläge — „Trends suchen“ drücken.'));
+    return;
+  }
+  for (const idee of daten) ziel.append(trendKarte(idee));
+}
+
+$('b-trends').onclick = async () => {
+  const knopf = $('b-trends');
+  knopf.disabled = true;
+  knopf.textContent = 'Suche Trends … (1–2 Min.)';
+  try {
+    const b = await hole('/api/v1/studio/radar/trends', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ anzahl: Number($('t-anzahl').value) || 12 }),
+    });
+    melde(`${b.neu} neue Vorschläge · ${b.aufgefrischt} aufgefrischt · ` +
+          `${b.abgelehnt.length} vom Rechtefilter aussortiert · kein Bild erzeugt`);
+    await ladeTrends();
+    await ladeStand();
+  } catch (err) {
+    zeigeFehler(err);
+  } finally {
+    knopf.disabled = false;
+    knopf.textContent = 'Trends suchen';
+  }
+};
+
 async function ladeRadar() {
+  ladeTrends().catch(zeigeFehler);
   const ziel = $('r-liste');
-  const daten = await hole('/api/v1/studio/radar/ideen?limit=200&status=' +
+  const daten = await hole('/api/v1/studio/radar/ideen?limit=200&quelle=shop&status=' +
                            encodeURIComponent(_radarFilter));
   ziel.textContent = '';
 
@@ -1046,7 +1264,16 @@ document.addEventListener('click', async (ev) => {
   const id = knopf.dataset.id;
   knopf.disabled = true;
   try {
-    if (knopf.dataset.radar === 'entwurf') {
+    if (knopf.dataset.radar === 'erzeugen') {
+      // Erst hier entsteht ein Bild — über denselben Weg wie ein eigenes Motiv.
+      knopf.textContent = 'Erzeuge …';
+      const e = await hole(`/api/v1/studio/radar/ideen/${id}/erzeugen`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anbieter: $('f-anbieter').value }),
+      });
+      melde(`Motiv erzeugt (${e.anbieter}) · ${usd(e.kosten_usd)} — steht unten bei den Motiven.`);
+      await Promise.all([ladeStand(), ladeMotive()]);
+    } else if (knopf.dataset.radar === 'entwurf') {
       const e = await hole(`/api/v1/studio/radar/ideen/${id}/entwurf`,
                            { method: 'POST', headers: { 'Content-Type': 'application/json' },
                              body: '{}' });

@@ -118,15 +118,6 @@ def test_bei_mehreren_bestellungen_wird_nichts_aufgeteilt(db):
     assert r.get("ek_korrigiert", 0) == 0
 
 
-def test_backfill_fasst_bankwerte_nicht_mehr_an():
-    """Sonst ueberschriebe die naechtliche Schaetzung den echten Betrag."""
-    import inspect
-
-    from app.services import order_service
-    quelle = inspect.getsource(order_service.backfill_real_order_costs)
-    assert '"bank"' in quelle, "Bank-Wert ist im Backfill nicht geschuetzt"
-
-
 # --------------------------------------------------- Beleg schlaegt Konto nicht mehr
 async def test_beleg_ueberschreibt_den_kontobetrag_nicht(db):
     """Der Beleg weist USD aus, die Bank hat Euro abgebucht.

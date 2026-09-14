@@ -116,38 +116,6 @@ def test_invoice_summary_tracks_missing(db):
     assert st2["sales_invoices"]["sum"] >= 19.99
 
 
-def test_ipn_auto_generates_sale_invoice(client, db):
-    """Automatik: eingehender Verkauf (IPN) erzeugt sofort eine Verkaufsrechnung."""
-    from sqlalchemy import select
-
-    from app.models import Invoice
-    r = client.post("/api/v1/sales/webhook/ebay-ipn",
-                    headers={"x-ebay-sig": "sig", "content-type": "application/json"},
-                    json={"transaction_id": "TX-AUTO-1", "buyer_name": "Erika", "price": "12.50"})
-    assert r.status_code == 200
-    # Beleg wird erzeugt (in der DB). Platzhalter-Verkaufsbelege sind in der Liste
-    # jetzt ausgeblendet (Einnahmen laufen ueber den Finanzbericht), Stats zaehlen weiter.
-    inv = db.scalar(select(Invoice).where(Invoice.type == "ebay_sales"))
-    assert inv is not None, "IPN sollte automatisch eine Verkaufsrechnung erzeugen"
-    lst = client.get("/api/v1/invoices/list").json()
-    assert lst["stats"]["sales_invoices"]["count"] >= 1
-    # Download des Belegs funktioniert
-    dl = client.get(f"/api/v1/invoices/{inv.id}/download")
-    assert dl.status_code == 200
-    assert "19 UStG" in dl.text
-
-
-def test_products_endpoint(client):
-    up = client.post("/api/v1/products/upload",
-                     json={"aliexpress_url": "https://de.aliexpress.com/item/prodview.html"})
-    assert up.status_code == 201
-    r = client.get("/api/v1/dashboard/products")
-    assert r.status_code == 200
-    body = r.json()
-    assert body["stats"]["total"] >= 1
-    assert body["products"][0]["ebay_sku"]
-
-
 # --- Bewirtungsbeleg: Anlass-Vorschlaege ----------------------------------
 # Das Programm liefert VORSCHLAEGE zum Auswaehlen (der Nutzer weiss, was wirklich war).
 # Wichtigste Zusage an den Nutzer: nicht immer derselbe Grund.

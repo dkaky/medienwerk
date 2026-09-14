@@ -13,7 +13,7 @@ import logging
 import json
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -28,6 +28,7 @@ from app.studio.radar import umwandlung as radar_umwandlung
 from app.studio.radar.ernte import ErnteFehler
 from app.studio.radar.quellen import QuelleUnklar
 from app.studio.schemas import (
+    DruckseitenIn,
     GenerateIn,
     GenerateOut,
     DesignIn,
@@ -39,8 +40,10 @@ from app.studio.schemas import (
     IdeeStatusIn,
     LinkIn,
     LinkOut,
+    RadarErzeugenIn,
     RadarLaufIn,
     StudioStatus,
+    TrendLaufIn,
     VeredelnIn,
     VeredelnOut,
 )
@@ -353,7 +356,8 @@ async def prompt_veredeln(body: VeredelnIn) -> VeredelnOut:
 
 
 @router.post("/generate", response_model=GenerateOut, status_code=201)
-def generate_design(body: GenerateIn, db: Session = Depends(get_db)) -> GenerateOut:
+def generate_design(body: GenerateIn, hintergrund: BackgroundTasks,
+                    db: Session = Depends(get_db)) -> GenerateOut:
     """Ein Motiv erzeugen und als Entwurf ablegen.
 
     Die Reihenfolge der Sicherungen steckt im Dienst: erst Schutzfilter, dann
@@ -397,6 +401,190 @@ def generate_design(body: GenerateIn, db: Session = Depends(get_db)) -> Generate
         rest_budget_usd=ergebnis.rest_budget_usd,
         anbieter=ergebnis.bild.provider,
     )
+
+
+@router.get("/designs/{design_id}/ebay")
+def ebay_stand(design_id: int, db: Session = Depends(get_db)) -> dict:
+    """Ginge dieses Motiv zu eBay, und ist es schon dort? Ohne Netz, aendert nichts."""
+    from app.studio import ebay_weg
+
+    design = service.get_design(db, design_id)
+    if design is None:
+        raise HTTPException(status_code=404, detail="Motiv nicht gefunden")
+    s = get_settings()
+    b = ebay_weg.pruefe(design, s=s, bildordner=Path(s.studio_image_dir))
+    produkte = []
+    for p in ebay_weg.PRODUKTE.values():
+        angebot = ebay_weg.aktives_angebot(db, design_id, p.key)
+        quelle, fehlende = ebay_weg.fotoquelle(p, s)
+        produkte.append({
+            "key": p.key, "label": p.label, "preis_eur": ebay_weg.preis(p, s),
+            "groessen": ebay_weg.groessen(p, s), "farben": ebay_weg.farben(p),
+            "titel": ebay_weg.titel(design, p),
+            "fotoquelle": quelle, "fehlende_vorlagen": fehlende,
+            "angebot": ({"listing_id": angebot.external_id, "url": angebot.url}
+                        if angebot else None),
+        })
+    from app.studio import mockup_plan
+
+    return {"bereit": b.bereit, "fehlt": b.fehlt, "probebetrieb": b.probebetrieb,
+            "automatisch": s.ebay_auto_veroeffentlichen, "produkte": produkte,
+            "fotos_je_motiv": mockup_plan.bilder_je_motiv()}
+
+
+@router.get("/designs/{design_id}/druckseiten")
+def druckseiten_lesen(design_id: int, db: Session = Depends(get_db)) -> dict:
+    """Welches Motiv vorne und hinten sitzt (``None`` = unbedruckt)."""
+    from app.studio import druckseiten
+
+    design = service.get_design(db, design_id)
+    if design is None:
+        raise HTTPException(status_code=404, detail="Motiv nicht gefunden")
+    return druckseiten.lese(db, design).als_dict()
+
+
+@router.put("/designs/{design_id}/druckseiten")
+def druckseiten_setzen(design_id: int, body: DruckseitenIn, db: Session = Depends(get_db)) -> dict:
+    """Vorder- und Rueckseite belegen. Eine Seite darf leer bleiben, beide nicht."""
+    from app.studio import druckseiten
+
+    design = service.get_design(db, design_id)
+    if design is None:
+        raise HTTPException(status_code=404, detail="Motiv nicht gefunden")
+    try:
+        return druckseiten.setze(db, design, vorne=body.vorne, hinten=body.hinten).als_dict()
+    except druckseiten.DruckseitenFehler as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/mockups/vorlagen")
+def mockup_vorlagen() -> dict:
+    """Welche Produktfoto-Vorlagen es gibt, mit Ansichten und Farben. Ohne Netz, ohne Kosten."""
+    from app.studio import ebay_weg, mockup_montage, mockup_plan
+
+    ordner = Path(get_settings().mockup_montage_ordner)
+    produkte = []
+    for p in ebay_weg.PRODUKTE.values():
+        farben = ([{"name": f.name, "hex": f.hex} for f in mockup_plan.FARBEN] if p.textil
+                  else [{"name": ebay_weg.TASSENFARBE, "hex": "#FFFFFF"}])
+        produkte.append({
+            "key": p.key, "label": p.label, "farben": farben,
+            "ansichten": list(mockup_montage.ansichten(p.textil)),
+            "vorhanden": list(mockup_montage.vorlagen_pfade(p.key, textil=p.textil, ordner=ordner)),
+            "fehlt": mockup_montage.fehlende_vorlagen(p.key, textil=p.textil, ordner=ordner),
+        })
+    return {"produkte": produkte}
+
+
+@router.get("/mockups/bilder")
+async def mockup_bilder(produkt: str = Query("tshirt"), farbe: str = Query("Weiß"),
+                        design_id: int | None = Query(None),
+                        db: Session = Depends(get_db)) -> dict:
+    """Produktfotos in der eBay-Reihenfolge: Ware allein, Mann, Frau.
+
+    Mit ``design_id`` steht das Motiv drauf - es sind dieselben Dateien, die
+    spaeter zu eBay gehen. Ohne ``design_id`` die leeren Vorlagen. Kostet nichts:
+    montiert wird lokal, Ergebnisse bleiben zwischengespeichert. Geld kostet nur
+    das Erzeugen eines Motivs.
+    """
+    import asyncio
+
+    from app.studio import ebay_weg, mockup_montage, mockup_plan, produktweg
+
+    p = ebay_weg.PRODUKTE.get(produkt)
+    if p is None:
+        raise HTTPException(status_code=404, detail=f"Unbekanntes Produkt: {produkt}")
+    if farbe not in ebay_weg.farben(p):
+        raise HTTPException(status_code=422, detail=f"{p.label} gibt es nicht in {farbe}")
+    hexwert = mockup_plan.farbe(farbe).hex if p.textil else "#FFFFFF"
+    s = get_settings()
+    bildordner, ordner = Path(s.studio_image_dir), Path(s.mockup_montage_ordner)
+    ansichten = list(mockup_montage.vorlagen_pfade(p.key, textil=p.textil, ordner=ordner))
+    druck = None
+    try:
+        if design_id is None:
+            ziel = bildordner / ebay_weg.MOCKUP_ORDNER / "vorlagen"
+            pfade = await asyncio.to_thread(lambda: [
+                mockup_montage.rendere_leer(p.key, a, farbe, hexwert, ziel_ordner=ziel, ordner=ordner)
+                for a in ansichten])
+        else:
+            design = service.get_design(db, design_id)
+            if design is None:
+                raise HTTPException(status_code=404, detail="Motiv nicht gefunden")
+            from app.studio import druckseiten
+
+            seiten = druckseiten.lese(db, design)
+            vorne, hinten = druckseiten.pfade(seiten, bildordner)
+            fotos = await asyncio.to_thread(
+                mockup_montage.rendere, vorne, hinten=hinten, produkt=p.key, textil=p.textil,
+                farben=[(farbe, hexwert)], ordner=ordner,
+                ziel_ordner=bildordner / ebay_weg.MOCKUP_ORDNER / str(design.id))
+            pfade = fotos[farbe]
+            ansichten = mockup_montage.folge(p.key, textil=p.textil, ordner=ordner,
+                                             vorne_leer=vorne is None and hinten is not None)
+            druck = seiten.als_dict()
+    except (mockup_montage.MontageFehler, produktweg.MotivFehler) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    wurzel = bildordner.resolve()
+    return {"produkt": p.key, "farbe": farbe,
+            "fehlt": mockup_montage.fehlende_vorlagen(p.key, textil=p.textil, ordner=ordner),
+            "druck": druck,
+            "bilder": [{"ansicht": a, "seite": "hinten" if mockup_montage.ist_hinten(a) else "vorne",
+                        "url": "/studio/bilder/" + x.resolve().relative_to(wurzel).as_posix()}
+                       for a, x in zip(ansichten, pfade)]}
+
+
+@router.post("/designs/{design_id}/ebay", status_code=201)
+async def bei_ebay_einstellen(design_id: int, bestaetigt: bool = Query(False),
+                              produkte: str = Query(..., description="z. B. tshirt,polo,tasse"),
+                              db: Session = Depends(get_db)) -> dict:
+    """Motiv als gewaehlte Produkte bei eBay einstellen - LIVE. Braucht ``bestaetigt=true``.
+
+    Je Produkt ein Angebot. Scheitert eines, laufen die anderen weiter; das
+    Ergebnis nennt je Produkt Erfolg oder Fehler.
+
+    Der bewusste Klick oeffnet die Schreibsperre fuer genau dieses eine Motiv,
+    auch im Probebetrieb (siehe app/services/freigabe.py).
+    """
+    from app.integrations.ebay import RealEbayClient
+    from app.services import freigabe
+    from app.studio import ebay_weg
+
+    if not bestaetigt:
+        raise HTTPException(status_code=400, detail="Einstellen braucht bestaetigt=true.")
+    keys = [k.strip() for k in produkte.split(",") if k.strip()]
+    unbekannt = [k for k in keys if k not in ebay_weg.PRODUKTE]
+    if not keys or unbekannt:
+        raise HTTPException(status_code=422, detail=(
+            f"Unbekannte Produkte: {', '.join(unbekannt)}. " if unbekannt else "Kein Produkt gewaehlt. ")
+            + f"Moeglich: {', '.join(ebay_weg.PRODUKTE)}")
+    design = service.get_design(db, design_id)
+    if design is None:
+        raise HTTPException(status_code=404, detail="Motiv nicht gefunden")
+    s = get_settings()
+    bildordner = Path(s.studio_image_dir)
+    bereitschaft = ebay_weg.pruefe(design, s=s, bildordner=bildordner)
+    if not bereitschaft.bereit:
+        raise HTTPException(status_code=422,
+                            detail="Noch nicht bereit: " + "; ".join(bereitschaft.fehlt))
+
+    ebay = RealEbayClient(s)
+    schluessel = ebay_weg.freigabe_schluessel(design_id)
+    freigabe.erteile(schluessel)
+    ergebnisse = []
+    try:
+        with freigabe.beim_veroeffentlichen(schluessel):
+            for key in keys:
+                try:
+                    ergebnisse.append({"ok": True, **await ebay_weg.veroeffentliche(
+                        db, design, produkt_key=key, ebay=ebay, s=s, bildordner=bildordner)})
+                except Exception as exc:  # noqa: BLE001 - je Produkt melden, weitermachen
+                    ergebnisse.append({"ok": False, "produkt": key, "fehler": str(exc)[:400]})
+    finally:
+        freigabe.widerrufe(schluessel)
+        if ebay._client is not None:
+            await ebay._client.aclose()
+    return {"ergebnisse": ergebnisse}
 
 
 def _ablegen(bild, titel: str):
@@ -461,11 +649,58 @@ def _design_bild(db: Session, design_id: int | None) -> str | None:
 @router.get("/radar/ideen", response_model=list[IdeeOut])
 def radar_liste(status: str | None = Query("neu"),
                 min_signal: float | None = Query(None, ge=0, le=100),
+                quelle: str | None = Query(None, pattern="^(trend|shop)$"),
                 limit: int = Query(50, ge=1, le=500),
                 db: Session = Depends(get_db)) -> list[IdeeOut]:
-    """Die Funde, staerkstes Signal zuerst. Unbekanntes steht hinten - aber es steht da."""
+    """Die Funde, staerkstes Signal zuerst. Unbekanntes steht hinten - aber es steht da.
+
+    ``quelle=trend`` liefert die Vorschlaege der Websuche (nach Rang), ``quelle=shop``
+    die Funde aus fremden Shops.
+    """
     return [_idee_raus(db, i) for i in
-            radar_ideen.liste(db, status=status, min_signal=min_signal, limit=limit)]
+            radar_ideen.liste(db, status=status, min_signal=min_signal, quelle=quelle,
+                              limit=limit)]
+
+
+@router.post("/radar/trends")
+async def radar_trends(body: TrendLaufIn, db: Session = Depends(get_db)) -> dict:
+    """Im Netz nach Trends suchen und eigene Motive vorschlagen. Erzeugt KEIN Bild."""
+    from app.studio.radar import trends
+
+    try:
+        return await trends.lauf(db, s=get_settings(), anzahl=body.anzahl)
+    except kosten.BudgetErschoepft as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    except trends.TrendFehler as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@router.post("/radar/ideen/{idee_id}/erzeugen", status_code=201)
+def radar_erzeugen(idee_id: int, body: RadarErzeugenIn | None = None,
+                   db: Session = Depends(get_db)) -> dict:
+    """Aus einem Vorschlag ein Motiv erzeugen - erst dieser Klick kostet ein Bild."""
+    from app.studio.generation import service as gen
+    from app.studio.models import MotivIdee
+    from app.studio.radar import nutzen
+
+    idee = db.get(MotivIdee, idee_id)
+    if idee is None:
+        raise HTTPException(status_code=404, detail=f"Motiv-Idee {idee_id} gibt es nicht.")
+    try:
+        e = nutzen.erzeuge_aus_idee(db, idee, anbieter=(body.anbieter if body else "openai"),
+                                    bildordner=Path(get_settings().studio_image_dir))
+    except gen.MotivGesperrt as exc:
+        raise HTTPException(status_code=422, detail=f"Gesperrt: {exc}") from exc
+    except (gen.motivregeln.MotivartFehler, radar_umwandlung.WortlautUebernommen,
+            radar_umwandlung.ZuWenigThema) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except kosten.BudgetErschoepft as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 - Anbieterfehler lesbar weiterreichen
+        raise HTTPException(status_code=502, detail=f"Erzeugung fehlgeschlagen: {exc}") from exc
+    return {"design": DesignOut.model_validate(e["design"], from_attributes=True).model_dump(),
+            "prompt": e["prompt"], "kosten_usd": e["kosten_usd"],
+            "rest_budget_usd": e["rest_budget_usd"], "anbieter": e["anbieter"]}
 
 
 @router.post("/radar/lauf")

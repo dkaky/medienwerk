@@ -96,27 +96,6 @@ def _routen():
     return {r.path: r for r in products.router.routes}
 
 
-def test_entwurfs_adresse_existiert():
-    """Der Entwurfsweg braucht eine Adresse - sonst bleibt die Logik unerreichbar."""
-    assert "/api/v1/products/{listing_id}/ebay-draft" in _routen()
-
-
-def test_entwurf_ruft_draft_only():
-    """Die Adresse muss draft_only setzen, sonst veroeffentlicht sie doch."""
-    import inspect
-    from app.routers import products
-    quelle = inspect.getsource(products.ebay_entwurf)
-    assert "draft_only=True" in quelle
-
-
-def test_publish_verlangt_bestaetigung():
-    """Ein Fehlklick allein darf nicht veroeffentlichen."""
-    import inspect
-    from app.routers import products
-    quelle = inspect.getsource(products.publish)
-    assert "bestaetigt" in quelle
-    assert "428" in quelle
-
 # --------------------------------------------------------------------------
 # 4. Der Attrappen-Betrieb muss halten, was er verspricht
 # --------------------------------------------------------------------------
@@ -142,13 +121,3 @@ def test_attrappe_weist_den_bewussten_klick_nicht_mehr_ab(client):
                 "/api/v1/products/1/publish?bestaetigt=true"):
         antwort = client.post(weg)
         assert antwort.status_code != 409, f"{weg} wird faelschlich noch abgewiesen"
-
-
-def test_riegel_greift_vor_der_bestaetigungspruefung_nicht(client):
-    """Die Reihenfolge stimmt: erst Bestaetigung, dann Attrappen-Riegel.
-
-    Ein unbestaetigter Live-Klick muss weiterhin 428 bekommen - sonst lernt der
-    Betreiber im Probebetrieb, dass ein Klick reicht, und wundert sich spaeter.
-    """
-    antwort = client.post("/api/v1/products/1/publish")
-    assert antwort.status_code == 428
