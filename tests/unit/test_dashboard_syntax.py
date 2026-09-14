@@ -85,7 +85,7 @@ def test_wichtige_funktionen_sind_definiert(seite):
     geloeschter Knopf-Handler schon (onclick ohne Funktion = Klick tut nichts).
     """
     quelle = _groesster_skriptblock((STATIC / seite).read_text(encoding="utf-8"))
-    for name in ("loadBelege", "belFilter", "belegeAbrufen", "kaufLoeschen",
+    for name in ("loadBelege", "belFilter", "kaufLoeschen",
                  "belegHochladen", "rechnungBearbeiten"):
         assert re.search(rf"function {name}\b", quelle), f"{seite}: {name} fehlt"
 
@@ -121,18 +121,17 @@ def test_knopf_pingt_nicht_localhost_an(seite):
     ohne_kommentare = re.sub(r"^\s*//.*$", "", quelle, flags=re.M)
     assert "127.0.0.1" not in ohne_kommentare
     assert ":9223" not in ohne_kommentare
-    assert "abruf-anfordern" in quelle
+    assert "abruf-anfordern" not in quelle
 
 
 @pytest.mark.parametrize("seite", SEITEN)
-def test_mahnung_ab_20_uhr(seite):
-    """Ab 20 Uhr ohne Abruf faellt der Knopf auf – Belege verfallen bei AliExpress."""
+def test_alter_belegabruf_ist_entfernt(seite):
+    """Der alte Lieferanten-Belegabruf gehoert nicht mehr ins Dashboard."""
     html = (STATIC / seite).read_text(encoding="utf-8")
     quelle = _groesster_skriptblock(html)
-    assert "getHours() >= 20" in quelle
-    assert "zuletzt_gelaufen_am" in quelle
-    assert "@keyframes belMahnung" in html          # blinkt sichtbar
-    assert "prefers-reduced-motion" in html         # abschaltbar fuer Empfindliche
+    assert "belegeAbrufen" not in quelle
+    assert "belAbruf" not in quelle
+    assert "@keyframes belMahnung" not in html
 
 
 @pytest.mark.parametrize("seite", SEITEN)
@@ -240,15 +239,12 @@ def test_css_klammern_sind_ausgeglichen(seite):
 
 @pytest.mark.parametrize("seite", SEITEN)
 def test_store_scraper_hat_abbrechen(seite):
-    """Ohne Abbruch laeuft der Import bis zum Limit durch, auch wenn es reicht."""
+    """Der alte Produktimport ist aus dem Dashboard entfernt."""
     html = (STATIC / seite).read_text(encoding="utf-8")
     quelle = _groesster_skriptblock(html)
-    assert 'id="storeStopBtn"' in html, "Knopf fehlt"
-    assert re.search(r"function stopStoreImport\b", quelle), "Funktion fehlt"
-    assert "store-import/abbrechen" in quelle, "Endpunkt wird nicht gerufen"
-    assert "s.abgebrochen" in quelle, "Abbruch wird im Ergebnis nicht benannt"
-    # Der Knopf darf nur waehrend eines Laufs zu sehen sein
-    assert 'id="storeStopBtn"' in html and 'display:none' in html
+    assert 'id="storeStopBtn"' not in html
+    assert not re.search(r"function stopStoreImport\b", quelle)
+    assert "store-import/abbrechen" not in quelle
 
 
 @pytest.mark.parametrize("seite", SEITEN)

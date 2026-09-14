@@ -59,15 +59,17 @@ def test_unlimited_paid_generation_saves_and_returns_image(client, db, unlimited
 def test_full_dashboard_is_restored(client, url):
     response = client.get(url)
     assert response.status_code == 200
-    for section in ("overview", "products", "pricecheck", "orders", "optimization", "belege"):
+    for section in ("overview", "products", "belege"):
         assert f'data-view="{section}"' in response.text
+    for section in ("pricecheck", "orders", "optimization"):
+        assert f'data-view="{section}"' not in response.text
     assert 'href="/studio"' in response.text
     assert "Medienwerk" in response.text
 
 
 def test_studio_links_back_to_original_business_sections(client):
     html = client.get("/studio").text
-    for section in ("products", "pricecheck", "orders", "optimization", "belege"):
+    for section in ("products", "belege"):
         assert f'href="/#{section}"' in html
 
 

@@ -342,14 +342,6 @@
     .bel-table.bel-fixed { table-layout: fixed; }
     .bel-table.bel-fixed th, .bel-table.bel-fixed td { overflow: hidden; text-overflow: ellipsis; }
     .bel-table.bel-resizing { cursor: col-resize; user-select: none; }
-    /* Ab 20 Uhr ohne Abruf: der Knopf faellt auf. Der AliExpress-Beleg erscheint ~1 Tag
-       nach der Bestellung und verschwindet spaeter wieder — verpasst heisst weg. */
-    @keyframes belMahnung { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
-    .btn.mahnung {
-      background: var(--bad); border-color: var(--bad); color: #fff;
-      animation: belMahnung 1.1s ease-in-out infinite;
-    }
-    @media (prefers-reduced-motion: reduce) { .btn.mahnung { animation: none } }
     /* Aktionsspalte klebt rechts: die Tabelle ist breiter als der sichtbare Bereich
        (Produktnamen sind lang), sonst liegen Beleg-/Rechnungs-/Löschen-Knopf
        ausserhalb und man muss erst seitwaerts scrollen, um sie zu finden. */
@@ -362,7 +354,7 @@
     .badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1px solid transparent; display: inline-block; }
     .badge.ok, .badge.healthy, .badge.active, .badge.success, .badge.delivered, .badge.shipped { color: var(--ok); background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.3); }
     .badge.needs_review, .badge.price_changed, .badge.pending, .badge.draft, .badge.in_progress { color: var(--warn); background: rgba(251,191,36,.12); border-color: rgba(251,191,36,.3); }
-    .badge.ordered_aliexpress, .badge.ordered { color: var(--purple); background: color-mix(in srgb, var(--purple) 15%, transparent); border-color: color-mix(in srgb, var(--purple) 38%, transparent); }
+    .badge.ordered { color: var(--purple); background: color-mix(in srgb, var(--purple) 15%, transparent); border-color: color-mix(in srgb, var(--purple) 38%, transparent); }
     .badge.in_escalation, .badge.out_of_stock, .badge.failed, .badge.manual_intervention_required, .badge.needs_manual_review { color: var(--bad); background: rgba(248,113,113,.12); border-color: rgba(248,113,113,.3); }
     .badge.muted, .badge.ended, .badge.cancelled, .badge.refunded { color: var(--muted); background: rgba(138,160,182,.1); border-color: rgba(138,160,182,.25); }
     tr.grp-head td { background: color-mix(in srgb, var(--gold) 9%, transparent); border-top: 2px solid var(--line); font-size: 12.5px; }
@@ -705,55 +697,6 @@
          aus data-l am <td>, der Inhalt bleibt unveraendert.
          Am Desktop greift nichts davon — dort bleibt es die Tabelle.
          =================================================================== */
-      #view-orders .ord-table,
-      #view-orders .ord-table tbody,
-      #view-orders .ord-table tr,
-      #view-orders .ord-table td { display: block; width: auto; }
-      #view-orders .ord-table thead { display: none; }          /* Kopfzeile: Labels stehen jetzt in den Zeilen */
-      #view-orders .table-scroll { overflow-x: visible; }        /* kein Seitwaerts-Wischen mehr noetig */
-
-      #view-orders .ord-table tr {
-        background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-        margin: 0 0 10px; padding: 11px 13px; box-shadow: var(--shadow);
-      }
-      #view-orders .ord-table td {
-        border: 0; padding: 5px 0; white-space: normal; overflow: visible;
-        display: flex; gap: 10px; align-items: baseline;
-      }
-      /* Zahlenspalten sind in der Tabelle rechtsbuendig — in der Karte wuerde
-         das die Beschriftungen unterschiedlich weit einruecken. */
-      #view-orders .ord-table td.num { text-align: left; }
-      /* Beschriftung links, Wert rechts — wie eine Datenzeile im Formular */
-      #view-orders .ord-table td[data-l]::before {
-        content: attr(data-l); flex: 0 0 82px; color: var(--muted);
-        font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
-        line-height: 1.7;
-      }
-      /* Leere Werte muss man nicht zeigen — spart Zeilen auf kleinem Schirm */
-      #view-orders .ord-table td:empty { display: none; }
-      /* Bild-Zelle (ohne data-l) oben quer, Artikel als Ueberschrift */
-      #view-orders .ord-table td:not([data-l]) { display: block; padding-bottom: 8px; }
-      #view-orders .ord-table td:not([data-l]) img { width: 54px; height: 54px; border-radius: 9px; }
-      #view-orders .ord-table td[data-l="Artikel"] { display: block; padding-bottom: 8px; }
-      #view-orders .ord-table td[data-l="Artikel"]::before { display: none; }
-      #view-orders .ord-table td[data-l="Artikel"] a { font-weight: 700; font-size: 14px; line-height: 1.35; }
-      /* Die Aktions-Zelle ist der Grund fuer den ganzen Umbau: ganz unten,
-         volle Breite, Knoepfe fingergerecht nebeneinander. */
-      #view-orders .ord-table td[data-l="Aktion"] {
-        display: block; margin-top: 9px; padding-top: 10px; border-top: 1px solid var(--line-soft);
-      }
-      #view-orders .ord-table td[data-l="Aktion"]::before { display: none; }
-      #view-orders .ord-table td[data-l="Aktion"] .btn { min-height: 42px; margin: 0 6px 6px 0; }
-      /* Gruppenkopf (mehrere Artikel in EINER eBay-Bestellung) bleibt eine
-         durchgehende Ueberschrift ueber den zugehoerigen Karten. */
-      #view-orders .ord-table tr.grp-head { padding: 9px 12px; margin-bottom: 6px; box-shadow: none; }
-      #view-orders .ord-table tr.grp-head td { display: block; font-size: 12px; }
-      #view-orders .ord-table tr.grp-head td::before { display: none; }
-      #view-orders .ord-table tr.grp-pos { margin-left: 10px; }
-      #view-orders .ord-table td.empty { display: block; }
-      #view-orders .ord-table td.empty::before { display: none; }
-      /* Status-Auswahl in der Karte nicht ueber die ganze Breite ziehen */
-      #view-orders .ord-table td[data-l="Status"] select { width: auto; max-width: 150px; }
     }
     /* Aufgabenband der Startseite. Kacheln sind Knoepfe, keine Anzeigen:
        jede fuehrt genau dorthin, wo die Arbeit erledigt wird. Deshalb Cursor,
@@ -825,8 +768,6 @@
            showView und der Klick-Delegat es weiter erfassen. -->
       <button data-view="overview" class="active"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M6 21v-6"/><path d="M12 21V8"/><path d="M18 21v-10"/></svg>Heute</button>
       <button data-view="products"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 11.4 12 20l-8-8 8.6-8.6H20a.6.6 0 0 1 .6.6v7.4Z"/><circle cx="16.3" cy="7.7" r="1.2"/></svg>Meine Listings</button>
-      <button data-view="pricecheck"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15a8 8 0 0 1 16 0"/><path d="M12 15l3.5-3"/><circle cx="12" cy="15" r="1.1"/></svg>Preis &amp; Bestand</button>
-      <button data-view="orders"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="M3.2 8 12 13l8.8-5"/><path d="M12 13v8"/></svg>Bestellungen</button>
 
       <div class="nav-trenner"></div>
       <div class="nav-titel">Mehr</div>
@@ -837,11 +778,8 @@
       <div class="tabs-mehr" id="tabsMehr">
         <button type="button" class="mehr-knopf" id="mehrKnopf" aria-expanded="false" aria-haspopup="true"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>Mehr</button>
         <div class="mehr-liste" id="mehrListe" role="menu">
-          <button data-view="optimization" role="menuitem"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 7-7"/><path d="M17 8h4v4"/></svg>Optimierung</button>
           <button data-view="belege" role="menuitem"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2.5-1.6L13 21l-2.5-1.6L8 21l-2-1.6V3Z"/><path d="M9 8h6"/><path d="M9 12h6"/></svg>Buchhaltung</button>
           <button data-view="einstellungen" role="menuitem"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg>Einstellungen</button>
-          <button data-view="activity" role="menuitem"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-7 4 14 2.5-7H21"/></svg>Aktivität</button>
-          <button data-view="growth" hidden role="menuitem"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M3 19h18"/><path d="m15 7 2-2 3 3"/></svg>Growth Center</button>
           <a href="/studio" id="studioLink" hidden role="menuitem"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="m8 14 3-4 2.5 3 2-2.5L18 14"/><circle cx="9" cy="8.5" r="1.2"/></svg>Studio (Motive)</a>
         </div>
       </div>
@@ -850,7 +788,6 @@
 
     <main class="main">
       <div class="topbar">
-        <span class="pill engine" id="enginePill" title="Fulfillment-Engine">…</span>
         <span class="pill" id="mockPill" title="Betriebsmodus">…</span>
         <span class="pill" id="healthPill"><span class="dot" id="healthDot"></span><span id="healthText">verbinde…</span></span>
         <span class="pill" id="buildPill" title="Laufender Code-Stand (Git-Commit + letzter Neustart/Deploy)" style="cursor:help">⚙ …</span>
@@ -878,8 +815,6 @@
       <section class="card" id="heuteKarte" style="margin-bottom:14px">
         <h2>Heute
           <span class="spacer" style="flex:1"></span>
-          <button class="btn sm primary" id="heuteSyncBtn" onclick="heuteSync()"
-                  title="Bestellungen und Sendungsnummern von eBay holen, danach Listings und Zahlen auffrischen">⟳ Alles synchronisieren</button>
         </h2>
         <div class="body tight">
           <div id="heuteAufgaben" class="heute-grid"><div class="empty">lade…</div></div>
@@ -890,8 +825,6 @@
         <div class="kpi" title="Nur echte Verkäufe – Stornos/Erstattungen sind NICHT enthalten"><div class="label">Umsatz seit Jahresbeginn</div><div class="val accent" id="k_rev">–</div><div class="sub" id="k_rev_sub">gesamt</div></div>
         <div class="kpi" id="k_profit_card"><div class="label">Bruttogewinn</div><div class="val ok" id="k_profit">–</div></div>
         <div class="kpi" title="Aktive eBay-Listings (Entwürfe und beendete zählen nicht mit)"><div class="label">Aktive Listings</div><div class="val" id="k_active">–</div></div>
-        <div class="kpi" title="Verkauft, aber noch nicht bei AliExpress gekauft – im Orders-Tab bestellen"><div class="label">Zu bestellen</div><div class="val warn" id="k_toorder">–</div></div>
-        <div class="kpi" title="Bestellt und bezahlt – Paket unterwegs oder wartet auf Versand"><div class="label">Unterwegs</div><div class="val" id="k_transit">–</div></div>
       </div>
 
       <div class="grid-3">
@@ -913,72 +846,10 @@
           </div>
         </section>
 
-        <section class="card">
-          <h2>Orders nach Status <span class="tag" id="statusTotal">–</span></h2>
-          <div class="body" id="statusBreakdown"><div class="empty">–</div></div>
-        </section>
       </div>
     </section>
 
 
-    <!-- ============ GROWTH COMMAND CENTER ============ -->
-    <section class="view" id="view-growth">
-      <div class="growth-head">
-        <div>
-          <h1>Growth Command Center</h1>
-          <p>Statusbereinigte Geschäftslage, geprüfte Chancen und laufende Lernschleifen. Geschätzte und bestätigte Ökonomie bleiben sichtbar getrennt.</p>
-        </div>
-        <div class="growth-trust" id="growthTrust">Datenstand wird geladen</div>
-      </div>
-
-      <div class="kpis growth-kpis" aria-label="Geschäftslage der letzten 30 Tage">
-        <div class="kpi"><div class="label">Umsatz 30 Tage</div><div class="val accent" id="gRevenue">–</div><div class="growth-cover" id="gRevenueCov">Abdeckung –</div></div>
-        <div class="kpi"><div class="label">Abgeschlossener Beitrag</div><div class="val ok" id="gContribution">–</div><div class="growth-cover" id="gContributionCov">Abdeckung –</div></div>
-        <div class="kpi"><div class="label">Beitragsmarge</div><div class="val" id="gMargin">–</div><div class="growth-cover" id="gMarginCov">Abdeckung –</div></div>
-        <div class="kpi"><div class="label">eBay-Gebührenlast</div><div class="val" id="gFees">–</div><div class="growth-cover" id="gFeesCov">Abdeckung –</div></div>
-        <div class="kpi"><div class="label">Lieferantenkostenanteil</div><div class="val" id="gSupplierShare">–</div><div class="growth-cover" id="gSupplierCov">Abdeckung –</div></div>
-        <div class="kpi"><div class="label">Aktive Listings</div><div class="val" id="gActive">–</div><div class="growth-cover">Aktueller lokaler Bestand</div></div>
-        <div class="kpi"><div class="label">Top-20-Beitragsanteil</div><div class="val" id="gConcentration">–</div><div class="growth-cover" id="gConcentrationCov">Verknüpfte Abschlüsse</div></div>
-        <div class="kpi"><div class="label">Reif ohne Verkauf</div><div class="val warn" id="gMature">–</div><div class="growth-cover">Aktiv · mindestens 60 Tage</div></div>
-      </div>
-
-      <div class="growth-layout">
-        <div>
-          <section class="card" aria-labelledby="growthDecisionTitle">
-            <h2 id="growthDecisionTitle">Entscheidungen <span class="tag" id="growthReadyCount">–</span><span class="growth-section-note">Nur vollständig verifizierte Chancen</span></h2>
-            <div id="growthDecisions" aria-live="polite">
-              <div class="growth-loading"><div class="growth-skeleton"></div><div class="growth-skeleton"></div></div>
-            </div>
-          </section>
-
-          <section class="card" aria-labelledby="growthPipelineTitle">
-            <h2 id="growthPipelineTitle">Opportunity-Pipeline</h2>
-            <div class="growth-stages" id="growthPipeline"></div>
-          </section>
-        </div>
-
-        <div>
-          <section class="card" aria-labelledby="growthExperimentTitle">
-            <h2 id="growthExperimentTitle">Experimente</h2>
-            <div class="growth-experiments" id="growthExperiments"></div>
-          </section>
-
-          <section class="card" aria-labelledby="growthLearningTitle">
-            <h2 id="growthLearningTitle">Jüngste Erkenntnisse</h2>
-            <div id="growthLearning"><div class="empty">Noch keine abgeschlossenen Experimente.</div></div>
-          </section>
-
-          <section class="card">
-            <h2>Schutzschwellen</h2>
-            <div class="body tight" id="growthGuardrails">
-              <div class="kv"><b>Beitragsmarge</b><span>mindestens 20 %</span></div>
-              <div class="kv"><b>Beitrag je Sale</b><span>Median mindestens 5,00 €</span></div>
-              <div class="kv"><b>Ausführung</b><span>keine automatische Folgeaktion</span></div>
-            </div>
-          </section>
-        </div>
-      </div>
-    </section>
 
 
     <!-- ============ NEUES LISTING ============ -->
@@ -988,128 +859,9 @@
            B  ein ganzer Shop   - Bestseller im Bund
            C  suchen lassen     - wenn man noch nicht weiss, was
          Der Ergebnis-Entwurf landet in allen drei Faellen unter "Meine Listings". -->
-    <section class="view" id="view-ideas">
-      <div class="grid">
-        <section class="card">
-          <h2>A · Ein Link <span class="tag">schnellster Weg</span></h2>
-          <div class="body">
-            <label class="field"><span>AliExpress-URL</span>
-              <input type="text" id="aeUrl" placeholder="https://de.aliexpress.com/item/…html" /></label>
-            <button class="btn primary" id="uploadBtn" onclick="uploadProduct()">Extrahieren · Preis · Entwurf</button>
-            <div id="uploadResult"></div>
-          </div>
-        </section>
-        <section class="card">
-          <h2>B · Ganzer Shop <span class="tag">Bestseller im Bund</span></h2>
-          <div class="body">
-            <label class="field"><span>AliExpress-Shop-Link — oder Produkt-Links (bei blockiertem Shop)</span>
-              <input type="text" id="storeUrl" placeholder="https://de.aliexpress.com/store/1103573332 — oder mehrere Produkt-Links hineinkopieren" title="Zeigt der Shop 'Keine Produkte gefunden'? Dann im Shop mehrere Produkt-Links markieren, kopieren und hier einfügen — die Produkt-Nummern werden automatisch erkannt und normal importiert." /></label>
-            <label class="field"><span>Anzahl Produkte</span>
-              <input type="number" id="storeLimit" value="25" min="1" max="100" style="width:110px" /></label>
-            <button class="btn primary" id="storeBtn" onclick="startStoreImport()">Bestseller importieren</button>
-            <button class="btn" id="storeStopBtn" onclick="stopStoreImport()" style="display:none;margin-left:8px;color:var(--bad);border-color:color-mix(in srgb, var(--bad) 45%, transparent)" title="Import anhalten — bereits erzeugte Entwürfe bleiben erhalten">Abbrechen</button>
-            <div id="storeResult"></div>
-          </div>
-        </section>
-      </div>
-      <section class="card">
-        <h2>C · Suchen lassen <span class="tag">AliExpress-Research</span>
-          <span class="spacer" style="flex:1"></span>
-          <span id="ideaRun" class="muted" style="font-size:12px;margin-right:10px"></span>
-        </h2>
-        <div class="body tight">
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:12px 14px;padding:10px;border:1px solid var(--line);border-radius:10px">
-          <label class="muted" style="font-size:11px;display:block;flex:2;min-width:240px">Suchbegriffe / Kategorie (Komma-getrennt, leer = Standard-Mix)
-            <input id="riNiches" type="text" placeholder="Begriff (z. B. camping gadget) ODER AliExpress-Seiten-Link (Local+/Suche mit Versand-aus-DE-Filter)" style="width:100%;margin-top:3px">
-          </label>
-          <label class="muted" style="font-size:11px;display:block">Anzahl
-            <input id="riTarget" type="number" value="25" min="1" max="200" style="width:75px;margin-top:3px;display:block">
-          </label>
-          <label class="muted" style="font-size:11px;display:block">EK von €
-            <input id="riCostMin" type="number" min="0" step="0.5" placeholder="egal" style="width:85px;margin-top:3px;display:block">
-          </label>
-          <label class="muted" style="font-size:11px;display:block">EK bis €
-            <input id="riCostMax" type="number" min="0" step="0.5" placeholder="egal" style="width:85px;margin-top:3px;display:block">
-          </label>
-          <label class="muted" style="font-size:11px;display:block">Gewinn ab €
-            <input id="riProfitMin" type="number" min="0" step="0.5" placeholder="egal" style="width:80px;margin-top:3px;display:block" title="Optionaler €-Mindestgewinn. Leer/0 = aus (Marge zählt).">
-          </label>
-          <label class="muted" style="font-size:11px;display:block">Lieferzeit bis Tage
-            <input id="riDeliveryMax" type="number" min="1" max="60" step="1" value="10" style="width:75px;margin-top:3px;display:block">
-          </label>
-          <label class="muted" style="font-size:11px;display:flex;align-items:center;gap:5px;align-self:flex-end;height:32px" title="Nur Produkte, die laut AliExpress wirklich aus einem EU-Lager versenden (Achse „Versand aus": Deutschland, Polen, Frankreich …). Haken aus = alle Produkte. Gilt für „Suchen" UND „Gewinner klonen".">
-            <input type="checkbox" id="riFastOnly" style="width:auto;margin:0">📦 nur lokales Lager (EU)
-          </label>
-          <button class="btn sm primary" onclick="startResearch()" style="height:32px">Suchen</button>
-          <button class="btn sm" onclick="startWinnerClone()" style="height:32px" title="KI leitet Suchbegriffe aus euren tatsächlichen Bestsellern ab (Varianten, Schwester-Produkte, Zubehör derselben Zielgruppe) und sucht damit AliExpress ab — statt Zufalls-Nischen">Gewinner klonen</button>
-          <span class="muted" style="font-size:11px;margin-left:6px" title="Läuft automatisch täglich um 4 Uhr, begrenzt auf 10 neue Produkte – die gefundenen Trends erscheinen unten (fett) und die passenden AliExpress-Produkte landen mit in den Ideen.">KI-Trends: automatisch täglich (10 Produkte)</span>
-        </div>
-        <div id="trendBox" style="display:none;margin:0 14px 12px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font-size:12px"></div>
-        <div class="table-scroll stick-scroll">
-          <table>
-            <thead><tr>
-              <th>Produkt</th><th>Nische</th><th class="num">★ / Lieferung</th>
-              <th class="num">EK / VK</th><th class="num">Gewinn</th><th>Aktion</th>
-            </tr></thead>
-            <tbody id="ideasBody"><tr><td colspan="6" class="empty">Noch keine Ideen — oben Kriterien setzen und „Suchen"</td></tr></tbody>
-          </table>
-        </div></div>
-      </section>
-    </section>
 
-    <!-- ============ PREIS-CHECK (Zoll-Neukalkulation) ============ -->
-    <section class="view" id="view-pricecheck">
-      <div class="kpis" id="pcSummary" style="margin-bottom:12px"></div>
-      <section class="card card-flush">
-        <h2>Listing-Cockpit
-          <span id="pcLastSync" class="muted" style="font-size:11.5px;margin-left:10px"></span>
-          <span class="spacer" style="flex:1"></span>
-          <button class="btn sm ghost" onclick="pcResetCols()" title="Spaltenbreiten auf Standard zurücksetzen">↔ Spalten</button>
-          <button class="btn sm" onclick="syncAll(this)" title="Report neu berechnen UND EK + Bestand beim Lieferanten + den echten eBay-Listing-Preis aller verknüpften Artikel jetzt live prüfen (läuft sonst automatisch alle 6 Stunden). Zeigt auf, wenn der interne Preis vom eBay-Preis abweicht.">Synchronisieren</button>
-          <input type="text" id="pcSearch" placeholder="Suche Titel / #ID" style="width:180px;padding:5px 9px;font-size:12px;margin-left:8px" oninput="loadPriceCheck(true)">
-        </h2>
-        <div class="body tight"><div class="table-scroll pc-scroll">
-          <table class="pc-table">
-            <thead><tr>
-              <th>Artikel</th>
-              <th title="Kann ich das gerade verkaufen? Lieferstatus / Quelle / Eigenbestand">◧ Lieferfähigkeit</th>
-              <th title="Lohnt es sich? Preis (Spanne), Marge, EK &amp; Gewinn — bei zu dünner Marge der nötige Aufschlag">◨ Preis &amp; Marge</th>
-              <th>Aktion</th>
-            </tr></thead>
-            <tbody id="pcBody"><tr><td colspan="4" class="empty">lade…</td></tr></tbody>
-          </table>
-        </div></div>
-      </section>
-    </section>
 
-    <!-- ============ ORDERS ============ -->
-    <section class="view" id="view-orders">
-      <div class="kpis cols-4" id="orderSummary" style="margin-bottom:12px"></div>
-      <section class="card">
-        <h2>Verkäufe &amp; Fulfillment
-          <span class="spacer" style="flex:1"></span>
-          <button class="btn sm" onclick="syncOrdersAll(this)" title="In EINEM Klick nacheinander: (1) eBay-Bestellungen holen (inkl. Storno-/Erstattungs-Erkennung + Varianten-Zuordnung), (2) Sendungsnummern von AliExpress holen und an eBay melden, (3) auf eBay eingetragene Sendungsnummern nachziehen. Läuft sonst automatisch.">Bestellungen & Tracking synchronisieren</button>
-          <button class="btn sm ghost" onclick="ordResetCols()" style="margin-left:8px" title="Spaltenbreiten auf Standard zurücksetzen (Breiten ziehst du an den Spalten-Trennlinien der Kopfzeile)">↔ Spalten</button>
-          <select id="orderFilter" style="width:auto;padding:5px 8px;font-size:12px;margin-left:8px" onchange="loadOrders()">
-            <option value="all">alle</option><option value="pending">offen (zu bestellen)</option>
-            <option value="ordered_aliexpress">bestellt</option><option value="tracking">an eBay gemeldet</option>
-            <option value="needs_manual_review">manuell prüfen</option>
-            <option value="cancelled">storniert</option><option value="refunded">erstattet</option>
-          </select>
-        </h2>
-        <div class="body tight"><div class="table-scroll stick-scroll">
-          <table class="ord-table">
-            <thead><tr>
-              <th></th><th title="Interne Vorgangs-Nr. (stabil, nicht lückenlos — Nachimporte vergeben Nummern rückwirkend, daher Sprünge wie 800→643)">Vorgang ⓘ</th><th>Artikel / Käufer</th><th class="num" title="Gekaufte Stückzahl dieses Artikels (Menge in dieser Bestell-Position)">Anzahl</th><th>Variante</th><th class="num">VK / EK</th>
-              <th class="num">Gewinn</th><th>Status</th><th>Tracking</th><th title="Tatsächlich vergangene Tage seit Bezahlung + geschätzte Lieferzeit. Grenze: 9 Tage. Hinweis: ein echtes Ankunftsdatum wird nicht erfasst.">Lieferzeit</th><th>Aktion</th>
-            </tr></thead>
-            <tbody id="ordersBody"><tr><td colspan="11" class="empty">lade Orders…</td></tr></tbody>
-          </table>
-        </div></div>
-      </section>
-    </section>
 
-    <!-- ============ MONITORING ============ -->
 
     <!-- ============ EBAY-PRODUKTE ============ -->
     <section class="view" id="view-products">
@@ -1154,126 +906,6 @@
       </section>
     </section>
 
-    <!-- ============ OPTIMIERUNG ============ -->
-    <section class="view" id="view-optimization">
-      <div class="subtabs" id="optSubtabs">
-        <button data-subtab="optimieren" class="active">Produkte optimieren <span class="tag" id="optCntOpt">–</span></button>
-        <button data-subtab="multibuy">Mengenrabatt <span class="tag" id="optCntMulti">–</span></button>
-        <button data-subtab="aufraeumen">Aufräumen <span class="tag" id="optCntClean">–</span></button>
-        <button data-subtab="tracker">Nachverfolgung <span class="tag" id="optCntTrack">–</span></button>
-        <button data-subtab="varianten">Varianten <span class="tag" id="optCntVar">–</span></button>
-        <button data-subtab="portfolio">Portfolio-Analyse</button>
-      </div>
-
-      <!-- Unter-Tab: Varianten-Werkbank.
-           Der Server kann hier seit jeher mehr, als die Oberflaeche zeigte: 15
-           Varianten-Adressen, davon hatten genau zwei einen Knopf. Bericht,
-           Sammelreparatur, Achsen- und Bildreparatur waren nur per curl
-           erreichbar - also praktisch gar nicht.
-
-           Der Aufbau folgt der Propose-only-Regel: erst LESEN (Bericht, aendert
-           nichts), dann PLANEN (Trockenlauf, aendert nichts), erst dann
-           ausfuehren - und das nur nach ausdruecklicher Rueckfrage. Der
-           Bulk-Endpunkt hat dry_run=true als Vorgabe; diese Vorgabe wird hier
-           nicht umgangen, sondern sichtbar gemacht. -->
-      <div class="subview" id="optsub-varianten">
-        <section class="card">
-          <h2>Varianten-Werkbank
-            <span class="spacer" style="flex:1"></span>
-            <select id="varScope" style="width:auto;padding:5px 8px;font-size:12px" onchange="ladeVarianten(true)">
-              <option value="all">alle Listings</option>
-              <option value="week">nur diese Woche</option>
-            </select>
-            <button class="btn sm" style="margin-left:8px" onclick="ladeVarianten(true)">⟳ Bericht neu</button>
-          </h2>
-          <div class="body">
-            <div id="varKopf"><div class="empty">öffne den Reiter, um den Bericht zu laden…</div></div>
-            <div id="varAktionen" style="display:none;margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:12px">
-              <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
-                Der Trockenlauf ändert <b>nichts</b> — er zeigt nur, was passieren würde.
-                Erst danach lässt sich die Reparatur wirklich starten.
-              </div>
-              <button class="btn sm" id="varPlanBtn" onclick="variantenPlan()">Trockenlauf — was würde passieren?</button>
-              <button class="btn sm primary" id="varLaufBtn" onclick="variantenLauf()" disabled
-                      title="Erst den Trockenlauf ansehen">Reparatur starten</button>
-              <div id="varPlanErgebnis" style="margin-top:10px"></div>
-            </div>
-            <div class="table-scroll">
-              <table>
-                <thead><tr>
-                  <th>Listing</th><th class="num">Varianten</th><th class="num">ausverkauft</th>
-                  <th>zu tun</th><th></th>
-                </tr></thead>
-                <tbody id="varBody"><tr><td colspan="5" class="empty">–</td></tr></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <!-- Unter-Tab: Optimieren (Preis / Titel / Reaktivieren) -->
-      <div class="subview active" id="optsub-optimieren">
-        <section class="card">
-          <h2>Produkte zum Optimieren
-            <span class="spacer" style="flex:1"></span>
-            <button class="btn sm" id="refreshClicksBtn" onclick="refreshClicks()" title="Klick-/Impressionszahlen aller aktiven Listings frisch von eBay laden (läuft im Hintergrund)">Klickzahlen aktualisieren</button>
-          </h2>
-          <div class="body">
-            <div id="optRefreshNote"></div>
-            <div id="optBuckets"><div class="empty">lade…</div></div>
-          </div>
-        </section>
-      </div>
-
-      <!-- Unter-Tab: Mengenrabatt (Multi-Buy) -->
-      <div class="subview" id="optsub-multibuy">
-        <section class="card">
-          <h2>Mengenrabatt-Kandidaten</h2>
-          <div class="body">
-            <div id="optMultibuy"><div class="empty">lade…</div></div>
-          </div>
-        </section>
-      </div>
-
-      <!-- Unter-Tab: Aufräumen (Ladenhüter) -->
-      <div class="subview" id="optsub-aufraeumen">
-        <section class="card">
-          <h2>Aufräumen prüfen <span class="tag">Ladenhüter · nie verkauft</span></h2>
-          <div class="body">
-            <p class="muted" style="font-size:12.5px;margin:0 0 10px">
-              Nie verkauft, kein Traffic und lange online. <b>„Preis-Check"</b> prüft, ob zu teuer und nicht senkbar → dann <b>„Löschen"</b> (du entscheidest, nichts automatisch).
-            </p>
-            <div id="optCleanup"><div class="empty">lade…</div></div>
-          </div>
-        </section>
-      </div>
-
-      <!-- Unter-Tab: Nachverfolgung (Entwicklung nach dem Optimieren) -->
-      <div class="subview" id="optsub-tracker">
-        <section class="card">
-          <h2>Nachverfolgung <span class="tag">nach dem Optimieren · vorher/nachher</span></h2>
-          <div class="body">
-            <div id="optTracker"><div class="empty">lade…</div></div>
-          </div>
-        </section>
-      </div>
-
-      <!-- Unter-Tab: Portfolio-Analyse (wo verdient der Shop sein Geld?) -->
-      <div class="subview" id="optsub-portfolio">
-        <section class="card">
-          <h2>Portfolio-Analyse <span class="tag">Konzentration · Trichter · Preisbänder</span>
-            <span class="spacer" style="flex:1"></span>
-            <button class="btn sm" onclick="loadPortfolio(true)" title="Analyse mit den aktuellen Zahlen neu rechnen">Neu rechnen</button>
-          </h2>
-          <div class="body">
-            <p class="muted" style="font-size:12.5px;margin:0 0 10px">
-              Beantwortet: <b>Wo verdient der Shop sein Geld wirklich?</b> Wie stark der Umsatz auf wenigen Listings konzentriert ist, in welcher Trichter-Stufe der Rest feststeckt, wie sich Neuzugänge gegen den Altbestand schlagen und welche Preisbänder tragen. Gerechnet wird nur mit echt verknüpften Verkäufen (ohne Stornos).
-            </p>
-            <div id="optPortfolio"><div class="empty">lade…</div></div>
-          </div>
-        </section>
-      </div>
-    </section>
 
     <!-- ============ BELEGE & KÄUFE ============ -->
     <section class="view" id="view-belege">
@@ -1283,13 +915,13 @@
         <button data-bsub="finanzbericht">eBay-Finanzbericht</button>
       </div>
 
-      <!-- Sub: Belegablage = AUSGABEN (AliExpress-Käufe + Sonstige) -->
+      <!-- Sub: Belegablage = AUSGABEN (Wareneinkauf + Sonstige) -->
       <div class="subview active" id="bsub-belegablage">
         <!-- Die Kacheln sind zugleich der Filter: Klick zeigt nur diese Belege. -->
         <div class="kpis" style="grid-template-columns:repeat(5,1fr)">
           <div class="kpi" id="kpi_alle" style="cursor:pointer" onclick="belFilter('all')" title="Alle Belege anzeigen"><div class="label">Alle Belege</div><div class="val" id="b_alle">–</div><div class="sub">Filter zurücksetzen</div></div>
           <div class="kpi" id="kpi_problem" style="cursor:pointer" onclick="belFilter('problem')" title="Belege, aus denen sich keine Rechnung erzeugen liess — Grund steht in der Zeile"><div class="label">Problemfälle</div><div class="val" id="b_problem" style="color:var(--bad)">–</div><div class="sub">Rechnung nicht möglich</div></div>
-          <div class="kpi" id="kpi_ae" style="cursor:pointer" onclick="belFilter('aliexpress_purchase')" title="Nur AliExpress-Käufe anzeigen"><div class="label">Kaufbelege (AliExpress)</div><div class="val accent" id="b_purch">–</div><div class="sub" id="b_purch_sum">–</div></div>
+          <div class="kpi" id="kpi_ae" style="cursor:pointer" onclick="belFilter('aliexpress_purchase')" title="Nur Wareneinkäufe anzeigen"><div class="label">Kaufbelege (Wareneinkauf)</div><div class="val accent" id="b_purch">–</div><div class="sub" id="b_purch_sum">–</div></div>
           <div class="kpi" id="kpi_ohne" style="cursor:pointer" onclick="belFilter('ohne_beleg')" title="Nur Käufe anzeigen, zu denen der Beleg fehlt"><div class="label">Käufe ohne Beleg</div><div class="val warn" id="b_miss_p">–</div><div class="sub">Kaufbeleg fehlt</div></div>
           <div class="kpi" id="kpi_sonst" style="cursor:pointer" onclick="belFilter('betriebsausgabe')" title="Nur sonstige Betriebsausgaben anzeigen"><div class="label">Sonstige Ausgaben</div><div class="val" id="b_other">–</div><div class="sub" id="b_other_sum">–</div></div>
         </div>
@@ -1297,8 +929,6 @@
           <h2>Belegablage <span class="tag">Ausgaben</span>
             <span class="spacer" style="flex:1"></span>
             <a class="btn sm primary" href="/api/v1/invoices/tax-export" title="Komplettes Jahres-Paket für den Steuerberater als ZIP: alle Original-Belege (sauber benannt) + Index-Tabelle + Summen-Seite">Steuerberater-Export (ZIP)</a>
-            <button class="btn sm" id="belAbrufBtn" onclick="belegeAbrufen()" style="margin-left:8px" title="Fehlende AliExpress-Belege abholen. Der Server kann das nicht selbst – er beauftragt den Helfer auf deinem Rechner.">Belege abrufen</button>
-            <span id="belAbrufStatus" class="muted" style="font-size:11.5px;margin-left:8px"></span>
             <button class="btn sm" onclick="openExpenseModal()" style="margin-left:8px" title="Sonstige Betriebsausgabe erfassen (AutoDS-Abo, KI/API, Server-Hosting, Temu, Versand-/Retourenlabel, Domain, …) – optional mit Beleg">Ausgabe erfassen</button>
             <button class="btn sm ghost" onclick="belResetCols()" style="margin-left:8px" title="Spaltenbreiten auf Standard zurücksetzen (Breiten ziehst du an den Spalten-Trennlinien der Kopfzeile)">↔ Spalten</button>
             <select id="belegFilter" style="width:auto;padding:5px 8px;font-size:12px;margin-left:8px" onchange="loadBelege()">
@@ -1359,7 +989,7 @@
          Ein Ort fuer die Frage "bin ich eigentlich verbunden?". Vorher gab es
          ihn nicht: Der DHL-Schluessel war der EINZIGE Zugang, der ueberhaupt
          im Bild vorkam - und er hing mitten im Tagesgeschaeft der
-         Bestellungen. eBay, AliExpress und die KI tragen den Betrieb und
+         Bestellungen. eBay und die KI tragen den Betrieb und
          waren unsichtbar.
 
          Bewusst KEINE Ampel "Verbindung steht": ob ein Zugang eingerichtet
@@ -1386,9 +1016,8 @@
         </h2>
         <div class="body tight" id="dhlKeyBody">
           <p class="muted" style="font-size:12px;margin:0 0 8px">
-            Setzt DHL-Pakete (Sendungsnr. 003…) automatisch auf „zugestellt", sobald DHL das meldet —
-            deckt die Lücke, wo AliExpress die deutsche Zustellung nicht zurückmeldet. Läuft danach von
-            selbst im Sync. Dazu einmal deinen kostenlosen Key von
+            Setzt DHL-Pakete (Sendungsnr. 003…) automatisch auf „zugestellt", sobald DHL das meldet.
+            Läuft danach von selbst im Sync. Dazu einmal deinen kostenlosen Key von
             <a href="https://developer.dhl.com" target="_blank" rel="noopener">developer.dhl.com</a>
             („Shipment Tracking – Unified") hier einfügen — er wird sicher am Server gespeichert.
           </p>
@@ -1401,13 +1030,6 @@
       </section>
     </section>
 
-    <!-- ============ AKTIVITÄT ============ -->
-    <section class="view" id="view-activity">
-      <section class="card">
-        <h2>Aktivität &amp; Audit-Log</h2>
-        <div class="body tight"><div class="feed" id="feed"><div class="empty">lade…</div></div></div>
-      </section>
-    </section>
   </div>
 
   <div id="modal" onclick="if(event.target===this)closeModal()">
@@ -1489,7 +1111,7 @@
     function fehlt(was) {
       toast(was === "Rechnung"
         ? "Für diesen Kauf wurde noch keine Rechnung erstellt."
-        : "Zu diesem Kauf liegt noch kein Beleg von AliExpress vor.");
+        : "Zu diesem Kauf liegt noch kein Beleg vom Lieferanten vor.");
     }
     async function api(method, path, body) {
       // no-store: GET-Antworten (z.B. Orders) nie aus dem Browser-Cache -> immer frisch.
@@ -1509,11 +1131,7 @@
 
     // -------- Tabs --------
     const views = {};
-    let growthEnabled = false;
     function showView(name) {
-      if (name === "ideas") name = "overview";     // Neues Listing ist aus dem Dashboard entfernt
-      if (name === "aliorders") name = "belege";  // alter Tab -> in "Buchhaltung" integriert
-      if (name === "growth" && !growthEnabled) name = "optimization";
       if (!document.getElementById("view-" + name)) name = "overview";  // alte/kaputte Anker abfangen
       document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
       document.querySelectorAll("nav.tabs button").forEach(b => b.classList.toggle("active", b.dataset.view === name));
@@ -1917,7 +1535,7 @@
             <span class="muted" style="font-size:12px">Saldo ${eur(k.balance_eur)}${k.tax_eur != null ? ` · Steuer-Rücklage ${eur((k.tax_eur || 0) + (k.vat_eur || 0))}` : ""}${eb ? ` · eBay-Auszahlungen: ${eb.payouts_matched} von ${eb.payouts_total} angekommen` : ""}${b.archiv ? ` · GoBD-Archiv: ${b.archiv.monate} Monat(e) gesichert` : ""} · nur Lese-Zugriff</span>
           </div>
           ${!orderRows && !payoutRows ? `<p class="muted" style="font-size:12px;margin:10px 0 0">Alles vollständig — jeder Einkauf hat seine Abbuchung, jede Auszahlung ist angekommen.</p>` : ""}
-          ${mini("Einkauf ohne Abbuchung vom Konto", "Bei AliExpress bestellt, aber es ging kein Geld ab — mit Guthaben bezahlt, über ein anderes Konto gelaufen, oder eine Buchung fehlt.", `<th>Datum</th><th>AliExpress-Bestellnr.</th><th class="num">EK</th>`, orderRows)}
+          ${mini("Einkauf ohne Abbuchung vom Konto", "Bei Lieferant bestellt, aber es ging kein Geld ab — mit Guthaben bezahlt, über ein anderes Konto gelaufen, oder eine Buchung fehlt.", `<th>Datum</th><th>Bestellnr.</th><th class="num">EK</th>`, orderRows)}
           ${mini("eBay-Auszahlung ohne Geldeingang", "eBay hat ausgezahlt, auf dem Konto ist nichts angekommen. Die einzige Prüfung, die fehlendes Geld auf der Einnahmenseite findet.", `<th>Datum</th><th>Status</th><th class="num">Betrag</th>`, payoutRows)}
         </section>`;
       } catch (e) { /* Anzeige-Feature – darf die Kontoliste nie stoeren */ }
@@ -1946,15 +1564,6 @@
         }
         else if (h.sandbox) { mp.textContent = "eBay-Sandbox"; mp.title = "eBay-Testumgebung (Sandbox), keine echten Verkäufe."; }
         else { mp.classList.remove("warn"); mp.textContent = "Live"; mp.title = `Echtes eBay (Produktion)${h.mock_llm ? " · KI simuliert" : " · echte KI (Claude)"}`; }
-        // Die Engine heisst hier, was sie ist: die eigene, die ohne AutoDS-Abo
-        // direkt auf eBay einstellt.
-        $("enginePill").textContent = (h.fulfillment_engine === "native" ? "⚙ Eigene Engine" : "AutoDS");
-        growthEnabled = h.growth_engine_enabled === true;
-        const growthTab = document.querySelector('nav.tabs button[data-view="growth"]');
-        if (growthTab) growthTab.hidden = !growthEnabled;
-        if (!growthEnabled && document.querySelector(".view.active")?.id === "view-growth") {
-          showView("optimization");
-        }
         // Studio nur zeigen, wenn es auch eingeschaltet ist. Sonst fuehrte der
         // Eintrag auf eine Seite, die sofort mit "Studio ist ausgeschaltet"
         // antwortet - ein Knopf, der nur enttaeuschen kann.
@@ -1980,15 +1589,6 @@
       { schluessel: s => s.listings?.drafts || 0,
         was: "Entwürfe warten", wie: "fertig machen und einstellen",
         ton: "warten", ziel: () => { showView("products"); zeigeNurFehler(false); filterProducts("draft"); } },
-      { schluessel: s => (s.sales?.fulfillment || {}).to_order || 0,
-        was: "Zu bestellen", wie: "bei AliExpress kaufen",
-        ton: "dringend", ziel: () => { showView("orders"); const f = $("orderFilter"); if (f) { f.value = "pending"; loadOrders(); } } },
-      { schluessel: s => s.listings?.out_of_stock || 0,
-        was: "Quelle ausverkauft", wie: "Ersatzquelle suchen oder beenden",
-        ton: "warten", ziel: () => showView("pricecheck") },
-      { schluessel: s => s.tasks?.failed || 0,
-        was: "Aufgaben fehlgeschlagen", wie: "im Protokoll nachsehen",
-        ton: "warten", ziel: () => showView("activity") },
     ];
 
     let _heuteZiele = [];
@@ -2011,25 +1611,6 @@
           <span class="zahl">${a.n}</span>
           <span class="text"><span class="was">${esc(a.was)}</span><span class="wie">${esc(a.wie)}</span></span>
         </button>`).join("");
-    }
-
-    // "Alles synchronisieren" fasst die beiden Sammel-Syncs zusammen, die bisher
-    // auf zwei Reitern lagen: erst Bestellungen und Sendungsnummern, dann
-    // Listings und Zahlen. Reihenfolge zaehlt - die Listing-Zahlen sollen den
-    // frisch geholten Bestellstand widerspiegeln.
-    async function heuteSync() {
-      const k = $("heuteSyncBtn");
-      if (k) { k.disabled = true; k.textContent = "1/2 Bestellungen…"; }
-      try {
-        if (typeof syncOrdersAll === "function") await syncOrdersAll();
-        if (k) k.textContent = "2/2 Listings…";
-        if (typeof importEbay === "function") await importEbay();
-        await loadOverview();
-      } catch (e) {
-        toast("Synchronisieren fehlgeschlagen — läuft der Server?", true);
-      } finally {
-        if (k) { k.disabled = false; k.textContent = "⟳ Alles synchronisieren"; }
-      }
     }
 
     // ---------- Einstellungen: Zugaenge ----------
@@ -2090,60 +1671,14 @@
         // Die Herleitung steht bewusst nur noch im Tooltip, nicht mehr als Zeile unter der Zahl.
         const sa2 = s.sales;
         $("k_profit_card").title =
-          `Bruttogewinn = Umsatz − eBay-Gebühren − AliExpress-Ausgaben (nur tatsächliche Zahlen).\n\n`
+          `Bruttogewinn = Umsatz − eBay-Gebühren − Wareneinkauf (nur tatsächliche Zahlen).\n\n`
           + `• Umsatz: ${eur(s.sales.revenue_eur)}\n`
           + `• eBay-Gebühren (echt, inkl. Anzeigengebühr): −${eur(sa2.fees_eur||0)} (${num(sa2.fees_real_count||0)} Verkäufe)\n`
-          + `• AliExpress-Ausgaben (erfasst): −${eur(sa2.ae_spend_eur||0)} (${num(sa2.ae_purchases_count||0)} Käufe)\n\n`
-          + `Hinweis: ${num(sa2.sales_without_purchase||0)} Verkäufe haben noch keinen erfassten AliExpress-Kauf — sobald du diese importierst, sinkt der Bruttogewinn auf den echten Wert (Tab „Buchhaltung" → Käufe → CSV).`;
+          + `• Wareneinkauf (erfasst): −${eur(sa2.ae_spend_eur||0)} (${num(sa2.ae_purchases_count||0)} Käufe)`;
         $("k_active").textContent = s.listings.active;
-        const ful = s.sales.fulfillment || {};
-        $("k_toorder").textContent = ful.to_order ?? s.sales.pending_fulfillment ?? "–";
-        $("k_transit").textContent = ful.in_transit ?? "–";
-        renderStatusBreakdown(s.sales.by_status, s.sales.count + (s.sales.voided_count || 0));
         zeichneHeute(s);
       } catch (e) {}
       loadProfit();
-    }
-    // Verständliche Namen für die Order-Status (der Prozess von links nach rechts):
-    // neu -> bei AliExpress bestellt -> unterwegs (Tracking) -> zugestellt.
-    const STATUS_DE = {
-      pending: "Neu — noch zu bestellen",
-      needs_manual_review: "Prüfung nötig",
-      alternative_pending: "Alternative wählen",
-      manual_intervention_required: "Manuell klären",
-      ordered_aliexpress: "Bei AliExpress bestellt",
-      tracking: "Unterwegs (mit Sendungsnr.)",
-      delivered: "Zugestellt",
-      refunded: "↩ Erstattet / Storno",
-    };
-    // Order-nach-Status: aktive Phasen, oben das Erledigte (Zugestellt) -> unten das Offene.
-    // Storniert/Erstattet wird hier bewusst NICHT gezeigt (Nutzerwunsch).
-    function renderStatusBreakdown(byStatus, total) {
-      const box = $("statusBreakdown");
-      const bs = byStatus || {};
-      const g = (...ks) => ks.reduce((a,k)=>a+(bs[k]||0), 0);
-      const buckets = [
-        {label:"Zugestellt", sub:"beim Kunden angekommen", color:"var(--ok)", n: g("delivered"),
-          icon:'<circle cx="12" cy="12" r="9"/><path d="M8.5 12l2.4 2.4 4.6-4.9"/>'},
-        {label:"Unterwegs", sub:"mit Sendungsnummer, noch nicht zugestellt", color:"var(--info)", n: g("tracking"),
-          icon:'<path d="M3 8h10v7H3z"/><path d="M13 11h3.5l2.5 2.5V15H13z"/><circle cx="6.5" cy="17" r="1.5"/><circle cx="16.5" cy="17" r="1.5"/>'},
-        {label:"Bestellt", sub:"gekauft, wartet auf Sendungsnummer", color:"var(--purple)", n: g("ordered_aliexpress"),
-          icon:'<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4"/><path d="M12 12v8"/>'},
-        {label:"Noch zu bestellen", sub:"verkauft, noch nicht bei AliExpress gekauft", color:"var(--warn)", n: g("pending","needs_manual_review","alternative_pending","manual_intervention_required"),
-          icon:'<circle cx="9.5" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/><path d="M3 4h2.2l2.3 11h9.6l2-7.6H6.2"/>'},
-      ];
-      const shown = buckets.reduce((a,b)=>a+b.n, 0);
-      const t = $("statusTotal"); if (t) t.textContent = num(shown) + " gesamt";
-      const max = Math.max(1, ...buckets.map(b=>b.n));
-      box.innerHTML = buckets.map(b => {
-        const w = Math.round(b.n / max * 100);
-        return `<div style="margin-bottom:13px">
-          <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:4px">
-            <span style="display:inline-flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:${b.color};flex:none">${b.icon}</svg><b>${b.label}</b></span><b style="font-size:15px">${num(b.n)}</b></div>
-          <div style="height:9px;background:var(--bg-soft);border-radius:99px;overflow:hidden;margin-bottom:2px">
-            <div style="height:100%;width:${w}%;background:${b.color};border-radius:99px"></div></div>
-          <div class="muted" style="font-size:10.5px">${b.sub}</div></div>`;
-      }).join("");
     }
     async function loadProfit() {
       const days = $("profitDays").value;
@@ -2299,7 +1834,7 @@
           ? `<div class="kpi"><div class="label">Gewinn (real)</div><div class="val ${s.profit_real_eur>=0?'pos':'neg'}">${eur(s.profit_real_eur)}</div><div class="sub">Umsatz − EK ${eur(s.ae_spend_eur)} − Gebühr</div></div>`
           : `<div class="kpi"><div class="label">Gewinn (mit bekannter EK)</div><div class="val ${(s.profit_eur||0)>=0?'pos':'neg'}">${eur(s.profit_eur)}</div><div class="sub">Marge ${pct(s.margin_pct)} · nur ${num(s.with_cost_count||0)} Orders</div></div>`;
         const lastCard = hasReal
-          ? `<div class="kpi"><div class="label">AliExpress-Einkauf (importiert)</div><div class="val accent">${eur(s.ae_spend_eur)}</div></div>`
+          ? `<div class="kpi"><div class="label">Wareneinkauf (importiert)</div><div class="val accent">${eur(s.ae_spend_eur)}</div></div>`
           : `<div class="kpi"><div class="label">EK-Daten fehlen</div><div class="val warn">${num((s.count||0)-(s.with_cost_count||0))}</div><div class="sub">Käufe als CSV importieren →</div></div>`;
         $("orderSummary").innerHTML = `
           <div class="kpi"><div class="label">Bestellungen</div><div class="val">${num(s.count||0)}</div></div>
@@ -2335,35 +1870,35 @@
           const noSource = o.listing_id && o.has_source === false && !o.self_stock_listing;
           let action = "";
           if (!isVoid) {
-            if (canOrder && o.self_stock_listing) action += `<button class="btn sm primary" title="Eigenbestand — als selbst versendet markieren (kein AliExpress-Kauf; deine Menge wird um die verkaufte Stückzahl gesenkt)" onclick="fulfill(${o.sale_id}, null, true)">Selbst versendet</button> `;
-            if (noSource) action += `<button class="btn sm" title="Kein AliExpress-Quellprodukt — Link einfügen, dann kann bestellt werden. Oder im Listing-Cockpit „hab ich selbst" als Eigenbestand markieren." onclick="orderSource(${o.listing_id})">Quelle zuordnen</button> `;
+            if (canOrder && o.self_stock_listing) action += `<button class="btn sm primary" title="Eigenbestand — als selbst versendet markieren (kein Wareneinkauf; deine Menge wird um die verkaufte Stückzahl gesenkt)" onclick="fulfill(${o.sale_id}, null, true)">Selbst versendet</button> `;
+            if (noSource) action += `<button class="btn sm" title="Kein Quellprodukt — Link einfügen, dann kann bestellt werden. Oder im Listing-Cockpit „hab ich selbst" als Eigenbestand markieren." onclick="orderSource(${o.listing_id})">Quelle zuordnen</button> `;
             const hasVariant = o.variant_selected && Object.keys(o.variant_selected).length;
-            if (hasVariant && !noSource && !o.self_stock_listing && canOrder) action += `<button class="btn sm" title="AliExpress-Variante prüfen/zuordnen (mit Bild; wird für dieses Listing gemerkt)" onclick="chooseVariant(${o.sale_id}, ${!!canOrder})">Variante</button> `;
-            if (canOrder && !noSource && !inGroup && !o.self_stock_listing) action += `<button class="btn sm primary" onclick="fulfill(${o.sale_id})">Bei AliExpress bestellen</button> `;
-            // "Bezahlen": oeffnet AliExpress UND markiert lokal als bezahlt -> ausgegraut,
+            if (hasVariant && !noSource && !o.self_stock_listing && canOrder) action += `<button class="btn sm" title="Variante prüfen/zuordnen (mit Bild; wird für dieses Listing gemerkt)" onclick="chooseVariant(${o.sale_id}, ${!!canOrder})">Variante</button> `;
+            if (canOrder && !noSource && !inGroup && !o.self_stock_listing) action += `<button class="btn sm primary" onclick="fulfill(${o.sale_id})">Bestellen</button> `;
+            // "Bezahlen": oeffnet Lieferant UND markiert lokal als bezahlt -> ausgegraut,
             // damit man sieht, was schon gezahlt ist. "↩" nimmt eine Fehlklick-Markierung zurueck.
             if (o.status==='ordered_aliexpress' && o.aliexpress_order_id && !o.tracking_number) {
               action += o.ae_paid
-                ? `<a class="btn sm" style="opacity:.45" title="Bereits als bezahlt markiert — klicken öffnet die AliExpress-Bestellung erneut." href="https://www.aliexpress.com/p/order/detail.html?orderId=${esc(o.aliexpress_order_id)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">✓ bezahlt</a> <button class="btn sm ghost" style="opacity:.55" title="Doch noch nicht bezahlt? Markierung zurücknehmen" onclick="markAePaid(${o.sale_id}, false)">↩</button> `
-                : `<a class="btn sm" title="AliExpress legt die Bestellung nur an — bezahlt wird im AliExpress-Konto (unbezahlte Bestellungen verfallen nach ~24h!). Der Klick markiert die Bestellung hier als bezahlt (grau)." href="https://www.aliexpress.com/p/order/detail.html?orderId=${esc(o.aliexpress_order_id)}" target="_blank" rel="noopener" onclick="event.stopPropagation();markAePaid(${o.sale_id}, true)">Bezahlen ↗</a> `;
+                ? `<a class="btn sm" style="opacity:.45" title="Bereits als bezahlt markiert — klicken öffnet die Wareneinkauf erneut." href="https://www.aliexpress.com/p/order/detail.html?orderId=${esc(o.aliexpress_order_id)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">✓ bezahlt</a> <button class="btn sm ghost" style="opacity:.55" title="Doch noch nicht bezahlt? Markierung zurücknehmen" onclick="markAePaid(${o.sale_id}, false)">↩</button> `
+                : `<a class="btn sm" title="Der Lieferant legt die Bestellung nur an — bezahlt wird im Lieferantenkonto (unbezahlte Bestellungen verfallen nach ~24h!). Der Klick markiert die Bestellung hier als bezahlt (grau)." href="https://www.aliexpress.com/p/order/detail.html?orderId=${esc(o.aliexpress_order_id)}" target="_blank" rel="noopener" onclick="event.stopPropagation();markAePaid(${o.sale_id}, true)">Bezahlen ↗</a> `;
             }
             // Beleg + Rechnung direkt aus der Zeile: der Klick zeigt den Beleg
             // dieses Einkaufs, statt ihn in der Belegablage suchen zu muessen.
             if (o.beleg_id) {
-              action += `<a class="btn sm" title="${o.beleg_original ? "Original-Beleg von AliExpress zu diesem Einkauf" : "Noch kein Beleg von AliExpress hinterlegt"}" href="/api/v1/invoices/${o.beleg_id}/download" target="_blank" rel="noopener" onclick="event.stopPropagation()"${o.beleg_original ? "" : ' style="opacity:.5"'}>Beleg</a> `;
+              action += `<a class="btn sm" title="${o.beleg_original ? "Original-Beleg vom Lieferanten zu diesem Einkauf" : "Noch kein Beleg vom Lieferanten hinterlegt"}" href="/api/v1/invoices/${o.beleg_id}/download" target="_blank" rel="noopener" onclick="event.stopPropagation()"${o.beleg_original ? "" : ' style="opacity:.5"'}>Beleg</a> `;
               if (o.hat_rechnung) action += `<a class="btn sm primary" title="Die aus dem Beleg erzeugte Rechnung" href="/api/v1/invoices/${o.beleg_id}/rechnung" target="_blank" rel="noopener" onclick="event.stopPropagation()">Rechnung</a> `;
             } else if (o.aliexpress_order_id) {
               action += `<button class="btn sm" style="opacity:.45" title="Zu diesem Einkauf ist noch kein Beleg hinterlegt" onclick="event.stopPropagation();toast('Zu diesem Einkauf ist noch kein Beleg hinterlegt.')">Beleg</button> `;
             } else {
-              action += `<button class="btn sm" style="opacity:.45" title="Dieser Datensatz hat keine AliExpress-Bestellnummer — dazu kann es keinen AliExpress-Beleg geben" onclick="event.stopPropagation();toast('Kein AliExpress-Einkauf hinterlegt (keine Bestellnummer) — dazu gibt es keinen Beleg.')">kein Einkauf</button> `;
+              action += `<button class="btn sm" style="opacity:.45" title="Dieser Datensatz hat keine Bestellnummer — dazu kann es keinen Kaufbeleg geben" onclick="event.stopPropagation();toast('Kein Wareneinkauf hinterlegt (keine Bestellnummer) — dazu gibt es keinen Beleg.')">kein Einkauf</button> `;
             }
             if (canReport) action += `<button class="btn sm" onclick="reportTracking(${o.order_pk})">An eBay melden</button> `;
-            if (needsTracking) action += `<button class="btn sm" title="Sendungsnummer von AliExpress eintragen und an eBay melden (auch für manuell bestellte Orders — die AliExpress-API liefert die Nummer oft nicht)" onclick="enterTracking(${o.sale_id})">Tracking eintragen</button> `;
+            if (needsTracking) action += `<button class="btn sm" title="Sendungsnummer vom Lieferanten eintragen und an eBay melden (auch für manuell bestellte Orders — die Lieferanten-API liefert die Nummer oft nicht)" onclick="enterTracking(${o.sale_id})">Tracking eintragen</button> `;
             const pullTrack = o.ebay_order_id && !o.tracking_number && ["tracking","delivered"].includes(o.status);
             if (pullTrack) action += `<button class="btn sm" title="Selbst verschickt? Die auf eBay eingetragene Sendungsnummer ins System übernehmen" onclick="pullEbayTracking(${o.sale_id}, this)">Tracking von eBay</button> `;
             // Bestellt, aber nicht versandt -> alte (evtl. verfallene/unbezahlte) Order verwerfen & neu bestellen.
             if (o.aliexpress_order_id && !o.tracking_number && !["tracking","delivered"].includes(o.status))
-              action += `<button class="btn sm ghost" title="Alte AliExpress-Bestellung verfallen/unbezahlt? Verwerfen und neu bestellbar machen (NUR wenn NICHT bezahlt!)" onclick="reorderSale(${o.sale_id})">Neu bestellen</button> `;
+              action += `<button class="btn sm ghost" title="Alte Wareneinkauf verfallen/unbezahlt? Verwerfen und neu bestellbar machen (NUR wenn NICHT bezahlt!)" onclick="reorderSale(${o.sale_id})">Neu bestellen</button> `;
             if (canOrder) action += `<button class="btn sm ghost" title="Als storniert markieren (falls der Käufer storniert hat und der Abgleich es noch nicht erkannt hat)" onclick="markCancelled(${o.sale_id})">✖</button> `;
           } else if (o.status === 'cancelled') {
             if (!o.cancel_reviewed) action += `<button class="btn sm primary" title="Storno geprüft — aus der Prüfliste entfernen (wird nicht mehr als 'bitte prüfen' angezeigt)" onclick="markCancelReviewed(${o.sale_id}, this)">✓ Erledigt</button> `;
@@ -2391,7 +1926,7 @@
             let l2 = "";
             if (estD) {
               const est = Math.max(0, Math.round((estD.getTime() - when.getTime()) / DAY));
-              l2 = `<br><span class="muted" style="font-size:10px" title="Vom Händler/AliExpress geschätzte Lieferzeit ab Bezahlung – nur eine Schätzung, kein gemessener Wert.">gesch. ~${est} T. ${est <= LIMIT ? '✓' : ''}</span>`;
+              l2 = `<br><span class="muted" style="font-size:10px" title="Vom Händler/Lieferant geschätzte Lieferzeit ab Bezahlung – nur eine Schätzung, kein gemessener Wert.">gesch. ~${est} T. ${est <= LIMIT ? '✓' : ''}</span>`;
             }
             return l1 + l2;
           })();
@@ -2399,7 +1934,7 @@
             ? `<span class="badge" style="font-size:9.5px;color:var(--accent-2);background:rgba(56,189,248,.12);border-color:rgba(56,189,248,.3)" title="Position dieser eBay-Bestellung (${esc(o.ebay_order_id||'')})">Pos. ${o.order_position}/${o.order_item_count}</span>` : "";
           const cancelWarn = (o.ebay_cancel_state && !isVoid)
             ? (o.ebay_cancel_state === 'CANCELED'
-               ? `<br><span class="neg" style="font-size:10.5px">auf eBay STORNIERT — ${o.aliexpress_order_id?'bereits bei AliExpress bestellt, dort manuell prüfen!':'nicht bestellen!'}</span>`
+               ? `<br><span class="neg" style="font-size:10.5px">auf eBay STORNIERT — ${o.aliexpress_order_id?'bereits bestellt, dort manuell prüfen!':'nicht bestellen!'}</span>`
                : `<br><span class="neg" style="font-size:10.5px">Storno-Anfrage des Käufers offen</span>`) : "";
           return `<tr class="${inGroup?'grp-pos':''} ${isVoid?'sale-void':''}">
           <td>${(o.variant_image||o.image)?`<img src="${esc(o.variant_image||o.image)}" title="${o.variant_image?'Bild der verkauften Variante':'Artikelbild'}" style="width:38px;height:38px;object-fit:cover;border-radius:8px" onerror="this.onerror=null;${o.image&&o.variant_image?`this.src='${esc(o.image)}'`:`this.style.display='none'`}">`:""}</td>
@@ -2444,7 +1979,7 @@
     async function syncOrdersAll(btn) {
       // Alle drei Orders-Sync-Schritte in EINEM Klick, nacheinander: (1) eBay-Bestellungen holen –
       // hier laeuft auch die deterministische Varianten-Zuordnung/Self-Heal –, (2) Sendungsnummern
-      // von AliExpress holen und an eBay melden, (3) auf eBay eingetragene Nummern nachziehen.
+      // vom Lieferanten holen und an eBay melden, (3) auf eBay eingetragene Nummern nachziehen.
       // Ein Fehler in einem Schritt stoppt die anderen NICHT; am Ende eine Sammel-Meldung + Reload.
       if (btn) { btn.disabled = true; btn.textContent = "⏳ Synchronisiere…"; }
       const parts = [];
@@ -2457,7 +1992,7 @@
           parts.push("" + m);
         } catch (e) { parts.push("Bestellungen: Fehler"); }
 
-        toast("2/3 · Hole Sendungsnummern von AliExpress & melde an eBay …");
+        toast("2/3 · Hole Sendungsnummern vom Lieferanten & melde an eBay …");
         try { const r = await api("POST", "/api/v1/orders/sync-tracking");
           parts.push(`${r.reported ?? 0} gemeldet (${r.checked ?? 0} geprüft)`);
         } catch (e) { parts.push("Tracking: Fehler"); }
@@ -2475,15 +2010,15 @@
     }
     async function fulfill(id, extra, selfShip) {
       if (!confirm(selfShip
-        ? "Als selbst versendet markieren? Du versendest aus deinem EIGENBESTAND — es wird NICHTS bei AliExpress gekauft; deine Lagermenge wird um die verkaufte Stückzahl gesenkt."
-        : "Jetzt bei AliExpress bestellen? Das gibt ECHTES Geld aus und löst eine verbindliche Bestellung aus.")) return;
-      toast(selfShip ? "Markiere als selbst versendet …" : "Bestelle bei AliExpress …");
+        ? "Als selbst versendet markieren? Du versendest aus deinem EIGENBESTAND — es wird NICHTS bestellt; deine Lagermenge wird um die verkaufte Stückzahl gesenkt."
+        : "Jetzt bestellen? Das gibt ECHTES Geld aus und löst eine verbindliche Bestellung aus.")) return;
+      toast(selfShip ? "Markiere als selbst versendet …" : "Bestelle …");
       try { const r = await api("POST", `/api/v1/orders/fulfill/${id}`, extra || {});
         closeModal();
         if (r.status === "self_stock" || r.status === "self_shipped")
-          toast(`Sale #${id} selbst versendet — Eigenbestand gesenkt, KEIN AliExpress-Kauf${r.self_stock_remaining!=null?` (${r.self_stock_remaining} verbleiben)`:''}. Sendungsnummer selbst eintragen.`);
+          toast(`Sale #${id} selbst versendet — Eigenbestand gesenkt, KEIN Wareneinkauf${r.self_stock_remaining!=null?` (${r.self_stock_remaining} verbleiben)`:''}. Sendungsnummer selbst eintragen.`);
         else
-          toast(`Sale #${id}: ${r.status} (AE ${r.aliexpress_order_id||"–"}) — jetzt noch auf AliExpress bezahlen!`);
+          toast(`Sale #${id}: ${r.status} (AE ${r.aliexpress_order_id||"–"}) — jetzt noch bezahlen!`);
         loadOrders();
       } catch (e) {
         // Verlust-Stopp der Backend-Sperre: der Nutzer kann bewusst forcieren.
@@ -2498,22 +2033,22 @@
       }
     }
     async function fulfillGroup(ebayOrderId) {
-      if (!confirm("Alle offenen Positionen dieser eBay-Bestellung ZUSAMMEN bei AliExpress bestellen?\n\nDas gibt ECHTES Geld aus. Positionen desselben Händlers laufen in EINER AliExpress-Bestellung; bereits bestellte Positionen werden übersprungen.")) return;
-      toast("Bestelle Gruppe bei AliExpress …");
+      if (!confirm("Alle offenen Positionen dieser eBay-Bestellung ZUSAMMEN bestellen?\n\nDas gibt ECHTES Geld aus. Positionen desselben Händlers laufen in EINER Wareneinkauf; bereits bestellte Positionen werden übersprungen.")) return;
+      toast("Bestelle Gruppe bei Lieferant …");
       try {
         const r = await api("POST", `/api/v1/orders/fulfill-group/${encodeURIComponent(ebayOrderId)}`);
         const ids = (r.aliexpress_order_ids||[]).join(", ");
-        let msg = `✓ ${r.ordered.length} Position(en) bestellt (AE ${ids||"–"}) — jetzt noch auf AliExpress bezahlen!`;
+        let msg = `✓ ${r.ordered.length} Position(en) bestellt (AE ${ids||"–"}) — jetzt noch bezahlen!`;
         if ((r.skipped_already_ordered||[]).length) msg += ` · ${r.skipped_already_ordered.length} übersprungen (schon bestellt)`;
         toast(msg);
         if ((r.errors||[]).length) toast("Teilweise Fehler: " + r.errors.join(" | ").slice(0,180), true);
-        if ((r.mapping_uncertain_ids||[]).length) toast("Mehrere AE-Orders entstanden — Zuordnung im AliExpress-Konto prüfen: " + r.mapping_uncertain_ids.join(", "), true);
+        if ((r.mapping_uncertain_ids||[]).length) toast("Mehrere AE-Orders entstanden — Zuordnung im Lieferantenkonto prüfen: " + r.mapping_uncertain_ids.join(", "), true);
         loadOrders();
       } catch (e) {}
     }
     async function markCancelled(saleId, undo) {
       const q = undo ? "Storno-Markierung aufheben (Bestellung wieder als offen führen)?"
-        : "Diesen Verkauf als STORNIERT markieren?\n\nDie Bestell-Aktionen verschwinden; es wird nichts bei eBay oder AliExpress geändert. (Nutze das, wenn der Käufer storniert hat und der automatische Abgleich es noch nicht erkannt hat.)";
+        : "Diesen Verkauf als STORNIERT markieren?\n\nDie Bestell-Aktionen verschwinden; es wird nichts bei eBay oder beim Lieferanten geändert. (Nutze das, wenn der Käufer storniert hat und der automatische Abgleich es noch nicht erkannt hat.)";
       if (!confirm(q)) return;
       try {
         const r = await api("POST", `/api/v1/orders/${saleId}/mark-cancelled`, { undo: !!undo });
@@ -2525,7 +2060,7 @@
     async function setSaleStatus(saleId, status, sel) {
       if (!status) return;
       const names = {pending:"Noch zu bestellen", ordered_aliexpress:"Bestellt", tracking:"Unterwegs", delivered:"Zugestellt", cancelled:"Storniert"};
-      if (!confirm(`Status von Verkauf #${saleId} auf „${names[status]||status}" setzen?\n\n(Nur lokal – ändert nichts bei eBay/AliExpress.)`)) { if (sel) sel.value = ""; return; }
+      if (!confirm(`Status von Verkauf #${saleId} auf „${names[status]||status}" setzen?\n\n(Nur lokal – ändert nichts bei eBay/Lieferantensystem.)`)) { if (sel) sel.value = ""; return; }
       try {
         await api("POST", `/api/v1/orders/${saleId}/set-status`, { status });
         toast(`Status → ${names[status]||status}`); loadOrders(); loadOverview();
@@ -2601,7 +2136,7 @@
           ${sel?`<p style="margin:0 0 4px">Käufer wählte: <b>${esc(sel)}</b></p>`:""}
           <p class="muted" style="font-size:12px;margin:0 0 12px">${canOrder?'Alle Quellen wurden soeben LIVE geprüft. Bestellt wird erst nach deinem Klick — nichts läuft automatisch.':'Diese Bestellung ist bereits ausgelöst — hier nur der Live-Vergleich & die Quellen-Verwaltung (kein erneutes Bestellen).'}${d.confirmed?'':' <span class="neg">Hauptquelle ist ein unbestätigter Bild-Match — Bilder vergleichen!</span>'}</p>
           <div style="display:flex;flex-wrap:wrap;gap:10px">${cards}</div>
-          ${listingId?`<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px"><button class="btn sm" onclick="orderManageSources(${listingId})" title="Weitere AliExpress-Quelle hinzufügen oder Quellen entfernen — ohne das Listing-Cockpit zu öffnen">Weitere Quelle hinzufügen / Quellen verwalten</button></div>`:''}`;
+          ${listingId?`<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px"><button class="btn sm" onclick="orderManageSources(${listingId})" title="Weitere Quelle hinzufügen oder Quellen entfernen — ohne das Listing-Cockpit zu öffnen">Weitere Quelle hinzufügen / Quellen verwalten</button></div>`:''}`;
         $("modal").classList.add("open");
       } catch (e) {}
       finally { if (btn) { btn.disabled = false; btn.textContent = "Quellen"; } }
@@ -2618,7 +2153,7 @@
         _ordSrc = { listingId };
         $("m_title").textContent = "Quellen verwalten";
         $("modalBody").innerHTML = `
-          <p class="muted" style="font-size:12px;margin:0 0 10px">Hier weitere AliExpress-Quellen hinzufügen/entfernen — ganz ohne das Listing-Cockpit zu öffnen. Für einen Live-Preis-/Bestands-Vergleich wieder „Quellen" öffnen.</p>
+          <p class="muted" style="font-size:12px;margin:0 0 10px">Hier weitere Quellen hinzufügen/entfernen — ganz ohne das Listing-Cockpit zu öffnen. Für einen Live-Preis-/Bestands-Vergleich wieder „Quellen" öffnen.</p>
           <div id="ordSrcPanel">${renderSources(r)}</div>`;
         $("modal").classList.add("open");
         enrichSuggestionImages(listingId);
@@ -2664,10 +2199,10 @@
       }
       // Bewusster Bestell-Schritt: Zusammenfassung bestätigen, erst DANN der Geld-Call.
       const ek = o.ek_eur != null ? eur(o.ek_eur) : "?";
-      if (!confirm(`Jetzt bei AliExpress bestellen?\n\nQuelle: ${(o.title||o.aliexpress_id||"").slice(0,60)}\n${vName?`Variante: ${vName.slice(0,60)}\n`:""}EK ca.: ${ek}\n\n(Danach im AliExpress-Konto bezahlen — unbezahlt verfällt nach ~24h.)`)) return;
+      if (!confirm(`Jetzt bestellen?\n\nQuelle: ${(o.title||o.aliexpress_id||"").slice(0,60)}\n${vName?`Variante: ${vName.slice(0,60)}\n`:""}EK ca.: ${ek}\n\n(Danach im Lieferantenkonto bezahlen — unbezahlt verfällt nach ~24h.)`)) return;
       await fulfill(saleId, body);
     }
-    // Lokale "bezahlt"-Notiz (kein Geld-Call, aendert nichts bei AliExpress).
+    // Lokale "bezahlt"-Notiz (kein Geld-Call, aendert nichts bei Lieferant).
     async function markAePaid(saleId, paid) {
       try {
         await api("POST", `/api/v1/orders/${saleId}/mark-paid`, { paid: !!paid });
@@ -2691,17 +2226,17 @@
       } catch (e) { if (btn) { btn.disabled = false; btn.textContent = "Tracking von eBay"; } }
     }
     async function reorderSale(saleId) {
-      if (!confirm("Alte AliExpress-Bestellung verwerfen und wieder NEU bestellbar machen?\n\nNUR wenn die alte Bestellung NICHT bezahlt wurde bzw. verfallen ist — sonst bestellst du doppelt! (Bei AliExpress wird nichts geändert, nur der lokale Eintrag entfernt.)")) return;
+      if (!confirm("Alte Wareneinkauf verwerfen und wieder NEU bestellbar machen?\n\nNUR wenn die alte Bestellung NICHT bezahlt wurde bzw. verfallen ist — sonst bestellst du doppelt! (Bei Lieferant wird nichts geändert, nur der lokale Eintrag entfernt.)")) return;
       try {
         await api("POST", `/api/v1/orders/${saleId}/discard-order`);
-        toast("↩ Verworfen — jetzt wieder bestellbar. Klick „Bei AliExpress bestellen“.");
+        toast("↩ Verworfen — jetzt wieder bestellbar. Klick „Bestellen“.");
         loadOrders();
       } catch (e) {}
     }
     async function enterTracking(saleId) {
-      const tn = (prompt("Sendungsnummer (von AliExpress) für diese Bestellung eintragen:\n\nDie Nummer wird an eBay gemeldet – die Bestellung gilt dann als versendet.") || "").trim();
+      const tn = (prompt("Sendungsnummer (vom Lieferanten) für diese Bestellung eintragen:\n\nDie Nummer wird an eBay gemeldet – die Bestellung gilt dann als versendet.") || "").trim();
       if (!tn) return;
-      const aeId = (prompt("Optional: AliExpress-Bestellnummer (leer lassen, falls unbekannt):") || "").trim();
+      const aeId = (prompt("Optional: Bestellnummer (leer lassen, falls unbekannt):") || "").trim();
       toast("Melde Sendungsnummer an eBay …");
       try {
         const r = await api("POST", `/api/v1/orders/${saleId}/manual-tracking`,
@@ -2740,14 +2275,14 @@
     // Ausweich-Quelle umschalten und dort die (evtl. günstigere) Variante wählen kann.
     let _vcCtx = null, _vcSrcOpts = [], _vcSrcPick = -1;
     async function chooseVariant(saleId, canOrder = true) {
-      toast("Lade Varianten … (falls nötig live von AliExpress)");
+      toast("Lade Varianten … (falls nötig live vom Lieferanten)");
       try {
         const d = await api("GET", `/api/v1/orders/${saleId}/variant-options`);
         if (!d.options.length) {
-          toast(d.note || "Produkt hat keine AliExpress-Varianten", true);
+          toast(d.note || "Produkt hat keine Varianten", true);
           return;
         }
-        if (d.refreshed) toast("✓ Varianten live von AliExpress nachgeladen & gespeichert");
+        if (d.refreshed) toast("✓ Varianten live vom Lieferanten nachgeladen & gespeichert");
         const sel0 = d.selected ? Object.entries(d.selected).filter(([k]) => !["attr","options","id"].includes(k)).map(([k,v]) => `${k}: ${v}`).join(", ") : "?";
         const primaryId = ((d.sources || []).find(s => s.is_primary) || {}).aliexpress_id || "__primary__";
         _vcCtx = { saleId, canOrder, listingId: d.listing_id, sources: d.sources || [],
@@ -2800,11 +2335,11 @@
           ${_vcTabs()}
           <p style="margin-bottom:4px">Käufer wählte auf eBay: <b>${esc(sel||'?')}</b></p>
           ${posWarn}
-          ${d.source_unconfirmed?`<p class="neg" style="font-size:12px;margin:0 0 8px">Die AliExpress-Quelle ist ein <b>unbestätigter Bild-Match</b> — erst prüfen, ob es wirklich derselbe Artikel ist (im Listing-Cockpit „Quellen"), sonst wird die Zuordnung am falschen Produkt gelernt!</p>`:""}
-          ${hit?`<p style="font-size:12.5px;margin:0 0 8px">${d.suggested_position?'Die verkaufte Variante ist <b class="pos">laut Artikel-Nr. (unsere Listing-SKU)</b> vorgewählt — kurz prüfen und zum <b>Bestätigen anklicken</b>.':'Die passende Variante ist <b class="pos">automatisch zugeordnet</b> — nur gegenchecken. Zum Bestellen den Dialog schließen; die anderen unten nur klicken, falls du <b>korrigieren</b> musst.'}${d.ali_url?` <a href="${esc(d.ali_url)}" target="_blank" rel="noopener">AliExpress öffnen ↗</a>`:''}</p>
+          ${d.source_unconfirmed?`<p class="neg" style="font-size:12px;margin:0 0 8px">Die Quelle ist ein <b>unbestätigter Bild-Match</b> — erst prüfen, ob es wirklich derselbe Artikel ist (im Listing-Cockpit „Quellen"), sonst wird die Zuordnung am falschen Produkt gelernt!</p>`:""}
+          ${hit?`<p style="font-size:12.5px;margin:0 0 8px">${d.suggested_position?'Die verkaufte Variante ist <b class="pos">laut Artikel-Nr. (unsere Listing-SKU)</b> vorgewählt — kurz prüfen und zum <b>Bestätigen anklicken</b>.':'Die passende Variante ist <b class="pos">automatisch zugeordnet</b> — nur gegenchecken. Zum Bestellen den Dialog schließen; die anderen unten nur klicken, falls du <b>korrigieren</b> musst.'}${d.ali_url?` <a href="${esc(d.ali_url)}" target="_blank" rel="noopener">Quelle öffnen ↗</a>`:''}</p>
             <div style="display:flex;gap:10px;margin-bottom:12px">${hit}</div>
             ${rest.trim()?`<div class="muted" style="font-size:11.5px;margin:0 0 6px">Andere Varianten (nur bei Korrektur):</div>`:''}`
-          :`<p class="muted" style="font-size:12px;margin-bottom:12px">Klick auf die passende AliExpress-Variante — die Zuordnung wird für dieses Listing gemerkt.${d.ali_url?` <a href="${esc(d.ali_url)}" target="_blank" rel="noopener">AliExpress-Produkt öffnen ↗</a>`:''}</p>`}
+          :`<p class="muted" style="font-size:12px;margin-bottom:12px">Klick auf die passende Variante — die Zuordnung wird für dieses Listing gemerkt.${d.ali_url?` <a href="${esc(d.ali_url)}" target="_blank" rel="noopener">Produkt öffnen ↗</a>`:''}</p>`}
           <div style="display:flex;flex-wrap:wrap;gap:10px">${rest}</div>`;
     }
     // Auf eine hinterlegte Ausweich-Quelle umschalten: deren Varianten werden live geprüft
@@ -2814,7 +2349,7 @@
       c.activeId = aid;
       _vcSrcOpts = []; _vcSrcPick = -1;
       if (aid === c.primaryId) { _vcRenderPrimary(); return; }
-      $("modalBody").innerHTML = _vcTabs() + `<div class="empty">prüfe diese Quelle live bei AliExpress …</div>`;
+      $("modalBody").innerHTML = _vcTabs() + `<div class="empty">prüfe diese Quelle live bei Lieferant …</div>`;
       try {
         const d = await api("GET", `/api/v1/products/${c.listingId}/sources/${encodeURIComponent(aid)}/variants`);
         _vcSrcOpts = d.options || [];
@@ -2860,7 +2395,7 @@
       const v = _vcSrcOpts[_vcSrcPick];
       if (!v) { toast("Bitte erst die Variante anklicken (nur Auswahl), dann bestellen.", true); return; }
       const src = (c.sources||[]).find(s => s.aliexpress_id === c.activeId) || {};
-      if (!confirm(`Jetzt bei AliExpress bestellen?\n\nQuelle: ${String(src.title||c.activeId).slice(0,60)}\nVariante: ${String(v.name||'').slice(0,60)}\nEK ca.: ${v.ek_eur!=null?eur(v.ek_eur):'?'}\n\n(Danach im AliExpress-Konto bezahlen — unbezahlt verfällt nach ~24h.)`)) return;
+      if (!confirm(`Jetzt bestellen?\n\nQuelle: ${String(src.title||c.activeId).slice(0,60)}\nVariante: ${String(v.name||'').slice(0,60)}\nEK ca.: ${v.ek_eur!=null?eur(v.ek_eur):'?'}\n\n(Danach im Lieferantenkonto bezahlen — unbezahlt verfällt nach ~24h.)`)) return;
       await fulfill(c.saleId, { source_aliexpress_id: c.activeId, sku_attr: v.attr });
     }
     async function applyVariant(saleId, idx) {
@@ -2874,7 +2409,7 @@
       } catch (e) {}
     }
     async function orderSource(listingId) {
-      const url = prompt("AliExpress-Produktlink für diesen Artikel einfügen\n(wird als Hauptquelle verknüpft, danach ist Bestellen möglich):");
+      const url = prompt("Produktlink für diesen Artikel einfügen\n(wird als Hauptquelle verknüpft, danach ist Bestellen möglich):");
       if (!url || !url.trim()) return;
       toast("Prüfe Link & verknüpfe Quelle …");
       try {
@@ -2883,130 +2418,6 @@
       } catch (e) {}
     }
 
-    // -------- Activity --------
-    async function loadActivity() {
-      try {
-        const d = await api("GET", "/api/v1/dashboard/activity?limit=40");
-        const feed = $("feed");
-        if (!d.activity.length) { feed.innerHTML = `<div class="empty">noch keine Aktivität</div>`; return; }
-        const icon = { success:["✓","var(--ok)"], failed:["✗","var(--bad)"], in_progress:["…","var(--warn)"], pending:["•","var(--muted)"] };
-        feed.innerHTML = d.activity.map(a => {
-          const [ic, col] = icon[a.status] || ["•","var(--muted)"];
-          return `<div class="row-i">
-            <div class="ic" style="background:${col}22;color:${col}">${ic}</div>
-            <div style="flex:1"><b>${esc(a.task_type||"task")}</b> <span class="muted">${esc(a.reference_id||"")}</span>
-              ${a.error_message?`<div class="neg" style="font-size:11.5px">${esc(a.error_message)}</div>`:""}</div>
-            <span class="badge ${esc(a.status)}">${esc(a.status)}</span>
-            <span class="t">${a.created_at?new Date(a.created_at).toLocaleString("de-DE"):""}</span>
-          </div>`;
-        }).join("");
-      } catch (e) {}
-    }
-
-    // -------- Upload / optimize --------
-    // Merkt sich die URL fuer den "Trotzdem hochladen"-Knopf. Als Variable statt im
-    // onclick-Attribut, damit Sonderzeichen in der URL nichts zerlegen koennen.
-    let _dupUrl = "";
-    async function uploadProduct(ignoriere) {
-      const url = ignoriere ? _dupUrl : $("aeUrl").value.trim(), out = $("uploadResult");
-      if (!url) { toast("Bitte eine AliExpress-URL eingeben", true); return; }
-      const btn = $("uploadBtn"); btn.disabled = true; btn.textContent = "verarbeite…";
-      try {
-        const r = await api("POST", "/api/v1/products/upload",
-                            { aliexpress_url: url, ignoriere_duplikat: !!ignoriere });
-        // Schlanke Bestätigung – keine große Übersicht. Details im Listing-Detail.
-        out.innerHTML = `<div class="result">
-          <div class="kv"><b>Entwurf #${r.listing_id} erstellt</b> · Preis <b>${eur(r.price_eur)}</b> · Profit <span class="pos">${eur(r.profit_eur)}</span> (${pct(r.margin_pct)})</div>
-          ${(r.warnings&&r.warnings.length)?`<div class="warns" style="margin-top:8px">${r.warnings.map(esc).join("<br>")}</div>`:""}
-          <div style="margin-top:9px"><button class="btn sm primary" onclick="openListing(${r.listing_id})">Prüfen &amp; live stellen</button></div>
-        </div>`;
-        $("aeUrl").value = "";   // Feld leeren für den nächsten Upload
-        toast("Entwurf #" + r.listing_id + " erstellt · " + eur(r.price_eur));
-        loadProducts(); loadOverview();
-      } catch (e) {
-        // Duplikat-Sperre: das Programm fuehrt das Listing noch als live. Kann sein,
-        // dass es auf eBay laengst weg ist – dann entscheidet der Nutzer bewusst.
-        const d = (e && e.data && e.data.detail) || null;
-        if (d && d.code === "duplikat") {
-          _dupUrl = url;
-          out.innerHTML = `<div class="result">
-            <div class="kv">${esc(d.message || "Artikel ist schon angelegt.")}</div>
-            <div class="warns" style="margin-top:8px">Steht der Artikel auf eBay nicht mehr, ist unser Stand
-              veraltet – dann kannst du ihn erneut hochladen. Ist er noch live, hättest du ihn danach
-              <b>zweimal</b> auf eBay.</div>
-            <div style="margin-top:9px;display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn sm" onclick="uploadProduct(true)">Trotzdem hochladen</button>
-              <button class="btn sm primary" onclick="openListing(${Number(d.listing_id) || 0})">Listing ansehen</button>
-            </div>
-          </div>`;
-        }
-      } finally { btn.disabled = false; btn.textContent = "Extrahieren · Preis · Draft"; }
-    }
-
-    // -------- Store-Scraper: Bestseller eines AliExpress-Shops als Entwürfe --------
-    let _storePoll = null;
-    async function startStoreImport() {
-      const url = $("storeUrl").value.trim(), out = $("storeResult");
-      if (!url) { toast("Bitte einen AliExpress-Shop-Link einfügen", true); return; }
-      const limit = parseInt($("storeLimit").value, 10) || 25;
-      const btn = $("storeBtn"), label = btn.textContent;
-      btn.disabled = true; btn.textContent = "starte…";
-      try {
-        await api("POST", "/api/v1/products/store-import", { store_url: url, limit: limit });
-        out.innerHTML = `<div class="result"><div class="kv">Shop wird geöffnet und ausgelesen…</div></div>`;
-        toast("Shop-Import gestartet · bis zu " + limit + " Produkte");
-        pollStoreImport();
-      } catch (e) {
-        btn.disabled = false; btn.textContent = label;
-        const stop = $("storeStopBtn"); if (stop) stop.style.display = "none";
-      }
-    }
-    // Haelt den Lauf ZWISCHEN zwei Produkten an – kein hartes Abwuergen, sonst
-    // bliebe ein halb angelegter Entwurf im System. Was schon da ist, bleibt.
-    async function stopStoreImport() {
-      const stop = $("storeStopBtn");
-      if (stop) { stop.disabled = true; stop.textContent = "hält an…"; }
-      try {
-        const r = await api("POST", "/api/v1/products/store-import/abbrechen");
-        toast(r.abbruch_angefordert
-          ? "Wird angehalten — das laufende Produkt wird noch fertig"
-          : (r.hinweis || "Es läuft gerade nichts"));
-        if (!r.abbruch_angefordert && stop) stop.style.display = "none";
-      } catch (e) {
-        toast("Abbrechen fehlgeschlagen", true);
-        if (stop) { stop.disabled = false; stop.textContent = "Abbrechen"; }
-      }
-    }
-    function pollStoreImport() {
-      clearInterval(_storePoll);
-      _storePoll = setInterval(async () => {
-        let s; try { s = await api("GET", "/api/v1/products/store-import/status"); } catch (e) { return; }
-        const out = $("storeResult"); if (!out) { clearInterval(_storePoll); return; }
-        const btn = $("storeBtn");
-        if (s.running) {
-          const gesamt = s.total || "?";
-          out.innerHTML = `<div class="result"><div class="kv">
-            <b>${s.created||0}</b> / ${gesamt} neue Entwürfe
-            ${s.skipped?` · ${s.skipped} schon im System (übersprungen)`:""}${s.failed?` · ${s.failed} Fehler`:""}
-            ${s.abbruch?` · <span class="warn">wird angehalten…</span>`:""}
-            </div>${(s.letzte&&s.letzte.length)?`<div class="muted" style="font-size:12px;margin-top:6px">${s.letzte.map(esc).join("<br>")}</div>`:""}</div>`;
-          return;
-        }
-        clearInterval(_storePoll);
-        if (btn) { btn.disabled = false; btn.textContent = "Bestseller importieren"; }
-        const stop = $("storeStopBtn"); if (stop) stop.style.display = "none";
-        if (s.error) {
-          out.innerHTML = `<div class="result"><div class="warns">${esc(s.error)}</div></div>`;
-          toast("Shop-Import fehlgeschlagen", true); return;
-        }
-        if (!s.total) { out.innerHTML = ""; return; }
-        out.innerHTML = `<div class="result"><div class="kv"><b>${s.created||0} neue Entwürfe angelegt</b>${s.abgebrochen?" · abgebrochen":""}
-          ${s.skipped?` · ${s.skipped} schon im System (übersprungen)`:""}${s.failed?` · <span class="neg">${s.failed} fehlgeschlagen</span>`:""}
-          </div><div style="margin-top:9px"><button class="btn sm primary" onclick="filterProducts('draft')">Entwürfe ansehen</button></div></div>`;
-        toast(( s.created||0 ) + " Entwürfe aus dem Shop angelegt");
-        loadProducts(); loadOverview();
-      }, 4000);
-    }
     // -------- Optimierung: Kandidaten (älteste zuerst), Optimieren = Titel + Marktanalyse --------
     const _optData = {};   // listing_id -> Optimieren-Ergebnis (Titel + Markt), Sitzung
     let _optDebounce = null;
@@ -3381,7 +2792,7 @@
           ${head}
           <div style="flex:0 0 auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
             <button class="btn sm primary" onclick="optimizeOne(${c.listing_id}, this)" title="Titel + Preis + Titelbild + Anzeigentarif: Marktanalyse & Vorschläge auf einmal">Optimieren</button>
-            <button class="btn sm ghost" onclick="orderManageSources(${c.listing_id})" title="AliExpress-Quellen hinzufügen/entfernen (wie im Listing-Cockpit), ohne den Tab zu wechseln">Quellen</button>
+            <button class="btn sm ghost" onclick="orderManageSources(${c.listing_id})" title="Quellen hinzufügen/entfernen (wie im Listing-Cockpit), ohne den Tab zu wechseln">Quellen</button>
             <button class="btn sm ghost" onclick="dismissOptimization(${c.listing_id})" title="So lassen — Artikel läuft unverändert weiter und verschwindet aus der Optimieren-Liste. Nichts wird geändert oder gelöscht.">✓ So lassen</button>
             <button class="btn sm ghost" style="color:var(--bad)" onclick="cleanupDelete(${c.listing_id}, this)" title="Artikel auf eBay beenden (delisten) und archivieren — manche muss man beim Anschauen einfach löschen. Du entscheidest, nichts automatisch.">Löschen</button>
           </div>
@@ -3464,7 +2875,7 @@
         ? `<div style="font-size:11.5px;margin-top:4px">Gewinn: <b class="pos">${eur(p1)}</b> bei 1 Stück${c2!=null?` · <b class="pos">${eur(c2)}</b> bei 2` : ""}${c3!=null?` · <b class="pos">${eur(c3)}</b> bei 3 Stück` : ""}</div>`
         : "";
       const shipHint = (c.ek_extra_eur != null && c.ek_eur != null && c.ek_extra_eur < c.ek_eur)
-        ? ` · <span title="Zusatz-Stück günstiger, weil der AliExpress-Versand nur einmal für die Bündel-Bestellung anfällt">Extra-Stück nur ${eur(c.ek_extra_eur)} EK</span>` : "";
+        ? ` · <span title="Zusatz-Stück günstiger, weil der Lieferant-Versand nur einmal für die Bündel-Bestellung anfällt">Extra-Stück nur ${eur(c.ek_extra_eur)} EK</span>` : "";
       const action = c.active
         ? `<button class="btn sm ghost" style="color:var(--good,#22c55e)" onclick="deactivateVolumePricing(${c.listing_id}, this)" title="Mengenrabatt auf eBay entfernen">✓ aktiv – entfernen</button>`
         : `<button class="btn sm primary" onclick="activateVolumePricing(${c.listing_id}, this)" title="Diesen Mengenrabatt auf eBay aktivieren (du bestätigst)">Auf eBay aktivieren</button>`;
@@ -3996,7 +3407,7 @@
     // sonst legt der naechste Abgleich den Beleg wieder an und das Loeschen haelt nicht.
     async function kaufLoeschen(id, nummer, btn) {
       if (!confirm(`Diesen Wareneinkauf WIRKLICH entfernen?\n\n${nummer}\n\n`
-        + `Zeile, Beleg und erzeugte Rechnung werden gelöscht. Die AliExpress-Bestellung `
+        + `Zeile, Beleg und erzeugte Rechnung werden gelöscht. Die Wareneinkauf `
         + `wird auf storniert gesetzt und zählt nicht mehr als Ausgabe.\n\n`
         + `Nur machen, wenn der Einkauf tatsächlich storniert wurde. Nicht rückgängig zu machen.`)) return;
       if (btn) btn.disabled = true;
@@ -4176,76 +3587,6 @@
       $("belegFilter").value = wert;
       loadBelege();
     }
-    // --- Beleg-Abruf auf Zuruf ---------------------------------------------
-    // Der Server holt die Belege NICHT selbst: AliExpress gibt sie nur einem
-    // angemeldeten Browser, und an den kommt er nicht heran. Der Knopf hinterlegt
-    // deshalb einen Auftrag; der Helfer auf dem Rechner nimmt ihn an.
-    let _belAbrufTimer = null;
-    // Den Auftrag beim Server hinterlegen. Der Helfer auf eurem Rechner fragt dort
-    // nach und legt los. Direkt anpingen geht NICHT: Chrome verbietet einer
-    // oeffentlichen HTTPS-Seite den Zugriff auf 127.0.0.1 (Private Network Access).
-    async function belegeAbrufen() {
-      const btn = $("belAbrufBtn");
-      btn.disabled = true;
-      try {
-        const st = await api("POST", "/api/v1/invoices/originals/abruf-anfordern");
-        belAbrufZeigen(st);
-        belAbrufBeobachten();
-        if (st.wartet) toast("✓ Der Helfer holt die Belege (dauert ~1 Minute)");
-      } catch (e) {
-        toast("Auftrag fehlgeschlagen", true);
-      } finally {
-        btn.disabled = false;
-      }
-    }
-    // Ab 20 Uhr rot und blinkend, wenn an diesem Tag noch niemand die Belege geholt
-    // hat. Die Pruefung laeuft im Browser, damit sie eure Ortszeit nutzt.
-    function belAbrufMahnen(st) {
-      const btn = $("belAbrufBtn");
-      if (!btn) return;
-      const jetzt = new Date();
-      const zuletzt = st && st.zuletzt_gelaufen_am ? new Date(st.zuletzt_gelaufen_am) : null;
-      const heuteSchon = zuletzt && zuletzt.toDateString() === jetzt.toDateString();
-      btn.classList.toggle("mahnung", jetzt.getHours() >= 20 && !heuteSchon);
-      btn.title = (jetzt.getHours() >= 20 && !heuteSchon)
-        ? "Heute wurden noch keine Belege geholt — AliExpress gibt sie nur begrenzte Zeit her"
-        : "Fehlende AliExpress-Belege abholen. Der Server kann das nicht selbst — er stößt den Helfer auf deinem Rechner an.";
-    }
-    function belAbrufZeigen(st) {
-      const el = $("belAbrufStatus");
-      if (!el || !st) return;
-      if (st.laeuft) {
-        el.textContent = "läuft — Belege werden geholt …";
-        el.style.color = "var(--accent)";
-      } else if (st.wartet) {
-        // Ehrlich benennen: ohne laufenden Helfer passiert hier nichts.
-        el.textContent = "beauftragt — der Helfer meldet sich gleich …";
-        el.style.color = "var(--warn)";
-      } else if (st.ergebnis) {
-        const r = st.ergebnis;
-        el.textContent = r.geholt
-          ? `zuletzt: ${r.geholt} Belege geholt, ${r.rechnungen ?? 0} Rechnungen erstellt`
-            + (r.fehler ? ` (${r.fehler} Fehler)` : "")
-          : "zuletzt: keine neuen Belege verfügbar";
-        el.style.color = "";
-      } else {
-        el.textContent = "";
-      }
-      belAbrufMahnen(st);
-    }
-    function belAbrufBeobachten() {
-      clearInterval(_belAbrufTimer);
-      let runden = 0;
-      _belAbrufTimer = setInterval(async () => {
-        try {
-          const st = await api("GET", "/api/v1/invoices/originals/abruf-status");
-          belAbrufZeigen(st);
-          // Fertig -> Liste neu laden, damit die neuen Belege sofort dastehen.
-          if (!st.offen) { clearInterval(_belAbrufTimer); loadBelege(); }
-        } catch (e) {}
-        if (++runden > 120) clearInterval(_belAbrufTimer);   // nach ~10 min aufhoeren
-      }, 5000);
-    }
     async function loadBelege() {
       belInitCols();   // idempotent: Spaltenbreiten-Griffe sicherstellen (auch nach Tab-Wechsel)
       const f = $("belegFilter").value;
@@ -4275,14 +3616,6 @@
         $("b_purch").textContent = st.purchase_invoices.count; $("b_purch_sum").textContent = "Σ " + eur(st.purchase_invoices.sum) + " · " + (st.purchase_originals ?? 0) + " mit Beleg";
         $("b_miss_p").textContent = st.purchases_missing;
         $("b_problem").textContent = st.problems ?? 0;
-        // Stand des Beleg-Abrufs mitziehen (auch ohne Klick von hier)
-        // Stand mitziehen — und wenn noch etwas laeuft, dranbleiben. Ohne das
-        // blieb nach einem Seiten-Neuladen ewig "laeuft …" stehen: der Beobachter
-        // startete nur beim Klick, und den gab es in dieser Sitzung nie.
-        api("GET", "/api/v1/invoices/originals/abruf-status").then(st => {
-          belAbrufZeigen(st);
-          if (st && st.offen) belAbrufBeobachten();
-        }).catch(() => {});
         const _oe = st.other_expenses || { count: 0, sum: 0 };
         $("b_other").textContent = _oe.count; $("b_other_sum").textContent = "Σ " + eur(_oe.sum);
         const body = $("belegeBody");
@@ -4319,7 +3652,7 @@
               // ohne Seitwaerts-Scrollen erreichbar bleiben.
               const zeige = (voll) => voll.length > 72
                 ? `<span title="${esc(voll)}" style="cursor:help">${esc(voll.slice(0, 72))}…</span>` : esc(voll);
-              // AliExpress-Kauf: Produktname statt nackter Bestellnummer (die steht schon in
+              // Wareneinkauf: Produktname statt nackter Bestellnummer (die steht schon in
               // der Beleg-Nr-Spalte). Faellt auf die Referenz zurueck, wenn kein Titel bekannt ist.
               if (i.type === "aliexpress_purchase") return zeige(i.product_name || i.reference_id || "–");
               const cat = i.category ? `<b>${esc(i.category)}</b> · ` : "";
@@ -4331,7 +3664,7 @@
             <td style="white-space:nowrap">${echterBeleg
               ? `<a class="btn sm" href="/api/v1/invoices/${i.id}/download" target="_blank" rel="noopener">Beleg</a>${i.type === "aliexpress_purchase" ? ` <button class="btn sm ghost" style="opacity:.6" onclick="belegHochladen(${i.id}, ${i.order_id || "null"}, '${esc(i.reference_id || "")}', this, true)" title="Anderen Beleg hinterlegen (ersetzt den bisherigen)">↻</button>` : ""}`
               : `<button class="btn sm" style="opacity:.42" onclick="belegHochladen(${i.id}, ${i.order_id || "null"}, '${esc(i.reference_id || "")}', this, false)" title="Noch kein Beleg — klicken, um einen von Hand hochzuladen (Bild oder PDF)">Beleg ⬆</button>`}${i.type === "aliexpress_purchase" ? (i.has_rechnung
-              ? ` <a class="btn sm primary" href="/api/v1/invoices/${i.id}/rechnung" target="_blank" rel="noopener" title="Die aus dem AliExpress-Beleg erzeugte Rechnung — im Browser mit Strg/Cmd+P als PDF speichern">Rechnung</a>` + ` <button class="btn sm ghost" style="opacity:.6" onclick="rechnungBearbeiten(${i.id})" title="Rechnung korrigieren – Formular mit Vorschau">✎</button>`
+              ? ` <a class="btn sm primary" href="/api/v1/invoices/${i.id}/rechnung" target="_blank" rel="noopener" title="Die aus dem Kaufbeleg erzeugte Rechnung — im Browser mit Strg/Cmd+P als PDF speichern">Rechnung</a>` + ` <button class="btn sm ghost" style="opacity:.6" onclick="rechnungBearbeiten(${i.id})" title="Rechnung korrigieren – Formular mit Vorschau">✎</button>`
               : ` <button class="btn sm" style="opacity:.42" onclick="rechnungBearbeiten(${i.id})" title="Noch keine Rechnung — klicken, um sie von Hand zu erstellen (Formular mit Vorschau)">Rechnung</button>` + ` <button class="btn sm ghost" style="opacity:.42" onclick="rechnungHochladen(${i.id}, this)" title="Fertige Rechnungsdatei hochladen (PDF/HTML)">⬆</button>`) + ` <button class="btn sm ghost" style="color:var(--bad);opacity:.7" onclick="kaufLoeschen(${i.id}, '${esc(i.invoice_number || "")}', this)" title="Stornierten Einkauf entfernen — Zeile, Beleg und Rechnung. Die Bestellung wird auf storniert gesetzt, damit sie nicht wiederkommt."><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M6.5 7l1 12.6A1.5 1.5 0 0 0 9 21h6a1.5 1.5 0 0 0 1.5-1.4L17.5 7M10 11v6M14 11v6"/></svg></button>` : ""}${i.type === "betriebsausgabe" ? ` <button class="btn sm" onclick="belegDateiTauschen(${i.id}, this)" title="Anderes Foto / andere Datei an diesen Beleg hängen — der Eintrag (Datum, Betrag, Anlass) bleibt wie er ist">Datei</button> <button class="btn sm ghost" style="color:var(--bad)" onclick="belegLoeschen(${i.id}, this)" title="Diesen selbst erfassten Beleg endgültig löschen (Eintrag + Datei)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M6.5 7l1 12.6A1.5 1.5 0 0 0 9 21h6a1.5 1.5 0 0 0 1.5-1.4L17.5 7M10 11v6M14 11v6"/></svg></button>` : ""}</td>
           </tr>`;
         }).join("");
@@ -4534,7 +3867,7 @@
       wahl.click();
     }
     // Papierkorb NUR bei selbst erfassten Ausgaben (Bewirtung, Abos, Hosting, ...).
-    // AliExpress-Kaufbelege bekommen bewusst keinen: die legt der naechste Bestell-
+    // Wareneinkaufbelege bekommen bewusst keinen: die legt der naechste Bestell-
     // Import bzw. „Belege nachtragen" sofort wieder an (record_purchase_invoice erkennt
     // sie an der Bestellnummer) – der Server lehnt sie zusaetzlich ab.
     // Geloescht wird endgueltig, samt Datei (Nutzer-Entscheidung 27.07.), deshalb hier
@@ -4583,7 +3916,7 @@
       } catch (e) {}
     }
 
-    // -------- AliExpress-Käufe --------
+    // -------- Wareneinkäufe --------
     async function loadAliOrders() {
       const f = $("aoFilter").value;
       try {
@@ -4592,7 +3925,7 @@
         $("ao_cost").textContent = eur(d.stats.total_cost_cny);
         $("ao_missing").textContent = num(d.stats.missing_receipt);
         const body = $("aoBody");
-        if (!d.orders.length) { body.innerHTML = `<tr><td colspan="8" class="empty">noch keine AliExpress-Bestellungen — entstehen bei „Fulfill" im Tab „Orders"</td></tr>`; return; }
+        if (!d.orders.length) { body.innerHTML = `<tr><td colspan="8" class="empty">noch keine Wareneinkäufe — entstehen bei „Fulfill" im Tab „Orders"</td></tr>`; return; }
         body.innerHTML = d.orders.map(o => `<tr>
           <td><code>${esc(o.aliexpress_order_id || "–")}</code></td>
           <td>${o.order_date ? new Date(o.order_date).toLocaleDateString("de-DE") : "–"}</td>
@@ -4734,15 +4067,6 @@
       } catch (e) { toast("Netzwerkfehler — läuft der Server?", true); }
     }
 
-    async function regenerateListing(id) {
-      if (!confirm("Entwurf mit dem aktuellen (verbesserten) Generator neu aufbauen? Titel, Beschreibung, Merkmale und Preis werden frisch von AliExpress erzeugt.")) return;
-      toast("Generiere neu … (AliExpress + KI, kann kurz dauern)");
-      try {
-        const r = await api("POST", "/api/v1/products/" + id + "/regenerate");
-        toast("Neu generiert: " + (r.title_len || "?") + " Zeichen · " + eur(r.price_eur));
-        openListing(id); loadProducts();
-      } catch (e) {}
-    }
     function closeModal() {
       $("modal").classList.remove("open");
       const mc = document.querySelector("#modal .modal-card"); if (mc) mc.classList.remove("wide");
@@ -4767,7 +4091,7 @@
         $("m_title").textContent = d.title || ("Listing #" + id);
         const imgs = d.images || [];
         // eBay-Bilder ZUERST: das Detail zeigt die AKTIVEN eBay-Bilder (24h-Cache im
-        // Backend); die AliExpress-Quelle bleibt Fallback (Nutzer-Fund 08.08.).
+        // Backend); die Quelle bleibt Fallback (Nutzer-Fund 08.08.).
         let ebayImgs = [];
         if (d.ebay_item_id) { try { ebayImgs = (await api("GET", `/api/v1/products/${id}/ebay-images`)).images || []; } catch (e) {} }
         const showImgs = ebayImgs.length ? ebayImgs : imgs;
@@ -4790,10 +4114,6 @@
         const ebayBtn = d.ebay_url
           ? `<a class="btn primary" href="${esc(d.ebay_url)}" target="_blank" rel="noopener">Auf eBay öffnen</a>`
           : `<button class="btn primary" onclick="publishListing(${d.listing_id}, ${esc(JSON.stringify(d.title_seo||''))})">Jetzt live stellen</button> <button class="btn" title="Angebot bei eBay vorbereiten, ohne es zu veröffentlichen. ACHTUNG: im Seller Hub nicht auffindbar – eBay zeigt unveröffentlichte Angebote dort nicht an." onclick="ebayEntwurf(${d.listing_id})">Bei eBay vorbereiten</button> <span class="badge draft">Entwurf</span>`;
-        const aliBtn = d.aliexpress_url ? `<a class="btn ghost" href="${esc(d.aliexpress_url)}" target="_blank" rel="noopener">AliExpress-Quelle</a>` : "";
-        // Neu generieren nur für Entwürfe mit AliExpress-Quelle (holt frische Specs/Titel/Preis)
-        const regenBtn = (!d.ebay_url && d.aliexpress_url)
-          ? `<button class="btn ghost" onclick="regenerateListing(${d.listing_id})">Neu generieren</button>` : "";
         const editBtn = `<button class="btn ghost" onclick="editListing(${d.listing_id})">Bearbeiten</button>`;
         const aiBtn2 = `<button class="btn ghost" onclick="aiEditListing(${d.listing_id})">KI-Bearbeitung</button>`;
         const priceBtn = d.listing_status !== "ended"
@@ -4827,17 +4147,16 @@
           `<div class="kv"><b>${esc(k)}</b><span>${esc(Array.isArray(v)?v.join(", "):v)}</span></div>`).join("");
         $("modalBody").innerHTML = `
           ${gallery}
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin:14px 0">${ebayBtn}${regenBtn}${editBtn}${aiBtn2}${priceBtn}${aliBtn}${endBtn}</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin:14px 0">${ebayBtn}${editBtn}${aiBtn2}${priceBtn}${endBtn}</div>
           <div class="kv"><b>Status</b><span class="badge ${esc(d.listing_status)}">${esc(d.listing_status)}</span></div>
           <div class="kv"><b>Preis</b><span><b>${eur(d.price_eur)}</b>${d.price_is_live ? `${(d.internal_price_eur!=null && Math.abs(d.internal_price_eur-d.price_eur)>=0.5) ? ` <span class="warn" style="font-size:11px">eBay live · intern ${eur(d.internal_price_eur)}</span>` : ` <span class="muted" style="font-size:11px">eBay live</span>`}` : ` <span class="muted" style="font-size:11px">intern (noch nicht abgeglichen)</span>`}</span></div>
           <div class="kv"><b>Einkauf / Gewinn</b><span>${eur(d.cost_eur)} / <span class="${d.profit_eur==null?'':(d.profit_eur>=0?'pos':'neg')}">${eur(d.profit_eur)}</span></span></div>
           <div class="kv"><b>Verkäufe / Aufrufe 30T</b><span><b>${d.sales_total ?? "–"}</b> verkauft · ${d.views_30d ?? "–"} Aufrufe${d.stats_synced_at?` <span class="muted" style="font-size:11px">(Stand ${new Date(d.stats_synced_at).toLocaleDateString("de-DE")})</span>`:' <span class="muted" style="font-size:11px">(„⟳ Synchronisieren" im Produkte-Tab)</span>'}</span></div>
-          <div class="kv"><b>Bestand</b><span>${d.quantity ?? "–"} · ${d.supplier_in_stock ? '<span class="pos">Lieferant verfügbar</span>' : '<span class="neg">ausverkauft</span>'}</span></div>
+          <div class="kv"><b>Bestand</b><span>${d.quantity ?? "–"}</span></div>
           <div class="kv"><b>SKU</b><span><code>${esc(d.ebay_sku || "–")}</code></span></div>
           <div class="kv"><b>eBay-Item / Offer</b><span>${d.ebay_item_id ? `<code>${esc(d.ebay_item_id)}</code>` : (d.ebay_offer_id ? `Offer <code>${esc(d.ebay_offer_id)}</code>` : '–')}</span></div>
           ${specsRows ? `<div style="margin-top:10px"><b class="muted" style="font-size:12px">Artikelmerkmale</b>${specsRows}</div>` : ""}
           ${renderVariantMgmt(d)}
-          <div style="margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:8px 12px">${renderSources(srcRow)}</div>
           <div style="margin-top:12px"><b class="muted" style="font-size:12px">Beschreibung</b><pre class="desc">${esc(d.description || "")}</pre></div>`;
       } catch (e) { $("modalBody").innerHTML = `<div class="empty">konnte nicht geladen werden</div>`; }
     }
@@ -4858,7 +4177,7 @@
         if (!oos) state = `<span class="pos" style="font-size:11px">${s.stock != null ? ("Bestand " + s.stock) : "lieferbar"}</span>`;
         else if (alt) state = `<span class="warn" style="font-size:11px" title="Hauptquelle ausverkauft — bestellt wird über die verknüpfte Ausweich-Quelle">ausverkauft · Ausweich: ${esc(String(altName).slice(0, 22))}</span>`;
         else if (zeroed) state = `<span class="neg" style="font-size:11px" title="Auf eBay steht die Menge dieser Variante auf 0 — nicht kaufbar">ausverkauft · eBay Menge 0</span>`;
-        else state = `<span class="neg" style="font-size:11px" title="Beim Lieferanten ausverkauft — „Varianten auf eBay übertragen" setzt die eBay-Menge auf 0">ausverkauft · eBay noch NICHT genullt</span>`;
+        else state = `<span class="neg" style="font-size:11px" title="Ausverkauft — „Varianten auf eBay übertragen" setzt die eBay-Menge auf 0">ausverkauft · eBay noch NICHT genullt</span>`;
         const altBtn = (oos && s.attr)
           ? (alt
               ? `<button class="btn sm ghost" style="font-size:10px;padding:2px 6px" title="Ausweich-Verknüpfung lösen — die Variante wird dann bei Ausverkauf auf Menge 0 gesetzt" onclick="linkVariantAltSource(${d.listing_id}, '${encAttr(s.attr)}', '')">✕ Ausweich lösen</button>`
@@ -5309,7 +4628,7 @@
           if (dr.status) gr.push(`${dr.status}× nicht mehr verfügbar`);
           if (dr.duplikat) gr.push(`${dr.duplikat}× schon als Idee/Produkt vorhanden`);
           lrTxt = ` · letzte Suche: <b>${lr.kept || 0} übernommen</b> (${lr.scanned || 0} geprüft)`
-            + ((lr.kept || 0) ? "" : ` — Gründe: ${gr.length ? gr.join(", ") : "die AliExpress-Suche fand nichts Passendes zum Begriff"}`);
+            + ((lr.kept || 0) ? "" : ` — Gründe: ${gr.length ? gr.join(", ") : "die Produktsuche fand nichts Passendes zum Begriff"}`);
         }
         $("ideaRun").innerHTML = (st.running ? "⏳ Suche läuft …" : (d.total ? `${d.total} Ideen gesamt` : ""))
           + lrTxt
@@ -5317,7 +4636,7 @@
         if (st.running && !ideaPoll) ideaPoll = setInterval(loadIdeas, 8000);
         if (!st.running && ideaPoll) { clearInterval(ideaPoll); ideaPoll = null; }
         const body = $("ideasBody");
-        if (!d.ideas.length) { body.innerHTML = `<tr><td colspan="6" class="empty">${_ideaNiche?`Keine passenden AliExpress-Produkte zu „${esc(_ideaNiche)}" gefunden (Kriterien zu streng?).`:(st.running?"Suche läuft … Ergebnisse erscheinen laufend":"Noch keine Ideen — oben Kriterien setzen und „Suchen\"")}</td></tr>`; return; }
+        if (!d.ideas.length) { body.innerHTML = `<tr><td colspan="6" class="empty">${_ideaNiche?`Keine passenden Produkte zu „${esc(_ideaNiche)}" gefunden (Kriterien zu streng?).`:(st.running?"Suche läuft … Ergebnisse erscheinen laufend":"Noch keine Ideen — oben Kriterien setzen und „Suchen\"")}</td></tr>`; return; }
         body.innerHTML = d.ideas.map(i => {
           const altObj = (i.alternatives && i.alternatives.items) ? i.alternatives : null;
           const alts = altObj ? altObj.items : [];
@@ -5326,12 +4645,12 @@
             + alts.map(a => `<a href="${esc(a.url)}" target="_blank" rel="noopener">${a.price_eur!=null?eur(a.price_eur):"?"}</a>`).join(" · ")
             + `</div>` : "";
           // Store-Funde (🏬-Nische): Store-Name steht schon in der Nischen-Spalte —
-          // dort als LINK zum AliExpress-Store; unter dem Titel dann NICHT nochmal
+          // dort als LINK zum Shop; unter dem Titel dann NICHT nochmal
           // (war doppelt und lief in den Titel, Nutzer-Meldung 16.08.).
           const storeLink = i.store_id ? `https://de.aliexpress.com/store/${i.store_id}` : null;
           const istStoreFund = (i.niche||"").startsWith("🏬");
           const subParts = [];
-          if (!istStoreFund && i.store_name) subParts.push(storeLink?`<a href="${storeLink}" target="_blank" rel="noopener" title="Store auf AliExpress öffnen">${esc(i.store_name)}</a>`:esc(i.store_name));
+          if (!istStoreFund && i.store_name) subParts.push(storeLink?`<a href="${storeLink}" target="_blank" rel="noopener" title="Store auf Quelle öffnen">${esc(i.store_name)}</a>`:esc(i.store_name));
           if (i.is_choice) subParts.push('<span class="pos">Choice*</span>');
           if (i.reviews) subParts.push(`${num(i.reviews)} Bew.`);
           return `<tr>
@@ -5340,7 +4659,7 @@
             <div style="min-width:0;overflow-wrap:anywhere"><a href="${esc(i.url)}" target="_blank" rel="noopener">${i.from_trend?'<span title="aus der KI-Trend-Recherche"></span>':''}<b>${esc((i.title||"–").slice(0,60))}</b></a>
             <br>${i.source&&i.source!=='aliexpress'?`<span class="badge" style="font-size:9.5px" title="${esc(i.source_note||'')}">${i.source==='amazon'?'Amazon-Trend':'Temu-Trend'}</span> ${i.source_url?`<a href="${esc(i.source_url)}" target="_blank" rel="noopener" style="font-size:10.5px" title="Amazon-Original öffnen, aus dem die Idee stammt">Original ↗</a> `:''}`:''}<span class="muted" style="font-size:11px">${subParts.join(' · ')}</span></div>
           </div>${altHtml}</td>
-          <td class="muted" style="font-size:11px;max-width:150px;overflow-wrap:anywhere">${istStoreFund&&storeLink?`<a href="${storeLink}" target="_blank" rel="noopener" title="Store auf AliExpress öffnen">${esc(i.niche)}</a>`:esc(i.niche||"")}</td>
+          <td class="muted" style="font-size:11px;max-width:150px;overflow-wrap:anywhere">${istStoreFund&&storeLink?`<a href="${storeLink}" target="_blank" rel="noopener" title="Store auf Quelle öffnen">${esc(i.niche)}</a>`:esc(i.niche||"")}</td>
           <td class="num">${i.rating?('★'+i.rating):'–'}<br><span class="muted" style="font-size:11px">${i.delivery_days?i.delivery_days+' Tage':'–'}${i.local_warehouse?`<br><span class="pos" style="font-size:10px" title="Versand aus: ${esc((i.ships_from||[]).join(', '))}">📦 lokales Lager</span>`:''}</span></td>
           <td class="num">${eur(i.cost_eur)}<br><span class="muted" style="font-size:11px">${eur(i.price_eur)}</span></td>
           <td class="num pos"><b>${eur(i.profit_eur)}</b><br><span class="muted" style="font-size:11px">${Math.round((i.margin_pct||0)*100)}%</span></td>
@@ -5384,7 +4703,7 @@
             ${_ideaNiche ? `<span class="badge" style="font-size:10px">Filter: ${esc(_ideaNiche)}</span>` : ''}
             <span class="muted trend-hint">Inspiration für neue Produkte</span>
           </summary>
-          <div class="muted" style="font-size:11px;margin-top:7px">Einen Trend anklicken filtert die dazu gefundenen AliExpress-Produkte:</div>
+          <div class="muted" style="font-size:11px;margin-top:7px">Einen Trend anklicken filtert die dazu gefundenen Produkte:</div>
           <ul class="trend-list">${d.terms.map((t, i) => {
             const active = _ideaNiche === t.keyword;
             return `<li>
@@ -5478,21 +4797,21 @@
 
     // Generischer Eigenbestand-Dialog aus der Quellen-Verwaltung (jede Variante, nicht nur
     // ausverkaufte). Vorbelegung bei vorhandenem Eintrag; „entfernen" schaltet die Variante
-    // zurück auf die AliExpress-Quelle.
+    // zurück auf die Quelle.
     let _ssCtx = null;
     function openSelfStock(entry) {
       _ssCtx = { listingId: entry.listingId, attr: entry.attr };
       const has = !!entry.has;
       $("m_title").textContent = has ? "Eigenbestand ändern" : "Eigenbestand eintragen";
       $("modalBody").innerHTML = `
-        <p class="muted" style="font-size:12.5px;margin:0 0 12px">„${esc(entry.name||'')}" (#${entry.listingId}) als selbst gelagert markieren — braucht keine AliExpress-Quelle, rechnet mit deinem eigenen EK und bleibt lieferbar, solange die Menge &gt; 0 ist.</p>
+        <p class="muted" style="font-size:12.5px;margin:0 0 12px">„${esc(entry.name||'')}" (#${entry.listingId}) als selbst gelagert markieren — braucht keine Quelle, rechnet mit deinem eigenen EK und bleibt lieferbar, solange die Menge &gt; 0 ist.</p>
         <div style="display:grid;gap:11px;max-width:340px">
           <label style="font-size:12.5px">Menge auf Lager<br><input type="number" id="ss_qty" min="0" value="${entry.qty!=null?entry.qty:1}" style="width:100%;margin-top:3px"></label>
           <label style="font-size:12.5px">eigener EK (€)<br><input type="number" id="ss_cost" min="0" step="0.01" placeholder="z. B. 2.50" value="${entry.cost!=null?entry.cost:''}" style="width:100%;margin-top:3px"></label>
           <label style="font-size:12.5px">Verkaufspreis (€, optional)<br><input type="number" id="ss_price" min="0" step="0.01" placeholder="leer = Preis unverändert" value="${entry.price!=null?entry.price:''}" style="width:100%;margin-top:3px"></label>
           <div style="display:flex;gap:8px">
             <button class="btn primary" onclick="saveSelfStockFor()">Speichern</button>
-            ${has?`<button class="btn ghost" style="color:var(--bad)" onclick="clearSelfStockFor()" title="Eigenbestand löschen — Variante nutzt wieder die AliExpress-Quelle">entfernen</button>`:''}
+            ${has?`<button class="btn ghost" style="color:var(--bad)" onclick="clearSelfStockFor()" title="Eigenbestand löschen — Variante nutzt wieder die Quelle">entfernen</button>`:''}
           </div>
         </div>`;
       $("modal").classList.add("open");
@@ -5526,7 +4845,7 @@
       if (!_ssCtx || !_ssCtx.attr) return;
       try {
         await api("DELETE", `/api/v1/products/${_ssCtx.listingId}/self-stock?sku_attr=${encodeURIComponent(_ssCtx.attr)}`);
-        toast("Eigenbestand entfernt — Variante nutzt wieder die AliExpress-Quelle");
+        toast("Eigenbestand entfernt — Variante nutzt wieder die Quelle");
         _ssAfter();
       } catch (e) { /* api() hat getoastet */ }
     }
@@ -5826,14 +5145,14 @@
             // zwischengespeicherte Varianten-Bestand noch „lieferbar" meldet.
             liefer = `<span class="pc-pill bad">Quelle weg</span><div class="pc-liefer-sub">Original-Quelle nicht mehr erreichbar — Alternative finden oder Listing beenden</div>`;
           } else if (r.in_stock === false){
-            liefer = `<span class="pc-pill bad">ausverkauft</span><div class="pc-liefer-sub">Lieferant Menge 0 · Alternative verbinden oder in „Quellen" beenden</div>`;
+            liefer = `<span class="pc-pill bad">ausverkauft</span><div class="pc-liefer-sub">Menge 0 · Alternative verbinden oder in „Quellen" beenden</div>`;
           } else if ((r.oos_variant_count||0) > 0){
             // Gesamtzahl aus dem UNgedeckelten variant_count (variants ist auf 16 gekappt),
             // sonst würde bei >16 Varianten "-3/12" erscheinen. Gegen Negativ geclampt.
             const totV = r.variant_count ?? varN;
             liefer = `<span class="pc-pill bad">${r.oos_variant_count} Variante(n) aus</span><div class="pc-liefer-sub">${totV?`${Math.max(0,totV-r.oos_variant_count)}/${totV} lieferbar · `:''}„Quellen" → Ausweich je Variante</div>`;
           } else if (r.status === "not_found"){
-            liefer = `<span class="pc-pill warn">Quelle fehlt</span><div class="pc-liefer-sub">Keine AliExpress-Quelle (Temu?) – Link einfügen</div>`;
+            liefer = `<span class="pc-pill warn">Quelle fehlt</span><div class="pc-liefer-sub">Keine Quelle (Temu?) – Link einfügen</div>`;
           } else if (r.status === "no_price"){
             liefer = `<span class="pc-pill warn">Quelle ohne Preis</span><div class="pc-liefer-sub">„Quellen" öffnen, Quelle prüfen/neu laden</div>`;
           } else if (r.status === "error"){
@@ -5917,11 +5236,11 @@
     let _sourceCands = [];
     async function findSourcesKI(listingId, btn) {
       if (btn) { btn.disabled = true; btn.textContent = "sucht…"; }
-      toast("KI sucht passende AliExpress-Quellen (Bildsuche + Bewertung, ~10-20 s) …");
+      toast("KI sucht passende Quellen (Bildsuche + Bewertung, ~10-20 s) …");
       try {
         const d = await api("GET", `/api/v1/products/${listingId}/find-sources`);
         _sourceCands = d.candidates || [];
-        if (!_sourceCands.length) { toast(d.note ? `Keine Kandidaten (${d.note})` : "Keine passenden AliExpress-Quellen gefunden", true); return; }
+        if (!_sourceCands.length) { toast(d.note ? `Keine Kandidaten (${d.note})` : "Keine passenden Quellen gefunden", true); return; }
         const conf = c => Math.round((c.ki_confidence||0)*100);
         const badge = c => { const p = conf(c); const col = p>=80?'pos':(p>=40?'warn':'neg'); return `<span class="${col}" style="font-size:10.5px">KI ${p}%</span>`; };
         const cards = _sourceCands.map((c, i) => `
@@ -5953,7 +5272,7 @@
       if (_linking) return;   // Doppelklick-Schutz: sonst 2 Hauptquellen (Geld-Race)
       const c = _sourceCands[idx];
       if (!c || !c.url) return;
-      if (!confirm(`Diese AliExpress-Quelle als Hauptquelle verknüpfen?\n\n${(c.title||'').slice(0,80)}\nEK ${eur(c.ek_eur)} · KI-Konfidenz ${Math.round((c.ki_confidence||0)*100)}%`)) return;
+      if (!confirm(`Diese Quelle als Hauptquelle verknüpfen?\n\n${(c.title||'').slice(0,80)}\nEK ${eur(c.ek_eur)} · KI-Konfidenz ${Math.round((c.ki_confidence||0)*100)}%`)) return;
       _linking = true;
       toast("Prüfe Quelle live & verknüpfe …");
       try {
@@ -6186,7 +5505,7 @@
         <div id="altpick_${r.listing_id}"></div></div>` : `
         <div style="margin-top:8px;padding:9px 11px;border:1px dashed var(--line);border-radius:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <span style="font-size:12px;flex:1;min-width:200px">${r.self_stock_listing?`<b>Eigenbestand:</b> ${r.self_qty||0} Stück — selbst versenden, keine Quelle nötig.`:'Keine Varianten-Quelle. Hast du diesen Artikel <b>selbst auf Lager</b>? Dann als Eigenbestand markieren (eigener Preis, keine Quelle nötig).'}</span>
-          <button class="btn sm ghost" style="font-size:11px;padding:3px 9px" onclick="selfStockListing(${r.listing_id})" title="Diesen ganzen Artikel als Eigenbestand markieren: Menge + eigener EK/Preis — braucht keine AliExpress-Quelle">${r.self_stock_listing?'Eigenbestand ändern':'hab ich selbst'}</button>
+          <button class="btn sm ghost" style="font-size:11px;padding:3px 9px" onclick="selfStockListing(${r.listing_id})" title="Diesen ganzen Artikel als Eigenbestand markieren: Menge + eigener EK/Preis — braucht keine Quelle">${r.self_stock_listing?'Eigenbestand ändern':'hab ich selbst'}</button>
         </div>`;
       const verify = (r.status === "matched")
         ? (r.confirmed
@@ -6198,11 +5517,11 @@
           <b style="font-size:12.5px">Anbieter-Slots (${srcs.length}/3)</b>${verify}
           <div id="pcSlots_${r.listing_id}">${pcSlotsHtml(r)}</div>
           <div class="src-line" style="margin-top:8px">
-            <input id="srcUrl_${r.listing_id}" placeholder="AliExpress-Link einfügen (falscher Match? → als Hauptquelle setzen)" style="flex:1;min-width:280px;font-size:12px;padding:7px 10px">
+            <input id="srcUrl_${r.listing_id}" placeholder="Produktlink einfügen (falscher Match? → als Hauptquelle setzen)" style="flex:1;min-width:280px;font-size:12px;padding:7px 10px">
             <label style="font-size:11.5px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="srcPrim_${r.listing_id}" style="width:auto" ${(r.match_verdacht||r.status==="not_found"||!(r.sources||[]).length)?'checked':''}>als Hauptquelle</label>
             <button class="btn sm primary" onclick="addSource(${r.listing_id}, this)">＋ Quelle speichern</button>
             <button class="btn sm" onclick="nameSearch(${r.listing_id}, this)">per Name suchen</button>
-            <button class="btn sm" onclick="findSourcesKI(${r.listing_id}, this)" title="KI sucht passende (oft günstigere) AliExpress-Quellen per Bildsuche + Bewertung zum Vergleichen">KI-Quellen</button>
+            <button class="btn sm" onclick="findSourcesKI(${r.listing_id}, this)" title="KI sucht passende (oft günstigere) Quellen per Bildsuche + Bewertung zum Vergleichen">KI-Quellen</button>
             <button class="btn sm" onclick="refreshSources(${r.listing_id}, this)" title="Preis + Bestand aller Slots jetzt prüfen">↻</button>
           </div>
           <div id="srcCand_${r.listing_id}"></div>
@@ -6248,7 +5567,7 @@
     async function addSource(listingId, btn, url, primary, sugAeId) {
       const fromSuggestion = sugAeId !== undefined;   // Klick auf einen Bildsuche-Vorschlag
       url = url || $(`srcUrl_${listingId}`).value.trim();
-      if (!url) { toast("Bitte AliExpress-Link einfügen", true); return; }
+      if (!url) { toast("Bitte Produktlink einfügen", true); return; }
       primary = primary !== undefined ? primary : $(`srcPrim_${listingId}`).checked;
       if (btn) { btn.disabled = true; btn.textContent = "lädt…"; }
       try {
@@ -6333,7 +5652,7 @@
     async function nameSearch(listingId, btn) {
       const box = $(`srcCand_${listingId}`);
       if (btn) { btn.disabled = true; btn.textContent = "sucht…"; }
-      box.innerHTML = `<div class="muted" style="padding:6px 0;font-size:12px">AliExpress-Textsuche läuft …</div>`;
+      box.innerHTML = `<div class="muted" style="padding:6px 0;font-size:12px">Quellensuche läuft …</div>`;
       try {
         const res = await fetch(API + `/api/v1/products/${listingId}/name-search`, {
           method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({})});
@@ -6431,7 +5750,7 @@
               return `<tr>
                 <td style="padding:4px 7px"><input type="checkbox" class="vrdChk" data-i="${i}" ${writable ? (pre !== '' ? 'checked' : '') : 'disabled'}></td>
                 <td style="padding:4px 7px">${v.image?`<img src="${esc(v.image)}" style="width:26px;height:26px;object-fit:cover;border-radius:5px;vertical-align:middle;margin-right:6px" onerror="this.style.display='none'">`:''}${esc(v.name || v.sku)}</td>
-                <td class="num" style="padding:4px 7px;white-space:nowrap" title="Echter Einkaufspreis dieser Variante (aus der verknüpften AliExpress-Variante) – keine Schätzung">${v.ek_eur != null ? eur(v.ek_eur) : `<span class="muted" title="Variante nicht eindeutig zuordenbar – EK unbekannt, Preis kann trotzdem manuell gesetzt werden">?</span>${(v.options && Object.keys(v.options).length) ? ` <button class="btn sm" style="font-size:10px;padding:1px 6px" title="Die passende AliExpress-Variante der Hauptquelle wählen — danach ist der EK dieser Variante bekannt und Bestellungen treffen sicher die richtige Ware" onclick="vrdMapOpen(${i})">zuordnen</button>` : ''}`}</td>
+                <td class="num" style="padding:4px 7px;white-space:nowrap" title="Echter Einkaufspreis dieser Variante (aus der verknüpften Variante) – keine Schätzung">${v.ek_eur != null ? eur(v.ek_eur) : `<span class="muted" title="Variante nicht eindeutig zuordenbar – EK unbekannt, Preis kann trotzdem manuell gesetzt werden">?</span>${(v.options && Object.keys(v.options).length) ? ` <button class="btn sm" style="font-size:10px;padding:1px 6px" title="Die passende Variante der Hauptquelle wählen — danach ist der EK dieser Variante bekannt und Bestellungen treffen sicher die richtige Ware" onclick="vrdMapOpen(${i})">zuordnen</button>` : ''}`}</td>
                 <td class="num" style="padding:4px 7px">${v.current_price_eur != null ? eur(v.current_price_eur) : '–'}</td>
                 <td class="num" style="padding:4px 7px">${v.current_margin != null ? `<span class="${v.current_margin>=0.2?'pos':(v.current_margin>0?'warn':'neg')}">${pct(v.current_margin)}</span>` : '–'}</td>
                 <td class="num" style="padding:4px 7px">${writable
@@ -6479,7 +5798,7 @@
         _vrd.mapOpts = opts;
         if (!opts.length) { box.innerHTML = `<div class="neg" style="font-size:11.5px;margin-top:6px">Hauptquelle hat keine Varianten.</div>`; return; }
         box.innerHTML = `<div style="border-top:1px dashed var(--line);margin-top:8px;padding-top:6px">
-          <b style="font-size:11.5px">Welche AliExpress-Variante ist „${esc(v.name || '')}"?</b>
+          <b style="font-size:11.5px">Welche Variante ist „${esc(v.name || '')}"?</b>
           <span class="muted" style="font-size:10.5px"> Klick = Zuordnung merken (bestellt nichts, ändert keinen Preis).${d.suggested_attr ? ' <span class="pos">Grün = vermutlich passend.</span>' : ''}</span>
           <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:5px">${opts.map((o, oi) => `
             <div onclick="vrdMapPick(${i}, ${oi})" title="${esc(o.name || '')}${o.stock != null ? ` · Bestand ${o.stock}` : ''}"
@@ -6648,13 +5967,9 @@
     // -------- wiring --------
     // Der DHL-Schluessel ist eine Einmal-Eingabe und laedt jetzt mit den
     // Einstellungen, nicht mehr bei jedem Blick in die Bestellungen.
-    views.overview = loadOverview; views.orders = loadOrders;
+    views.overview = loadOverview;
     views.einstellungen = ladeZugaenge;
-    views.ideas = () => { loadTrendBox(); loadIdeas(); }; views.pricecheck = loadPriceCheck;
-    views.activity = loadActivity;
     views.products = loadProducts; views.belege = loadBelegeView;
-    views.optimization = loadOptimization;
-    views.growth = loadGrowth;
     function refreshAll() { refreshHealth(); const active = document.querySelector(".view.active").id.replace("view-",""); (views[active]||(()=>{}))(); }
 
     // Laufenden Code-Stand anzeigen (welcher Commit ist live + wann zuletzt neu gestartet =
@@ -6725,3 +6040,6 @@
   </script>
 </body>
 </html>
+
+
+
