@@ -570,6 +570,8 @@ async def mockup_bilder(produkt: str = Query("tshirt"), farbe: str = Query("WeiÃ
 @router.post("/designs/{design_id}/ebay", status_code=201)
 async def bei_ebay_einstellen(design_id: int, bestaetigt: bool = Query(False),
                               produkte: str = Query(..., description="z. B. tshirt,polo,tasse"),
+                              aktualisieren: bool = Query(
+                                  False, description="Bestehende Angebote mit neuen Fotos/Gestaltung ueberschreiben"),
                               db: Session = Depends(get_db)) -> dict:
     """Motiv als gewaehlte Produkte bei eBay einstellen - LIVE. Braucht ``bestaetigt=true``.
 
@@ -610,7 +612,8 @@ async def bei_ebay_einstellen(design_id: int, bestaetigt: bool = Query(False),
             for key in keys:
                 try:
                     ergebnisse.append({"ok": True, **await ebay_weg.veroeffentliche(
-                        db, design, produkt_key=key, ebay=ebay, s=s, bildordner=bildordner)})
+                        db, design, produkt_key=key, ebay=ebay, s=s, bildordner=bildordner,
+                        aktualisieren=aktualisieren)})
                 except Exception as exc:  # noqa: BLE001 - je Produkt melden, weitermachen
                     ergebnisse.append({"ok": False, "produkt": key, "fehler": str(exc)[:400]})
     finally:

@@ -452,3 +452,20 @@ def _kleine_druckbilder(monkeypatch):
     from app.studio import druckseiten
 
     monkeypatch.setattr(druckseiten, "KANTE", 400)
+
+
+async def test_vorhandenes_angebot_laesst_sich_aktualisieren(db, tmp_path):
+    """Jedes Produkt bleibt bearbeitbar: ein Live-Angebot wird ueberschrieben, nicht verdoppelt."""
+    s, ebay = _settings(tmp_path), _FakeEbay()
+    design = _motiv(db, tmp_path)
+    erst = await ebay_weg.veroeffentliche(db, design, produkt_key="tasse", ebay=ebay, s=s, bildordner=tmp_path)
+    anzahl = len(ebay.aufrufe)
+
+    ohne = await ebay_weg.veroeffentliche(db, design, produkt_key="tasse", ebay=ebay, s=s, bildordner=tmp_path)
+    assert ohne["schon_vorhanden"] is True and len(ebay.aufrufe) == anzahl
+
+    neu = await ebay_weg.veroeffentliche(db, design, produkt_key="tasse", ebay=ebay, s=s,
+                                         bildordner=tmp_path, aktualisieren=True)
+    assert neu["aktualisiert"] is True and neu["listing_id"] == erst["listing_id"]
+    assert any(a[0] == "artikel" for a in ebay.aufrufe[anzahl:])
+    assert db.query(PodListing).count() == 1

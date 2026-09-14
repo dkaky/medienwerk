@@ -486,10 +486,17 @@ def vermerke(db, design: Any, p: Produkt, status: str, notiz: str) -> None:
 # Veroeffentlichen
 # --------------------------------------------------------------------------
 async def veroeffentliche(db, design: Any, *, produkt_key: str, ebay: Any, s: Settings,
-                          bildordner: Path, mockups: Any = None) -> dict[str, Any]:
+                          bildordner: Path, mockups: Any = None,
+                          aktualisieren: bool = False) -> dict[str, Any]:
+    """Ein Produkt bei eBay einstellen - oder mit ``aktualisieren`` ein bestehendes Angebot
+    mit aktuellen Fotos, Gestaltung, Preis und Text ueberschreiben (gleiche Angebotsnummer).
+
+    Ohne ``aktualisieren`` bleibt ein vorhandenes Angebot unberuehrt: zweimal klicken
+    stellt nichts doppelt ein.
+    """
     p = produkt(produkt_key)
     vorhanden = aktives_angebot(db, design.id, p.key)
-    if vorhanden is not None:
+    if vorhanden is not None and not aktualisieren:
         return {"produkt": p.key, "listing_id": vorhanden.external_id, "url": vorhanden.url,
                 "schon_vorhanden": True, "automatisch_ergaenzt": []}
 
@@ -572,13 +579,23 @@ async def veroeffentliche(db, design: Any, *, produkt_key: str, ebay: Any, s: Se
     eintrag.title = t
     eintrag.target_price_eur = betrag
     eintrag.note = (" | ".join(hinweise))[:500] or None
-    db.add(PodListing(product_id=eintrag.id, channel=KANAL, external_id=listing_id,
-                      status="active", price_eur=betrag, quantity_available=bestand, url=url))
+    if vorhanden is not None:
+        # Artikel, Gruppe und Angebote wurden per PUT ersetzt, das Angebot neu
+        # veroeffentlicht - eBay ueberarbeitet damit das bestehende Listing.
+        vorhanden.external_id = listing_id or vorhanden.external_id
+        vorhanden.price_eur = betrag
+        vorhanden.quantity_available = bestand
+        vorhanden.url = f"https://www.ebay.de/itm/{vorhanden.external_id}"
+        url = vorhanden.url
+    else:
+        db.add(PodListing(product_id=eintrag.id, channel=KANAL, external_id=listing_id,
+                          status="active", price_eur=betrag, quantity_available=bestand, url=url))
     db.commit()
-    logger.info("Motiv bei eBay eingestellt",
+    logger.info("Motiv bei eBay aktualisiert" if vorhanden is not None else "Motiv bei eBay eingestellt",
                 extra={"design": design.id, "produkt": p.key, "listing": listing_id,
                        "fotos": fotos["quelle"], "gerendert": fotos["gerendert"]})
-    return {"produkt": p.key, "listing_id": listing_id, "url": url, "schon_vorhanden": False,
+    return {"produkt": p.key, "listing_id": listing_id or (vorhanden.external_id if vorhanden else ""),
+            "url": url, "schon_vorhanden": False, "aktualisiert": vorhanden is not None,
             "automatisch_ergaenzt": ergaenzt, "bildquelle": fotos["quelle"],
             "fehlende_vorlagen": fotos["fehlt"], "gerendert": fotos["gerendert"]}
 

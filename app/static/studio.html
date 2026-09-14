@@ -1018,9 +1018,17 @@ function ebayProduktZeile(p, opts = {}) {
     ? `<div class="muted klein" style="margin-top:4px">${p.fehlende_vorlagen.map(x => String(x).replace(/</g, '&lt;')).join(' · ')}</div>`
     : '';
   if (p.angebot) {
+    // Schon live: jederzeit mit neuen Fotos und Gestaltung aktualisierbar (gleiches Angebot).
+    const aktualisieren = blockiert ? '' : auswahlen
+      ? `<label class="klein" style="display:block;margin-top:4px">
+           <input type="checkbox" data-ebay-produkt="${p.key}" data-ebay-update="1">
+           aktualisieren – neue Fotos und Gestaltung ins bestehende Angebot</label>`
+      : `<button class="btn ghost klein" style="margin-top:4px"
+           onclick="ebayEinstellenDirekt(${_anprobe.design?.id || 0}, '${p.key}', true)">Angebot aktualisieren</button>`;
     return `<div class="panel" style="padding:10px;margin:8px 0">
-      <div class="klein"><b>${p.label}</b> · ${details}</div>
+      <div class="klein"><b>${p.label}</b> · ${details} · <span class="pos">live</span></div>
       <div class="klein"><a href="${p.angebot.url}" target="_blank" rel="noopener">bei eBay ansehen</a></div>
+      ${aktualisieren}
     </div>`;
   }
   const eingabe = auswahlen
@@ -1053,7 +1061,7 @@ async function ladeEbayVorschau(id, ziel, { kompakt = true } = {}) {
       : '')
     + b.produkte.map(p => ebayProduktZeile(p, { auswahlen: kompakt })).join('')
     + (kompakt
-      ? `<button class="btn klein" onclick="ebayEinstellen(${id})">Ausgewählte bei eBay einstellen</button>
+      ? `<button class="btn klein" onclick="ebayEinstellen(${id})">Ausgewählte einstellen / aktualisieren</button>
          <button class="btn ghost klein" onclick="ladeMotive()">Zurück</button>`
       : '');
   return b;
@@ -1066,14 +1074,18 @@ async function beiEbay(id) {
 
 async function ebayEinstellen(id) {
   const kasten = $('pw-' + id);
-  const gewaehlt = [...kasten.querySelectorAll('input[data-ebay-produkt]:checked')]
-    .map(x => x.dataset.ebayProdukt);
+  const haken = [...kasten.querySelectorAll('input[data-ebay-produkt]:checked')];
+  const gewaehlt = haken.map(x => x.dataset.ebayProdukt);
+  const updates = haken.filter(x => x.dataset.ebayUpdate).map(x => x.dataset.ebayProdukt);
+  const neu = gewaehlt.filter(k => !updates.includes(k));
   if (!gewaehlt.length) { melde('Kein Produkt ausgewählt.', true); return; }
-  if (!confirm(`${gewaehlt.length} Angebot(e) bei eBay einstellen?\n\n${gewaehlt.join(', ')}`
-      + `\n\nDie Angebote gehen LIVE, eBay kann Gebühren berechnen.`)) return;
-  kasten.innerHTML = '<span class="muted klein">stelle bei eBay ein …</span>';
+  if (!confirm((neu.length ? `Neu einstellen: ${neu.join(', ')}\n` : '')
+      + (updates.length ? `Bestehende Angebote aktualisieren: ${updates.join(', ')}\n` : '')
+      + `\nDie Angebote sind LIVE bei eBay, eBay kann Gebühren berechnen.`)) return;
+  kasten.innerHTML = '<span class="muted klein">übertrage zu eBay …</span>';
   try {
-    const e = await hole(`/api/v1/studio/designs/${id}/ebay?bestaetigt=true&produkte=${encodeURIComponent(gewaehlt.join(','))}`,
+    const e = await hole(`/api/v1/studio/designs/${id}/ebay?bestaetigt=true&produkte=${encodeURIComponent(gewaehlt.join(','))}`
+                         + (updates.length ? '&aktualisieren=true' : ''),
                          { method: 'POST' });
     kasten.innerHTML = e.ergebnisse.map(r => r.ok
         ? `<div class="klein"><a href="${r.url}" target="_blank" rel="noopener">${r.produkt}: bei eBay ansehen</a>`
@@ -1089,12 +1101,16 @@ async function ebayEinstellen(id) {
   }
 }
 
-async function ebayEinstellenDirekt(id, key) {
+async function ebayEinstellenDirekt(id, key, aktualisieren = false) {
   const ziel = $('anprobe-ebay');
-  if (!confirm(`${key} bei eBay einstellen?\n\nDas Angebot geht LIVE, eBay kann Gebühren berechnen.`)) return;
-  ziel.innerHTML = '<span class="muted klein">stelle bei eBay ein …</span>';
+  const frage = aktualisieren
+    ? `Bestehendes eBay-Angebot „${key}“ mit den aktuellen Fotos und der Gestaltung aktualisieren?`
+    : `${key} bei eBay einstellen?`;
+  if (!confirm(`${frage}\n\nDas Angebot ist LIVE, eBay kann Gebühren berechnen.`)) return;
+  ziel.innerHTML = '<span class="muted klein">übertrage zu eBay …</span>';
   try {
-    const e = await hole(`/api/v1/studio/designs/${id}/ebay?bestaetigt=true&produkte=${encodeURIComponent(key)}`,
+    const e = await hole(`/api/v1/studio/designs/${id}/ebay?bestaetigt=true&produkte=${encodeURIComponent(key)}`
+                         + (aktualisieren ? '&aktualisieren=true' : ''),
                          { method: 'POST' });
     const ok = e.ergebnisse.filter(r => r.ok).length;
     melde(`${ok} von ${e.ergebnisse.length} Angeboten bei eBay eingestellt.`, ok < e.ergebnisse.length);
