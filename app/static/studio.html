@@ -398,7 +398,12 @@ function melde(text, fehler = false) {
 }
 
 async function hole(pfad, optionen) {
-  const r = await fetch(pfad, optionen);
+  let r;
+  try {
+    r = await fetch(pfad, optionen);
+  } catch (err) {
+    throw new Error('Netzwerkfehler - laeuft der Server?');
+  }
   if (r.status === 404) {
     $('hinweis').hidden = false;
     $('hinweis').textContent =
@@ -740,6 +745,7 @@ function gestaltungSpeichern() {
         body: JSON.stringify({ vorne: werte('vorne'), hinten: werte('hinten') }),
       });
       if (_anprobe.design !== design || _anprobe.ware === 'printify') return;
+      melde('Gestaltung gespeichert.');
       zeigeMockups($('buehne'), { produkt: _anprobe.ware, farbe: _anprobe.farbe, designId: design.id });
     } catch (e) {
       melde(e.message, true);
@@ -883,6 +889,7 @@ async function oeffneAnprobe(id) {
   $('anprobe-panel').hidden = false;
   zeichneAnprobe();
   await ladeEbayVorschau(id, $('anprobe-ebay'), { kompakt: false });
+  melde('Motiv bearbeiten geoeffnet.');
   $('anprobe-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -1049,9 +1056,15 @@ async function ladeEbayVorschau(id, ziel, { kompakt = true } = {}) {
   ziel.innerHTML = '<span class="muted klein">lade eBay-Vorschau …</span>';
   let b;
   try { b = await hole(`/api/v1/studio/designs/${id}/ebay`); }
-  catch (err) { ziel.innerHTML = `<span class="neg klein">${String(err.message || err)}</span>`; return null; }
+  catch (err) {
+    const text = String(err.message || err);
+    ziel.innerHTML = `<span class="neg klein">${text}</span>`;
+    melde('eBay-Vorschau konnte nicht geladen werden: ' + text, true);
+    return null;
+  }
   if (!b.bereit) {
     ziel.innerHTML = `<div class="neg klein">Noch nicht bereit: ${b.fehlt.join(' · ')}</div>`;
+    melde('eBay-Vorschau noch nicht bereit: ' + b.fehlt.join(', '), true);
     return b;
   }
   const offen = b.produkte.filter(p => !p.angebot);
@@ -1064,6 +1077,7 @@ async function ladeEbayVorschau(id, ziel, { kompakt = true } = {}) {
       ? `<button class="btn klein" onclick="ebayEinstellen(${id})">Ausgewählte einstellen / aktualisieren</button>
          <button class="btn ghost klein" onclick="ladeMotive()">Zurück</button>`
       : '');
+  if (!kompakt) melde('eBay-Vorschau geladen.');
   return b;
 }
 
@@ -1094,7 +1108,7 @@ async function ebayEinstellen(id) {
         : `<div class="klein">${r.produkt}: ${String(r.fehler).replace(/</g, '&lt;')}</div>`
       ).join('') + `<button class="btn ghost klein" onclick="ladeMotive()">Zurück</button>`;
     const ok = e.ergebnisse.filter(r => r.ok).length;
-    melde(`${ok} von ${e.ergebnisse.length} Angeboten bei eBay eingestellt.`, ok < e.ergebnisse.length);
+    melde(`${ok} von ${e.ergebnisse.length} Angeboten bei eBay ${updates.length ? 'aktualisiert/eingestellt' : 'eingestellt'}.`, ok < e.ergebnisse.length);
   } catch (err) {
     melde(String(err.message || err), true);
     ladeMotive();
@@ -1113,7 +1127,7 @@ async function ebayEinstellenDirekt(id, key, aktualisieren = false) {
                          + (aktualisieren ? '&aktualisieren=true' : ''),
                          { method: 'POST' });
     const ok = e.ergebnisse.filter(r => r.ok).length;
-    melde(`${ok} von ${e.ergebnisse.length} Angeboten bei eBay eingestellt.`, ok < e.ergebnisse.length);
+    melde(`${ok} von ${e.ergebnisse.length} Angeboten bei eBay ${aktualisieren ? 'aktualisiert' : 'eingestellt'}.`, ok < e.ergebnisse.length);
     await ladeEbayVorschau(id, ziel, { kompakt: false });
     await ladeMotive();
   } catch (err) {
@@ -1480,6 +1494,7 @@ document.addEventListener('click', async (ev) => {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: knopf.dataset.radar }),
       });
+      melde(knopf.dataset.radar === 'verworfen' ? 'Idee verworfen.' : 'Idee aktualisiert.');
     }
     await ladeRadar();
   } catch (err) {
