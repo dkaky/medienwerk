@@ -163,3 +163,16 @@ def test_tasse_nimmt_das_motiv_der_rueckseite_wenn_vorne_leer(tmp_path):
                        farben=[("Weiß", "#FFFFFF")], ziel_ordner=tmp_path / "t", ordner=ordner,
                        lange_kante=300)["Weiß"]
     assert len(fotos) == 2 and all(_rot(p) > 20 for p in fotos)
+
+
+
+def test_druckbild_behaelt_seine_lage(tmp_path):
+    v = mm.lade_vorlage(_vorlage(tmp_path / "t.png"), lange_kante=600)
+    feld = mm.druckfeld(v, "tshirt")
+    flaeche = Image.new("RGBA", (300, 400), (0, 0, 0, 0))
+    flaeche.paste((220, 20, 20, 255), (0, 0, 60, 60))              # Motiv oben links
+    bild = np.asarray(mm.montiere(v, flaeche, "#FFFFFF", feld, ganzflaeche=True))
+    ys, xs = np.nonzero((bild[..., 0] > 150) & (bild[..., 1] < 90))
+    assert abs(xs.min() - (feld.mitte_x - feld.breite // 2)) <= 10
+    assert abs(ys.min() - feld.oben_y) <= 10
+    assert xs.max() - xs.min() < feld.breite * 0.35                  # nicht aufgeblasen

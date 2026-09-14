@@ -47,6 +47,7 @@ Angebot erkennt der Client und aktualisiert es.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from dataclasses import dataclass, field
@@ -365,7 +366,7 @@ def pruefe_textilfotos(p: Produkt, s: Settings) -> list[str]:
 
 async def produktfotos(design: Any, p: Produkt, *, s: Settings, bildordner: Path,
                        motiv: Path | None, mockups: Any = None,
-                       hinten: Path | None = None) -> dict[str, Any]:
+                       hinten: Path | None = None, ganzflaeche: bool = False) -> dict[str, Any]:
     """Bilder je Farbe. Rendert nur, was noch nicht im Zwischenspeicher liegt."""
     textil_fehlt = pruefe_textilfotos(p, s)
     if textil_fehlt:
@@ -389,7 +390,8 @@ async def produktfotos(design: Any, p: Produkt, *, s: Settings, bildordner: Path
         vorher = set(ziel.glob("*.jpg")) if ziel.is_dir() else set()
         farbwerte = [(f, mockup_plan.farbe(f).hex if p.textil else "#FFFFFF") for f in farben(p)]
         fotos = await asyncio.to_thread(
-            mockup_montage.rendere, motiv, hinten=hinten, produkt=p.key, textil=p.textil, farben=farbwerte,
+            mockup_montage.rendere, motiv, hinten=hinten, ganzflaeche=ganzflaeche,
+            produkt=p.key, textil=p.textil, farben=farbwerte,
             ziel_ordner=ziel, ordner=Path(s.mockup_montage_ordner))
         gerendert = len({x for liste in fotos.values() for x in liste} - vorher)
         return {"je_farbe": fotos, "quelle": "montage", "fehlt": [], "gerendert": gerendert}
@@ -502,11 +504,12 @@ async def veroeffentliche(db, design: Any, *, produkt_key: str, ebay: Any, s: Se
     haupt = hauptfarbe(s) if p.textil else TASSENFARBE
     try:
         seiten = druckseiten.lese(db, design)
-        vorne_pfad, hinten_pfad = druckseiten.pfade(seiten, bildordner)
+        vorne_pfad, hinten_pfad = await asyncio.to_thread(
+            druckseiten.druckbilder, seiten, bildordner, textil=p.textil, design_id=design.id)
         if vorne_pfad is None and hinten_pfad is None:
             raise EbayWegFehler("Weder Vorder- noch Rueckseite hat ein Motiv.")
         fotos = await produktfotos(design, p, s=s, bildordner=bildordner, motiv=vorne_pfad,
-                                   hinten=hinten_pfad, mockups=mockups)
+                                   hinten=hinten_pfad, mockups=mockups, ganzflaeche=True)
         adressen = {f: [await ebay.upload_image(x) for x in pfade[:_MAX_BILDER]]
                     for f, pfade in fotos["je_farbe"].items()}
 

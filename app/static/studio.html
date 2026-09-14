@@ -114,9 +114,18 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .galerie figure.gross { grid-column: 1 / -1; }
 .galerie h5 { grid-column: 1 / -1; margin: 10px 0 0; font-size: 12px; color: var(--muted);
   text-transform: uppercase; letter-spacing: .06em; }
-.druckwahl { display: flex; justify-content: space-between; align-items: center; gap: 8px;
-  margin-bottom: 8px; font-size: 13px; }
-.druckwahl select { max-width: 230px; flex: 1; }
+.druckflaeche { position: relative; width: 100%; max-width: 300px; aspect-ratio: 3 / 4; margin: 6px 0;
+  border: 2px dashed var(--border); border-radius: 8px; overflow: hidden; touch-action: none;
+  background: repeating-conic-gradient(rgba(127,127,127,.12) 0 25%, transparent 0 50%) 0 0 / 18px 18px; }
+.druckflaeche.tasse { aspect-ratio: 1 / 1; }
+.druckflaeche img.ebene { position: absolute; cursor: grab; user-select: none; -webkit-user-drag: none;
+  outline: 1px dashed transparent; outline-offset: 1px; }
+.druckflaeche img.ebene.aktiv { outline-color: var(--accent); }
+.druckflaeche .leerhinweis { position: absolute; inset: 0; display: grid; place-items: center; margin: 0;
+  text-align: center; padding: 10px; }
+.ed-zeile { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 6px 0; }
+.ed-zeile input { flex: 1; }
+#ed-neu { width: 100%; margin: 4px 0 12px; }
 .galerie img { width: 100%; display: block; border-radius: 9px; background: #ececec; }
 .galerie figcaption { font-size: 11px; color: var(--muted); margin-top: 4px;
   text-transform: uppercase; letter-spacing: .05em; }
@@ -268,10 +277,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
     </div>
 
     <div class="panel" id="anprobe-panel" hidden>
-      <h3>Anprobe <span class="muted" id="anprobe-titel"></span></h3>
+      <h3>Motiv bearbeiten <span class="muted" id="anprobe-titel"></span></h3>
       <p class="muted">Die Produktfotos, wie sie bei eBay erscheinen – in dieser Reihenfolge:
         <b>1</b> die Ware allein, <b>2</b> am Mann, <b>3</b> an der Frau – danach dieselben drei von hinten.
-        Unter <b>Druck</b> legst du fest, welches Motiv vorne und hinten sitzt; eine Seite darf leer bleiben.
+        Unter <b>Gestaltung</b> wählst du Vorder- oder Rückseite, verschiebst Motive, änderst ihre Größe
+        und fügst weitere Motive hinzu – die Fotos rechnen sich danach neu.
         Anschauen kostet nichts (lokal gerechnet). Der wichtigste Test ist die Farbe —
         ein dunkles Motiv auf schwarzem Shirt verschwindet.</p>
       <div class="anprobe">
@@ -279,9 +289,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
         <div>
           <div class="feldname">Ware</div>
           <div class="wahl" id="wahl-ware"></div>
-          <div class="feldname">Druck</div>
-          <label class="druckwahl">Vorderseite <select id="druck-vorne"></select></label>
-          <label class="druckwahl">Rückseite <select id="druck-hinten"></select></label>
+          <div class="feldname">Gestaltung</div>
+          <div id="editor"></div>
           <div class="feldname" id="name-farbe">Farbe</div>
           <div class="farben" id="wahl-farbe"></div>
           <div class="feldname">Entscheidung</div>
@@ -474,7 +483,7 @@ async function ladeMotive() {
         ${d.source ? `<span class="badge">${d.source}</span>` : ''}
         ${d.source === 'mock' ? '<span class="platzhalter">Platzhalter — kein echtes Motiv. Der Attrappen-Anbieter malt nur ein farbiges Feld mit dem Titel.</span>' : ''}
         <div class="produktweg" id="pw-${d.id}">
-          <button class="btn klein" data-anprobe="${d.id}">Anprobieren</button>
+          <button class="btn klein" data-anprobe="${d.id}" title="Vorder-/Rückseite gestalten, verschieben, Größe ändern, weitere Motive">✎ Motiv bearbeiten</button>
           <button class="btn ghost klein" onclick="druckcheck(${d.id})">Als Produkt?</button>
           <button class="btn ghost klein" onclick="alsSvg(${d.id})"
             title="Vektordatei zum Selberdrucken: beliebig vergrößerbar, ohne unscharf zu werden">SVG</button>
@@ -516,7 +525,7 @@ function mockupGalerie(bilder, druck = null) {
     const neu = (b.seite || 'vorne') !== seite;
     if (neu) {
       seite = b.seite || 'vorne';
-      const leer = druck && !druck[seite];
+      const leer = druck && !(druck[seite] || []).length;
       if (mitSeiten) kopf = `<h5>${seite === 'hinten' ? 'Rückseite' : 'Vorderseite'}${leer ? ' · ohne Motiv' : ''}</h5>`;
     }
     const name = esc(ANSICHT_NAME[b.ansicht] || b.ansicht);
@@ -586,7 +595,8 @@ document.addEventListener('click', (ev) => {
 });
 zeichneVorlagen();
 
-let _anprobe = { design: null, ware: 'tshirt', farbe: 'Weiß', druck: null, druckFuer: null };
+let _anprobe = { design: null, ware: 'tshirt', farbe: 'Weiß', druck: null, druckFuer: null,
+                 seite: 'vorne', auswahl: 0 };
 
 /** Gespeicherte Printify-Ansichten eines Motivs, falls es dort ein Produkt gibt.
  *
@@ -615,43 +625,183 @@ function wareKnoepfe(design, ware, info) {
      </button>`;
 }
 
-/** Auswahl fuer eine Druckseite: leer, dieses Motiv oder ein anderes. */
-function druckOptionen(aktiv, design) {
-  const eintraege = [['', 'kein Motiv'], [String(design.id), `dieses Motiv – ${design.title}`]];
-  for (const m of _motive) {
-    if (m.id !== design.id && m.image_url) eintraege.push([String(m.id), m.title]);
-  }
-  if (aktiv && !eintraege.some(([v]) => v === String(aktiv.design_id))) {
-    eintraege.push([String(aktiv.design_id), aktiv.title]);    // z. B. ein archiviertes Motiv
-  }
-  const gewaehlt = aktiv ? String(aktiv.design_id) : '';
-  return eintraege.map(([v, text]) =>
-    `<option value="${v}" ${v === gewaehlt ? 'selected' : ''}>${esc(text)}</option>`).join('');
+// ---------- Gestaltung: Motive je Seite verschieben, skalieren, hinzufuegen ----------
+// Die Druckflaeche ist 3:4 (Tasse 1:1). Jede Ebene hat Mitte (x), Oberkante und
+// Groesse als Anteil der Flaeche - genau die Werte, aus denen der Server das
+// Druckbild und die Mockups rechnet. Die Vorschaubilder kommen zugeschnitten
+// (?zuschnitt=1), wie der Server die Motive auch fuer das Druckbild zuschneidet.
+const SEITE_NAME = { vorne: 'Vorderseite', hinten: 'Rückseite' };
+let _speichernTimer = null;
+let _zug = null;
+
+function flaechenVerhaeltnis() {       // Hoehe : Breite
+  return _anprobe.ware === 'tasse' ? 1 : 4 / 3;
 }
 
-function zeichneDruckwahl(design) {
-  const druck = _anprobe.druck || { vorne: { design_id: design.id, title: design.title }, hinten: null };
-  $('druck-vorne').innerHTML = druckOptionen(druck.vorne, design);
-  $('druck-hinten').innerHTML = druckOptionen(druck.hinten, design);
+function ebenen(seite = _anprobe.seite) {
+  if (!_anprobe.druck) _anprobe.druck = { vorne: [], hinten: [] };
+  if (!Array.isArray(_anprobe.druck[seite])) _anprobe.druck[seite] = [];
+  return _anprobe.druck[seite];
 }
 
-document.addEventListener('change', async (ev) => {
-  if (!['druck-vorne', 'druck-hinten'].includes(ev.target.id)) return;
+function ebeneStil(e, img) {
+  const v = flaechenVerhaeltnis();
+  const r = img.naturalWidth ? img.naturalHeight / img.naturalWidth : 1;
+  const breite = (r > v ? e.groesse * v / r : e.groesse) * 100;
+  img.style.width = `${breite}%`;
+  img.style.left = `${e.mitte_x * 100 - breite / 2}%`;
+  img.style.top = `${e.oben * 100}%`;
+}
+
+function zeichneEditor() {
   const design = _anprobe.design;
-  if (!design) return;
-  const wert = (id) => ($(id).value ? Number($(id).value) : null);
-  try {
-    _anprobe.druck = await hole(`/api/v1/studio/designs/${design.id}/druckseiten`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ vorne: wert('druck-vorne'), hinten: wert('druck-hinten') }),
-    });
-    melde('Druckseiten gespeichert.');
-  } catch (e) {
-    melde(e.message, true);
-    _anprobe.druckFuer = null;         // gespeicherten Stand neu laden
+  const ziel = $('editor');
+  if (!design || !ziel) return;
+  const liste = ebenen();
+  if (_anprobe.auswahl >= liste.length) _anprobe.auswahl = Math.max(0, liste.length - 1);
+  const aktiv = liste[_anprobe.auswahl];
+  const tasse = _anprobe.ware === 'tasse';
+  const optionen = ['<option value="">+ Motiv hinzufügen …</option>'].concat(
+    _motive.filter((m) => m.image_url).map((m) =>
+      `<option value="${m.id}">${esc(m.title)}${m.id === design.id ? ' (dieses Motiv)' : ''}</option>`));
+  ziel.innerHTML = `
+    <div class="wahl">${['vorne', 'hinten'].map((s) =>
+      `<button type="button" data-ed-seite="${s}" aria-pressed="${_anprobe.seite === s}">
+         ${SEITE_NAME[s]} (${ebenen(s).length})</button>`).join('')}</div>
+    ${tasse ? '<p class="muted klein" style="margin:0">Die Tasse hat eine Druckfläche: sie nimmt die Vorderseite, ist die leer, die Rückseite.</p>' : ''}
+    <div class="druckflaeche${tasse ? ' tasse' : ''}" id="ed-flaeche">
+      ${liste.map((e, i) => `<img class="ebene${i === _anprobe.auswahl ? ' aktiv' : ''}" data-ebene="${i}"
+            draggable="false" alt="${esc(e.title || '')}" src="${vorschau(e.image_url, 700)}&zuschnitt=1">`).join('')}
+      ${liste.length ? '' : `<p class="muted klein leerhinweis">${SEITE_NAME[_anprobe.seite]} bleibt unbedruckt.<br>Unten ein Motiv hinzufügen.</p>`}
+    </div>
+    <p class="muted klein" style="margin:4px 0">Ziehen verschiebt, der Regler ändert die Größe.
+      Was über den gestrichelten Rand ragt, wird nicht gedruckt.</p>
+    ${aktiv ? `
+      <label class="ed-zeile">Größe
+        <input type="range" id="ed-groesse" min="5" max="150" value="${Math.round(aktiv.groesse * 100)}">
+        <span id="ed-groesse-wert">${Math.round(aktiv.groesse * 100)} %</span></label>
+      <div class="wahl">
+        <button type="button" data-ed-aktion="mitte">Zentrieren</button>
+        <button type="button" data-ed-aktion="oben">Nach oben</button>
+        <button type="button" data-ed-aktion="entfernen">Entfernen</button>
+      </div>` : ''}
+    <select id="ed-neu" ${liste.length >= 5 ? 'disabled' : ''}>${optionen.join('')}</select>`;
+  ziel.querySelectorAll('img.ebene').forEach((img) => {
+    const e = liste[Number(img.dataset.ebene)];
+    img.addEventListener('load', () => ebeneStil(e, img));
+    ebeneStil(e, img);
+  });
+}
+
+function aktivesBild() {
+  return document.querySelector(`#ed-flaeche img.ebene[data-ebene="${_anprobe.auswahl}"]`);
+}
+
+/** Speichert kurz nach der letzten Aenderung und rechnet die Fotos neu. */
+function gestaltungSpeichern() {
+  clearTimeout(_speichernTimer);
+  _speichernTimer = setTimeout(async () => {
+    const design = _anprobe.design;
+    if (!design) return;
+    const werte = (s) => ebenen(s).map(({ design_id, mitte_x, oben, groesse }) => ({
+      design_id, mitte_x: +mitte_x.toFixed(4), oben: +oben.toFixed(4), groesse: +groesse.toFixed(4) }));
+    try {
+      await hole(`/api/v1/studio/designs/${design.id}/druckseiten`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vorne: werte('vorne'), hinten: werte('hinten') }),
+      });
+      if (_anprobe.design !== design || _anprobe.ware === 'printify') return;
+      zeigeMockups($('buehne'), { produkt: _anprobe.ware, farbe: _anprobe.farbe, designId: design.id });
+    } catch (e) {
+      melde(e.message, true);
+      _anprobe.druckFuer = null;          // gespeicherten Stand neu laden
+      zeichneAnprobe();
+    }
+  }, 700);
+}
+
+document.addEventListener('pointerdown', (ev) => {
+  const img = ev.target.closest('#ed-flaeche img.ebene');
+  if (!img) return;
+  ev.preventDefault();
+  const i = Number(img.dataset.ebene);
+  if (_anprobe.auswahl !== i) {
+    _anprobe.auswahl = i;
+    zeichneEditor();
   }
-  zeichneAnprobe();
+  const e = ebenen()[i];
+  _zug = { e, x: ev.clientX, y: ev.clientY, mx: e.mitte_x, oben: e.oben, bewegt: false,
+           rect: $('ed-flaeche').getBoundingClientRect() };
+});
+
+document.addEventListener('pointermove', (ev) => {
+  if (!_zug) return;
+  const { e, rect } = _zug;
+  e.mitte_x = Math.min(1, Math.max(0, _zug.mx + (ev.clientX - _zug.x) / rect.width));
+  e.oben = Math.min(1, Math.max(-0.5, _zug.oben + (ev.clientY - _zug.y) / rect.height));
+  _zug.bewegt = true;
+  const img = aktivesBild();
+  if (img) ebeneStil(e, img);
+});
+
+document.addEventListener('pointerup', () => {
+  if (!_zug) return;
+  const bewegt = _zug.bewegt;
+  _zug = null;
+  if (bewegt) gestaltungSpeichern();
+});
+
+document.addEventListener('input', (ev) => {
+  if (ev.target.id !== 'ed-groesse') return;
+  const e = ebenen()[_anprobe.auswahl];
+  if (!e) return;
+  e.groesse = Number(ev.target.value) / 100;
+  $('ed-groesse-wert').textContent = `${ev.target.value} %`;
+  const img = aktivesBild();
+  if (img) ebeneStil(e, img);
+});
+
+document.addEventListener('change', (ev) => {
+  if (ev.target.id === 'ed-groesse') { gestaltungSpeichern(); return; }
+  if (ev.target.id !== 'ed-neu' || !ev.target.value) return;
+  const m = _motive.find((x) => x.id === Number(ev.target.value));
+  if (!m) return;
+  const liste = ebenen();
+  const erstes = !liste.length;
+  liste.push({ design_id: m.id, title: m.title, image_url: m.image_url,
+               mitte_x: 0.5, oben: erstes ? 0 : 0.55, groesse: erstes ? 1 : 0.4 });
+  _anprobe.auswahl = liste.length - 1;
+  zeichneEditor();
+  gestaltungSpeichern();
+});
+
+document.addEventListener('click', (ev) => {
+  const s = ev.target.closest('[data-ed-seite]');
+  if (s) {
+    _anprobe.seite = s.dataset.edSeite;
+    _anprobe.auswahl = 0;
+    zeichneEditor();
+    return;
+  }
+  const a = ev.target.closest('[data-ed-aktion]');
+  if (!a) return;
+  const liste = ebenen();
+  const e = liste[_anprobe.auswahl];
+  if (!e) return;
+  if (a.dataset.edAktion === 'mitte') e.mitte_x = 0.5;
+  if (a.dataset.edAktion === 'oben') e.oben = 0;
+  if (a.dataset.edAktion === 'entfernen') {
+    const andere = _anprobe.seite === 'vorne' ? 'hinten' : 'vorne';
+    if (liste.length === 1 && !ebenen(andere).length) {
+      melde('Mindestens eine Seite braucht ein Motiv.', true);
+      return;
+    }
+    liste.splice(_anprobe.auswahl, 1);
+    _anprobe.auswahl = Math.max(0, _anprobe.auswahl - 1);
+  }
+  zeichneEditor();
+  gestaltungSpeichern();
 });
 
 async function zeichneAnprobe() {
@@ -666,10 +816,11 @@ async function zeichneAnprobe() {
     try {
       _anprobe.druck = await hole(`/api/v1/studio/designs/${design.id}/druckseiten`);
       _anprobe.druckFuer = design.id;
+      _anprobe.seite = 'vorne';
+      _anprobe.auswahl = 0;
     } catch { _anprobe.druck = null; }
     if (_anprobe.design !== design) return;
   }
-  zeichneDruckwahl(design);
 
   // Echte Printify-Ansichten, falls dieses Motiv dort schon ein Produkt hat.
   if (_anprobe.ware === 'printify') {
@@ -690,6 +841,7 @@ async function zeichneAnprobe() {
   }
 
   const produkt = gueltigeWahl(info, _anprobe);
+  zeichneEditor();
   $('wahl-ware').innerHTML = wareKnoepfe(design, produkt.key, info);
   $('name-farbe').textContent = `Farbe – ${_anprobe.farbe}`;
   $('wahl-farbe').innerHTML = farbKnoepfe(produkt, _anprobe.farbe, 'farbe');

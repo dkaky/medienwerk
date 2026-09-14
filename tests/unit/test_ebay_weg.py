@@ -384,7 +384,7 @@ async def test_nur_rueckseite_bedruckt_kommt_zuerst(db, tmp_path, monkeypatch):
     _montage_vorlagen(tmp_path, produkt="hoodie")
     s, ebay = _settings(tmp_path), _FakeEbay()
     design = _motiv(db, tmp_path)
-    druckseiten.setze(db, design, vorne=None, hinten=design.id)
+    druckseiten.setze(db, design, vorne=[], hinten=[{"design_id": design.id}])
 
     await ebay_weg.veroeffentliche(db, design, produkt_key="hoodie", ebay=ebay, s=s, bildordner=tmp_path)
 
@@ -399,12 +399,52 @@ def test_druckseiten_standard_und_pruefung(db, tmp_path):
 
     design = _motiv(db, tmp_path)
     seiten = druckseiten.lese(db, design)
-    assert seiten.vorne is design and seiten.hinten is None
+    assert [e.design for e in seiten.vorne] == [design] and seiten.hinten == []
     with pytest.raises(druckseiten.DruckseitenFehler, match="Mindestens eine Seite"):
-        druckseiten.setze(db, design, vorne=None, hinten=None)
+        druckseiten.setze(db, design, vorne=[], hinten=[])
     with pytest.raises(druckseiten.DruckseitenFehler):
-        druckseiten.setze(db, design, vorne=design.id, hinten=99999999)
+        druckseiten.setze(db, design, vorne=[{"design_id": 99999999}], hinten=[])
     ruecken = _motiv(db, tmp_path, titel="Rueckenmotiv")
-    beide = druckseiten.setze(db, design, vorne=design.id, hinten=ruecken.id)
-    assert beide.hinten.id == ruecken.id and beide.als_dict()["hinten"]["title"] == "Rueckenmotiv"
+    beide = druckseiten.setze(
+        db, design, vorne=[{"design_id": design.id, "groesse": 0.5, "mitte_x": 0.3}],
+        hinten=[{"design_id": design.id}, {"design_id": ruecken.id, "oben": 0.6, "groesse": 9}])
+    d = beide.als_dict()
+    assert d["vorne"][0]["groesse"] == 0.5 and d["vorne"][0]["mitte_x"] == 0.3
+    assert d["hinten"][1]["title"] == "Rueckenmotiv" and d["hinten"][1]["groesse"] == 1.5
     assert beide.beschreibung == "Druck: Vorder- und Rückseite bedruckt"
+
+
+def test_altes_druckformat_wird_gelesen(db, tmp_path):
+    from app.studio import druckseiten
+
+    design = _motiv(db, tmp_path)
+    design.meta_json = json.dumps({"druck": {"vorne": None, "hinten": design.id}})
+    db.commit()
+    seiten = druckseiten.lese(db, design)
+    assert seiten.vorne == [] and seiten.hinten[0].design is design and seiten.hinten[0].groesse == 1.0
+
+
+def test_druckbild_setzt_ebenen_an_ihre_stelle(db, tmp_path):
+    import numpy as np
+
+    from app.studio import druckseiten
+
+    design = _motiv(db, tmp_path)          # rotes Quadrat 200x200 mitten in 400x400, Rest transparent
+    seiten = druckseiten.setze(
+        db, design, vorne=[{"design_id": design.id, "mitte_x": 0.25, "oben": 0.5, "groesse": 0.4}], hinten=[])
+    vorne, hinten = druckseiten.druckbilder(seiten, tmp_path, textil=True, design_id=design.id)
+    assert hinten is None
+    arr = np.asarray(Image.open(vorne))
+    assert arr.shape[:2] == (400, 300)                       # 3:4, lange Kante 400 (Fixture)
+    ys, xs = np.nonzero(arr[..., 3] > 128)
+    # 0.4 * 300 = 120 px breit, Mitte bei 75 px, Oberkante bei 200 px
+    assert abs(xs.min() - 15) <= 2 and abs(xs.max() - 134) <= 2 and abs(ys.min() - 200) <= 2
+    assert druckseiten.druckbilder(seiten, tmp_path, textil=True, design_id=design.id)[0] == vorne
+
+
+@pytest.fixture(autouse=True)
+def _kleine_druckbilder(monkeypatch):
+    """Druckbilder in Testgroesse - die echten 3000 x 4000 Pixel braucht hier niemand."""
+    from app.studio import druckseiten
+
+    monkeypatch.setattr(druckseiten, "KANTE", {"textil": 400, "tasse": 300})

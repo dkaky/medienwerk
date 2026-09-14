@@ -214,13 +214,18 @@ def _zylinder(motiv: np.ndarray, staerke: float = 0.9) -> np.ndarray:
 
 
 def montiere(vorlage: Vorlage, motiv: Image.Image, hexwert: str, feld: Druckfeld,
-             *, zylinder: bool = False) -> Image.Image:
+             *, zylinder: bool = False, ganzflaeche: bool = False) -> Image.Image:
     bild = einfaerben(vorlage, hexwert)
     m = motiv.convert("RGBA")
-    rahmen = m.getbbox()
-    if rahmen:
-        m = m.crop(rahmen)
-    m.thumbnail((feld.breite, feld.hoehe), Image.LANCZOS)
+    if ganzflaeche:
+        # Druckbild aus dem Editor: die Lage im Bild ist gewollt - nicht zuschneiden,
+        # die ganze Druckflaeche bekommt die Breite des Druckfelds.
+        m = m.resize((feld.breite, max(1, round(feld.breite * m.height / m.width))), Image.LANCZOS)
+    else:
+        rahmen = m.getbbox()
+        if rahmen:
+            m = m.crop(rahmen)
+        m.thumbnail((feld.breite, feld.hoehe), Image.LANCZOS)
     marr = np.asarray(m, np.float32)
     if zylinder:
         marr = _zylinder(marr)
@@ -304,7 +309,7 @@ def _feste_felder(ordner: Path) -> dict[str, Druckfeld]:
 
 def rendere(motiv_pfad: Path | None, *, produkt: str, textil: bool, farben: list[tuple[str, str]],
             ziel_ordner: Path, ordner: Path = ORDNER, hinten: Path | None = None,
-            lange_kante: int | None = None) -> dict[str, list[Path]]:
+            lange_kante: int | None = None, ganzflaeche: bool = False) -> dict[str, list[Path]]:
     """Je Farbe die Fotos aller vorhandenen Ansichten, in der Reihenfolge von ``folge``.
 
     ``motiv_pfad`` sitzt vorne, ``hinten`` auf dem Ruecken; eine Seite ohne Motiv
@@ -337,8 +342,13 @@ def rendere(motiv_pfad: Path | None, *, produkt: str, textil: bool, farben: list
                 if bilder[seite] is None:
                     bild = Image.fromarray(np.clip(einfaerben(v, hexwert), 0, 255).astype(np.uint8))
                 else:
-                    bild = montiere(v, bilder[seite], hexwert, feld, zylinder=not textil)
+                    bild = montiere(v, bilder[seite], hexwert, feld, zylinder=not textil,
+                                    ganzflaeche=ganzflaeche)
                 bild.save(ziel, "JPEG", quality=92)
+                # Aeltere Fassungen derselben Ansicht und Farbe braucht niemand mehr.
+                for alt in ziel_ordner.glob(f"{produkt}-{ansicht}-{farbcode(name)}-*.jpg"):
+                    if alt != ziel:
+                        alt.unlink(missing_ok=True)
             liste.append(ziel)
         ergebnis[name] = liste
     return ergebnis

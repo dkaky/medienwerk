@@ -62,8 +62,11 @@ def erlaubte_breite(wunsch: int | None) -> int | None:
     return min(BREITEN, key=lambda b: abs(b - w))
 
 
-def hole(original: Path, *, breite: int, wurzel: Path) -> Path:
+def hole(original: Path, *, breite: int, wurzel: Path, zuschnitt: bool = False) -> Path:
     """Pfad einer verkleinerten Fassung. Legt sie an, falls noetig.
+
+    ``zuschnitt`` schneidet den durchsichtigen Rand ab - so zeigt der Editor das
+    Motiv mit denselben Massen, mit denen es ins Druckbild kommt.
 
     Faellt bei jedem Problem auf das Original zurueck - eine fehlende Vorschau
     darf nie dazu fuehren, dass ein Motiv gar nicht mehr angezeigt wird.
@@ -76,21 +79,27 @@ def hole(original: Path, *, breite: int, wurzel: Path) -> Path:
     try:
         with Image.open(original) as bild:
             quell_breite = bild.width
-            if quell_breite <= breite * MINDEST_ERSPARNIS:
+            if quell_breite <= breite * MINDEST_ERSPARNIS and not zuschnitt:
                 return original              # lohnt nicht
 
             rel = original.relative_to(wurzel).as_posix()
             ziel_ordner = wurzel / ORDNER
             ziel_ordner.mkdir(parents=True, exist_ok=True)
-            ziel = ziel_ordner / f"{_saubere_kennung(rel)}-{breite}.png"
+            ziel = ziel_ordner / f"{_saubere_kennung(rel)}-{breite}{'-z' if zuschnitt else ''}.png"
 
             if ziel.is_file() and ziel.stat().st_mtime >= original.stat().st_mtime:
                 return ziel                  # noch gueltig
 
-            hoehe = max(1, round(bild.height * breite / quell_breite))
             # RGBA und PNG, damit der durchsichtige Hintergrund durchsichtig
             # bleibt - an einem Druckmotiv ist das die wichtigste Angabe.
-            klein = bild.convert("RGBA").resize((breite, hoehe), Image.LANCZOS)
+            quelle = bild.convert("RGBA")
+            if zuschnitt:
+                rahmen = quelle.getbbox()
+                if rahmen:
+                    quelle = quelle.crop(rahmen)
+            zielbreite = min(breite, quelle.width)
+            hoehe = max(1, round(quelle.height * zielbreite / quelle.width))
+            klein = quelle if zielbreite == quelle.width else quelle.resize((zielbreite, hoehe), Image.LANCZOS)
             klein.save(ziel, format="PNG", optimize=True)
             logger.info("Vorschau angelegt: %s (%s -> %s px)", rel, quell_breite, breite)
             return ziel

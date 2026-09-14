@@ -141,7 +141,7 @@ def studio_seite() -> FileResponse:
 
 
 @app.get("/studio/bilder/{name:path}", include_in_schema=False)
-def studio_bild(name: str, breite: int | None = None) -> FileResponse:
+def studio_bild(name: str, breite: int | None = None, zuschnitt: bool = False) -> FileResponse:
     """Ein erzeugtes Motiv ausliefern.
 
     ``{name:path}`` statt ``{name}``, und das war kein Schoenheitsfehler: ein
@@ -173,8 +173,10 @@ def studio_bild(name: str, breite: int | None = None) -> FileResponse:
     from app.studio import vorschau as studio_vorschau
 
     gewuenscht = studio_vorschau.erlaubte_breite(breite)
-    if gewuenscht:
-        ziel = studio_vorschau.hole(ziel, breite=gewuenscht, wurzel=ordner)
+    if gewuenscht or zuschnitt:
+        # zuschnitt=1: ohne durchsichtigen Rand, fuer den Gestaltungs-Editor.
+        ziel = studio_vorschau.hole(ziel, breite=gewuenscht or max(studio_vorschau.BREITEN),
+                                    wurzel=ordner, zuschnitt=zuschnitt)
     return FileResponse(ziel, media_type="image/png")
 
 

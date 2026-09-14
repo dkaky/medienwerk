@@ -434,7 +434,7 @@ def ebay_stand(design_id: int, db: Session = Depends(get_db)) -> dict:
 
 @router.get("/designs/{design_id}/druckseiten")
 def druckseiten_lesen(design_id: int, db: Session = Depends(get_db)) -> dict:
-    """Welches Motiv vorne und hinten sitzt (``None`` = unbedruckt)."""
+    """Die Ebenen je Seite: welches Motiv wo und wie gross sitzt (leer = unbedruckt)."""
     from app.studio import druckseiten
 
     design = service.get_design(db, design_id)
@@ -445,14 +445,15 @@ def druckseiten_lesen(design_id: int, db: Session = Depends(get_db)) -> dict:
 
 @router.put("/designs/{design_id}/druckseiten")
 def druckseiten_setzen(design_id: int, body: DruckseitenIn, db: Session = Depends(get_db)) -> dict:
-    """Vorder- und Rueckseite belegen. Eine Seite darf leer bleiben, beide nicht."""
+    """Gestaltung speichern: Motive je Seite mit Lage und Groesse. Eine Seite darf leer bleiben."""
     from app.studio import druckseiten
 
     design = service.get_design(db, design_id)
     if design is None:
         raise HTTPException(status_code=404, detail="Motiv nicht gefunden")
     try:
-        return druckseiten.setze(db, design, vorne=body.vorne, hinten=body.hinten).als_dict()
+        return druckseiten.setze(db, design, vorne=[e.model_dump() for e in body.vorne],
+                                 hinten=[e.model_dump() for e in body.hinten]).als_dict()
     except druckseiten.DruckseitenFehler as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -514,9 +515,11 @@ async def mockup_bilder(produkt: str = Query("tshirt"), farbe: str = Query("Wei√
             from app.studio import druckseiten
 
             seiten = druckseiten.lese(db, design)
-            vorne, hinten = druckseiten.pfade(seiten, bildordner)
+            vorne, hinten = await asyncio.to_thread(
+                druckseiten.druckbilder, seiten, bildordner, textil=p.textil, design_id=design.id)
             fotos = await asyncio.to_thread(
                 mockup_montage.rendere, vorne, hinten=hinten, produkt=p.key, textil=p.textil,
+                ganzflaeche=True,
                 farben=[(farbe, hexwert)], ordner=ordner,
                 ziel_ordner=bildordner / ebay_weg.MOCKUP_ORDNER / str(design.id))
             pfade = fotos[farbe]

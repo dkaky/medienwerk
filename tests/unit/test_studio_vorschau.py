@@ -119,3 +119,16 @@ def test_route_ohne_breite_liefert_das_original(client, monkeypatch, lager):
     klein = client.get("/studio/bilder/repariert/druck.png?breite=200")
     assert voll.status_code == klein.status_code == 200
     assert len(voll.content) > len(klein.content)
+
+
+def test_zuschnitt_entfernt_den_durchsichtigen_rand(tmp_path):
+    from PIL import Image
+
+    from app.studio import vorschau as v
+
+    bild = Image.new("RGBA", (300, 300), (0, 0, 0, 0))
+    bild.paste((200, 0, 0, 255), (100, 50, 200, 250))
+    quelle = tmp_path / "motiv.png"
+    bild.save(quelle)
+    ziel = v.hole(quelle, breite=900, wurzel=tmp_path, zuschnitt=True)
+    assert ziel != quelle and Image.open(ziel).size == (100, 200)

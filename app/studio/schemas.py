@@ -242,8 +242,17 @@ class NutzenOut(BaseModel):
     druckcheck: dict = {}
 
 
-class DruckseitenIn(BaseModel):
-    """Welches Motiv vorne und hinten sitzt. ``None`` = diese Seite bleibt unbedruckt."""
+class EbeneIn(BaseModel):
+    """Ein Motiv auf der Druckflaeche (Anteile der Flaeche, siehe app/studio/druckseiten.py)."""
 
-    vorne: Optional[int] = None
-    hinten: Optional[int] = None
+    design_id: int
+    mitte_x: float = Field(0.5, ge=0.0, le=1.0)
+    oben: float = Field(0.0, ge=-0.5, le=1.0)
+    groesse: float = Field(1.0, ge=0.05, le=1.5)
+
+
+class DruckseitenIn(BaseModel):
+    """Die Ebenen je Seite. Eine leere Liste = diese Seite bleibt unbedruckt."""
+
+    vorne: list[EbeneIn] = Field(default_factory=list, max_length=5)
+    hinten: list[EbeneIn] = Field(default_factory=list, max_length=5)
