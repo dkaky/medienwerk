@@ -77,6 +77,25 @@ def uebersicht(db: Any = None) -> dict:
         "noetig": True,
     })
 
+    # ---------------------------------------------------------- AliExpress
+    ae_pflicht = _fehlend(s, {
+        "aliexpress_app_key": "App-Key",
+        "aliexpress_app_secret": "App-Secret",
+    })
+    ae_token = _fehlend(s, {"aliexpress_access_token": "Access-Token"})
+    zugaenge.append({
+        "schluessel": "aliexpress", "name": "AliExpress",
+        "wofuer": "Produktdaten holen, Preise und Bestand abgleichen",
+        "eingerichtet": not (ae_pflicht or ae_token),
+        "fehlend": ae_pflicht + ae_token,
+        "attrappe": s.use_mock("aliexpress"),
+        "hinweise": (["Probebetrieb: Produktdaten sind erfunden."]
+                     if s.use_mock("aliexpress") else []),
+        "angaben": {"Lieferland": s.aliexpress_ship_to,
+                    "Währung": s.aliexpress_target_currency},
+        "noetig": True,
+    })
+
     # ------------------------------------------------------------------ KI
     llm_fehlt = _fehlend(s, {"llm_api_key": "API-Schlüssel"})
     zugaenge.append({
@@ -160,7 +179,7 @@ def uebersicht(db: Any = None) -> dict:
 
     return {
         "probebetrieb": s.use_mock("ebay"),
-        "attrappen": [n for n in ("ebay", "llm")
+        "attrappen": [n for n in ("ebay", "aliexpress", "llm", "autods")
                       if s.use_mock(n)],
         "zugaenge": zugaenge,
         "hinweis": ("Gezeigt wird, ob ein Zugang EINGERICHTET ist — nicht, ob er "

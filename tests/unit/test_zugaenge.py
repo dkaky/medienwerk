@@ -2,7 +2,7 @@
 
 Vorher gab es diesen Ort nicht. Der DHL-Schluessel war der EINZIGE Zugang, der
 ueberhaupt im Bild vorkam - und er hing mitten im Tagesgeschaeft der
-Bestellungen. eBay und die KI tragen den Betrieb und waren
+Bestellungen. eBay, AliExpress und die KI tragen den Betrieb und waren
 unsichtbar.
 
 Zwei Eigenschaften entscheiden, ob dieser Ueberblick etwas taugt:
@@ -60,12 +60,11 @@ def test_jeder_zugang_hat_die_noetigen_angaben():
         assert isinstance(z["fehlend"], list)
 
 
-def test_die_tragenden_zugaenge_sind_dabei():
-    """eBay und die KI tragen den Betrieb - sie duerfen nie fehlen."""
+def test_die_drei_tragenden_zugaenge_sind_dabei():
+    """eBay, AliExpress und die KI tragen den Betrieb - sie duerfen nie fehlen."""
     d = uebersicht()
     vorhanden = {z["schluessel"] for z in d["zugaenge"]}
-    assert {"ebay", "llm"} <= vorhanden
-    assert "aliexpress" not in vorhanden
+    assert {"ebay", "aliexpress", "llm"} <= vorhanden
 
 
 def test_freiwilliges_ist_als_freiwillig_erkennbar():
