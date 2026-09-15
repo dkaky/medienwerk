@@ -7,9 +7,9 @@ vorschlagen. **Ein Bild entsteht erst beim Klick auf "Erzeugen".**
 Der Lauf:
   1. **Websuche** ueber die OpenAI Responses API (Werkzeug ``web_search``, Standort
      Deutschland). Das Modell recherchiert anstehende Anlaesse, virale Themen und
-     gefragte Nischen und liefert je Vorschlag Thema, Begruendung mit Anlass,
-     Zeitraum, Zielgruppe, eine ausfuehrliche eigene Bildidee, Stil, Farben, einen
-     eigenen Spruch und Suchbegriffe.
+     gefragte Nischen. Das Modell vergleicht intern mehrere Kandidaten und liefert
+     nur die staerksten Empfehlungen: mit Kaufmoment, eigenstaendigem
+     Verkaufswinkel, konkreter Bildidee und Druckkonzept.
   2. **Schranken VOR dem Ablegen:** Rechtefilter (Marken, Vereine, Figuren) und
      Motivart-Pruefung (kein Shirt im Bild). Was scheitert, wird nicht abgelegt,
      sondern mit Grund gemeldet.
@@ -36,6 +36,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from sqlalchemy import select
 
@@ -47,6 +48,7 @@ logger = logging.getLogger("app.studio.radar.trends")
 PLATTFORM = "trend"
 SHOP = "websuche"
 KOSTEN_JE_LAUF_USD = 0.05
+_MARKDOWN_QUELLE = re.compile(r"\s*\(?\[[^\]]+\]\((https?://[^)\s]+)\)\)?")
 
 
 class TrendFehler(RuntimeError):
@@ -59,10 +61,15 @@ class Trend:
     warum: str = ""
     zeitraum: str = ""
     zielgruppe: str = ""
+    kaufmoment: str = ""
+    verkaufswinkel: str = ""
     motiv: str = ""
     stil: str = ""
     farben: list[str] = field(default_factory=list)
     spruch: str = ""
+    produkt: str = ""
+    druckhinweis: str = ""
+    risiko: str = ""
     suchbegriffe: list[str] = field(default_factory=list)
     quellen: list[str] = field(default_factory=list)
 
@@ -71,41 +78,109 @@ def anweisung(anzahl: int, heute: date) -> str:
     return f"""Heute ist der {heute:%d.%m.%Y}. Du recherchierst fuer einen deutschen Shop, der
 eigene Motive auf T-Shirts, Hoodies, Poloshirts und Tassen druckt und bei eBay verkauft.
 
-Suche im Web nach aktuellen und in den naechsten 8 Wochen kommenden Trends, die sich als
-Druckmotiv verkaufen: anstehende Anlaesse und Feiertage in Deutschland, gerade virale
-Themen und Sprueche, stark gefragte Nischen und Hobbys (z. B. Angeln, Camping, Hunde,
-Laufen, Handwerk, Berufe, Familie), wiederkehrende Geschenkanlaesse. Bevorzuge Themen, die
-Kaeufer auf eBay, Etsy oder Amazon aktiv suchen, und nenne den konkreten Anlass oder Beleg.
+Deine Aufgabe ist NICHT, schnell beliebige Trends aufzulisten, sondern eine kleine,
+redaktionell durchdachte Kollektion vorzuschlagen. Recherchiere zuerst aktuelle
+Nachfragesignale und die naechsten 8 Wochen. Entwickle intern mindestens {anzahl * 3}
+unterschiedliche Kandidaten, vergleiche sie und gib nur die besten {anzahl} aus.
+
+Bewerte jeden Kandidaten nach diesen Kriterien:
+1. klare kaufbereite Zielgruppe und ein konkreter Kauf- oder Geschenkmoment,
+2. ein aktueller, saisonaler oder plausibler immergruener Nachfragegrund,
+3. ein eigenstaendiger Winkel statt eines austauschbaren Standardspruchs,
+4. ein Motiv, das in einer kleinen eBay-Vorschau sofort lesbar ist,
+5. technisch sinnvoller Textildruck: ein Fokus, klare Silhouette, 3-5 Farben,
+6. geringe Rechte- und Kurzlebigkeitsrisiken.
+
+Stelle eine ausgewogene Auswahl zusammen: bei sechs Empfehlungen ungefaehr drei
+zeitnahe und drei immergruene Ideen, bei anderer Anzahl entsprechend anteilig. Hoechstens
+eine Empfehlung je Nische. Ein Kalendertag allein ist noch kein guter Vorschlag. Bevorzuge
+einen spezifischen Identitaets-, Geschenk- oder Insiderwinkel, fuer den jemand das Motiv
+wirklich tragen oder verschenken moechte.
 
 Harte Regeln:
 - KEINE Marken, Firmen, Vereine, Sportclubs, Serien, Filme, Spieletitel, Figuren,
   Promis, Logos, Songtexte oder geschuetzte Sprueche - auch nicht angedeutet.
 - Keine Nachbildung bestehender Designs. Jede Bildidee ist neu erfunden.
-- Keine einfachen Motive: jede Bildidee ist ausgearbeitet (Hauptfigur, Handlung,
-  Umgebung, Details, Bildaufbau), aber als Druckmotiv umsetzbar (klare Konturen,
-  3-5 Farben, freigestellt).
+- Keine generische Landschaft und keine beliebige Ansammlung vieler Details. Jede
+  Bildidee hat einen starken Hauptfokus, hoechstens zwei Nebenelemente, klare Konturen,
+  3-5 Farben und eine geschlossene, freigestellte Silhouette.
+- Keine fotorealistische oder impressionistische Szene. Waehle eine reproduzierbare
+  Illustrationssprache, die auch in einer kleinen Produktvorschau funktioniert.
 - Kein Kleidungsstueck, keine Tasse, kein Mockup und kein Mensch, der Ware traegt, im Bild.
-- Sprueche kurz, auf Deutsch, selbst formuliert.
+- Sprueche sind optional, kurz, auf Deutsch und neu formuliert. Wenn Bild und Zielgruppe
+  ohne Text staerker funktionieren, bleibt der Spruch leer.
+- Eine einzelne Produktanzeige ist kein ausreichender Nachfragebeleg. Nutze nach
+  Moeglichkeit mehrere aktuelle, voneinander unabhaengige Quellen.
+- Behaupte keine Verkaufszahlen oder Suchvolumina, die eine Quelle nicht wirklich nennt.
 
-Antworte AUSSCHLIESSLICH mit einem JSON-Array aus genau {anzahl} Objekten, ohne Text davor
-oder danach. Jedes Objekt hat diese Schluessel:
-"thema" (2-4 Woerter), "warum" (1-2 Saetze mit konkretem Anlass/Beleg), "zeitraum",
-"zielgruppe", "motiv" (ausfuehrliche Bildbeschreibung, 50-110 Woerter), "stil",
-"farben" (Liste, 3-5), "spruch" (eigener kurzer Spruch oder ""), "suchbegriffe"
-(Liste mit 3-5 deutschen Begriffen, wie Kaeufer sie bei eBay eintippen), "quellen"
-(Liste von URLs). Sortiere nach Verkaufschance, die staerkste zuerst."""
+Sortiere die finale Auswahl nach begruendeter Verkaufschance. Platz 1 muss der insgesamt
+staerkste, nicht einfach der lauteste oder aktuellste Vorschlag sein."""
+
+
+def antwort_format(anzahl: int) -> dict:
+    """Strenges Ausgabeformat fuer reproduzierbare, vollstaendige Empfehlungen."""
+    text = {"type": "string"}
+    return {
+        "type": "json_schema",
+        "name": "pod_design_empfehlungen",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "empfehlungen": {
+                    "type": "array", "minItems": anzahl, "maxItems": anzahl,
+                    "items": {
+                        "type": "object", "additionalProperties": False,
+                        "properties": {
+                            "thema": {**text, "description": "Praegnanter eigener Konzeptname, 2-5 Woerter"},
+                            "warum": {**text, "description": "Konkretes Nachfragesignal mit Anlass oder Beleg, keine Floskel"},
+                            "zeitraum": {**text, "description": "Sinnvolles Verkaufsfenster oder immergruen"},
+                            "zielgruppe": {**text, "description": "Spezifische Personengruppe, niemals nur Erwachsene"},
+                            "kaufmoment": {**text, "description": "Wer kauft es wann fuer wen und warum"},
+                            "verkaufswinkel": {**text, "description": "Was die Idee von gaengigen Standardmotiven unterscheidet"},
+                            "motiv": {**text, "description": "Konkreter druckbarer Bildaufbau mit Fokus, 50-110 Woerter"},
+                            "stil": {**text, "description": "Klare reproduzierbare Illustrationssprache"},
+                            "farben": {"type": "array", "minItems": 3, "maxItems": 5,
+                                       "items": {"type": "string"}},
+                            "spruch": {**text, "description": "Optionaler neuer deutscher Kurzspruch oder leer"},
+                            "produkt": {**text, "description": "Staerkstes Hauptprodukt plus optionales Zweitprodukt"},
+                            "druckhinweis": {**text, "description": "Konkrete Druckumsetzung ohne Produkt oder Mockup im Bild"},
+                            "risiko": {**text, "description": "Ehrlicher Einwand oder Pruefpunkt; niemals leer"},
+                            "suchbegriffe": {"type": "array", "minItems": 3, "maxItems": 5,
+                                             "items": {"type": "string"}},
+                            "quellen": {"type": "array", "minItems": 1, "maxItems": 4,
+                                        "items": {"type": "string"}},
+                        },
+                        "required": ["thema", "warum", "zeitraum", "zielgruppe",
+                                     "kaufmoment", "verkaufswinkel", "motiv", "stil",
+                                     "farben", "spruch", "produkt", "druckhinweis",
+                                     "risiko", "suchbegriffe", "quellen"],
+                    },
+                },
+            },
+            "required": ["empfehlungen"],
+        },
+    }
 
 
 def zerlege(text: str) -> list[dict]:
-    """Das JSON-Array aus der Antwort holen - auch mit Codezaun oder Vorrede."""
+    """Die Empfehlungen aus Structured Output oder altem Array-Format holen."""
     roh = (text or "").strip()
     roh = re.sub(r"^```(?:json)?\s*|\s*```$", "", roh, flags=re.IGNORECASE)
-    anfang, ende = roh.find("["), roh.rfind("]")
-    if anfang < 0 or ende <= anfang:
-        return []
     try:
-        daten = json.loads(roh[anfang:ende + 1])
+        daten = json.loads(roh)
     except ValueError:
+        anfang, ende = roh.find("["), roh.rfind("]")
+        if anfang < 0 or ende <= anfang:
+            return []
+        try:
+            daten = json.loads(roh[anfang:ende + 1])
+        except ValueError:
+            return []
+    if isinstance(daten, dict):
+        daten = daten.get("empfehlungen")
+    if not isinstance(daten, list):
         return []
     return [d for d in daten if isinstance(d, dict)
             and str(d.get("thema") or "").strip() and str(d.get("motiv") or "").strip()]
@@ -117,18 +192,70 @@ def _liste(wert: Any) -> list[str]:
     return [str(w).strip() for w in (wert or []) if str(w).strip()]
 
 
+def _saubere_url(url: str) -> str:
+    """Trackingparameter entfernen, die das Suchwerkzeug an Quellen haengt."""
+    teile = urlsplit(url)
+    query = urlencode([(k, v) for k, v in parse_qsl(teile.query, keep_blank_values=True)
+                       if not k.lower().startswith("utm_")])
+    return urlunsplit((teile.scheme, teile.netloc, teile.path, query, ""))
+
+
+def quellen_aus_text(text: str) -> list[str]:
+    """Die einer Empfehlung direkt zugeordneten Markdown-Quellen lesen."""
+    return list(dict.fromkeys(_saubere_url(url) for url in _MARKDOWN_QUELLE.findall(text or "")))
+
+
+def ohne_quellen_markup(text: str) -> str:
+    """Die lesbare Begruendung ohne technischen Markdown-Verweis liefern."""
+    return re.sub(r"\s+([.,;:])", r"\1", _MARKDOWN_QUELLE.sub("", text or "")).strip()
+
+
+def repariere_gespeicherte_quellen(db) -> int:
+    """Bereits gespeicherte Empfehlungen auf ihre eigene Quelle zurueckfuehren."""
+    treffer = db.execute(
+        select(MotivIdee).where(MotivIdee.quelle_plattform == PLATTFORM)
+    ).scalars().all()
+    geaendert = 0
+    for idee in treffer:
+        try:
+            daten = json.loads(idee.beschreibung or "{}")
+        except (TypeError, ValueError):
+            continue
+        warum = str(daten.get("warum") or "")
+        direkte_quellen = quellen_aus_text(warum)
+        if not direkte_quellen:
+            continue
+        daten["warum"] = ohne_quellen_markup(warum)
+        daten["quellen"] = direkte_quellen
+        idee.beschreibung = json.dumps(daten, ensure_ascii=False)
+        idee.quelle_url = direkte_quellen[0]
+        geaendert += 1
+    if geaendert:
+        db.commit()
+    return geaendert
+
+
 def aus_eintrag(d: dict) -> Trend:
+    warum_roh = str(d.get("warum") or "").strip()
+    direkte_quellen = [_saubere_url(q) for q in _liste(d.get("quellen"))
+                       if q.startswith("http")]
+    direkte_quellen.extend(quellen_aus_text(warum_roh))
     return Trend(
         thema=str(d.get("thema") or "").strip()[:120],
-        warum=str(d.get("warum") or "").strip(),
+        warum=ohne_quellen_markup(warum_roh),
         zeitraum=str(d.get("zeitraum") or "").strip(),
         zielgruppe=str(d.get("zielgruppe") or "").strip(),
+        kaufmoment=str(d.get("kaufmoment") or "").strip(),
+        verkaufswinkel=str(d.get("verkaufswinkel") or "").strip(),
         motiv=str(d.get("motiv") or "").strip(),
         stil=str(d.get("stil") or "").strip(),
         farben=_liste(d.get("farben"))[:5],
         spruch=str(d.get("spruch") or "").strip()[:80],
+        produkt=str(d.get("produkt") or "").strip(),
+        druckhinweis=str(d.get("druckhinweis") or "").strip(),
+        risiko=str(d.get("risiko") or "").strip(),
         suchbegriffe=_liste(d.get("suchbegriffe"))[:5],
-        quellen=[q for q in _liste(d.get("quellen")) if q.startswith("http")][:5],
+        quellen=list(dict.fromkeys(direkte_quellen))[:5],
     )
 
 
@@ -140,7 +267,8 @@ def schluessel(thema: str) -> str:
 
 def schutzgrund(t: Trend, filter_check: Callable[[str], Any]) -> str | None:
     """Warum dieser Vorschlag nicht abgelegt werden darf - oder None."""
-    pruefung = filter_check(" ".join([t.thema, t.motiv, t.spruch, *t.suchbegriffe]))
+    pruefung = filter_check(" ".join([t.thema, t.motiv, t.spruch, t.verkaufswinkel,
+                                      t.kaufmoment, *t.suchbegriffe]))
     if not getattr(pruefung, "allowed", True):
         return f"Rechtefilter: {getattr(pruefung, 'reason', '') or 'gesperrter Inhalt'}"
     try:
@@ -148,6 +276,46 @@ def schutzgrund(t: Trend, filter_check: Callable[[str], Any]) -> str | None:
         motivregeln.pruefe_anfrage(t.spruch)
     except motivregeln.MotivartFehler as exc:
         return f"Motivart: {str(exc)[:160]}"
+    return None
+
+
+def qualitaetsgrund(t: Trend) -> str | None:
+    """Unvollstaendige oder austauschbare Antworten werden nicht empfohlen."""
+    ziel = t.zielgruppe.strip().lower().rstrip(".")
+    if ziel in {"erwachsene", "maenner", "männer", "frauen", "alle", "familien"}:
+        return "Zielgruppe ist zu allgemein"
+    if len(t.zielgruppe.split()) < 3:
+        return "Zielgruppe ist nicht konkret genug"
+    if len(t.kaufmoment.split()) < 7:
+        return "kein konkreter Kauf- oder Geschenkmoment"
+    if len(t.verkaufswinkel.split()) < 7:
+        return "kein nachvollziehbarer eigener Verkaufswinkel"
+    motivwoerter = len(t.motiv.split())
+    if not 20 <= motivwoerter <= 125:
+        return f"Bildidee ist mit {motivwoerter} Woertern nicht ausreichend ausgearbeitet"
+    # Die Empfehlung ist auf mehrere bewusst getrennte Felder verteilt. Ein
+    # knapper, klarer Bildaufbau darf deshalb nicht durchfallen, wenn Kaufmoment,
+    # Differenzierung und Druckentscheidung zusammen wirklich durchdacht sind.
+    gesamttiefe = len(" ".join([
+        t.warum, t.zielgruppe, t.kaufmoment, t.verkaufswinkel, t.motiv,
+        t.stil, t.druckhinweis, t.risiko,
+    ]).split())
+    if gesamttiefe < 65:
+        return "Empfehlung ist insgesamt nicht tief genug begruendet"
+    if any(w in t.stil.lower() for w in ("fotoreal", "fotograf", "impressionis")):
+        return "Stil ist fuer ein klar lesbares POD-Motiv ungeeignet"
+    if len(t.farben) < 3:
+        return "Farbkonzept ist unvollstaendig"
+    if len(t.suchbegriffe) < 3:
+        return "zu wenige konkrete Kaeufer-Suchbegriffe"
+    if not t.quellen:
+        return "kein pruefbarer Quellenbeleg"
+    if all("ebay." in q.lower() and "/itm/" in q.lower() for q in t.quellen):
+        return "nur einzelne Produktanzeigen statt eines Nachfragebelegs"
+    if len(t.druckhinweis.split()) < 5:
+        return "Druckumsetzung ist nicht durchdacht"
+    if len(t.risiko.split()) < 3:
+        return "Risiko oder Pruefpunkt fehlt"
     return None
 
 
@@ -176,11 +344,17 @@ async def recherchiere(*, api_key: str, modell: str, anzahl: int, heute: date,
 
         client = openai.AsyncOpenAI(api_key=api_key, max_retries=0, timeout=240.0)
     try:
+        modell_parameter = ({"reasoning": {"effort": "medium"}}
+                             if modell.startswith(("gpt-5", "gpt-6")) else {})
         antwort = await client.responses.create(
             model=modell,
-            tools=[{"type": "web_search", "search_context_size": "medium",
+            tools=[{"type": "web_search", "search_context_size": "high",
                     "user_location": {"type": "approximate", "country": "DE"}}],
             input=anweisung(anzahl, heute),
+            text={"format": antwort_format(anzahl)},
+            include=["web_search_call.action.sources"],
+            store=False,
+            **modell_parameter,
         )
     except Exception as exc:  # noqa: BLE001 - Anbieterfehler lesbar weiterreichen
         text = str(exc).replace(api_key, "[Schluessel]") if api_key else str(exc)
@@ -191,6 +365,15 @@ async def recherchiere(*, api_key: str, modell: str, anzahl: int, heute: date,
 
     belege: list[str] = []
     for teil in getattr(antwort, "output", None) or []:
+        # Bei Structured Output stehen die verwendeten Webquellen am
+        # web_search_call. Sie werden nur geliefert, wenn sie oben explizit
+        # angefordert wurden. Die Textzitate bleiben der zweite Weg.
+        aktion = getattr(teil, "action", None)
+        for quelle in getattr(aktion, "sources", None) or []:
+            url = (quelle.get("url") if isinstance(quelle, dict)
+                   else getattr(quelle, "url", None))
+            if url and url not in belege:
+                belege.append(url)
         for inhalt in getattr(teil, "content", None) or []:
             for notiz in getattr(inhalt, "annotations", None) or []:
                 url = getattr(notiz, "url", None)
@@ -230,7 +413,11 @@ def speichere(db, trends: list[Trend], *, belege: list[str], angebote: dict[str,
     neu = aufgefrischt = 0
     abgelehnt: list[dict] = []
     for rang, t in enumerate(trends, start=1):
-        grund = schutzgrund(t, filter_check)
+        grund = qualitaetsgrund(t)
+        if grund:
+            grund = f"Qualitaet: {grund}"
+        else:
+            grund = schutzgrund(t, filter_check)
         if grund is None:
             try:
                 prompt = prompt_aus(t)
@@ -257,7 +444,9 @@ def speichere(db, trends: list[Trend], *, belege: list[str], angebote: dict[str,
         idee.beschreibung = json.dumps({
             "motiv": t.motiv, "stil": t.stil, "farben": t.farben, "effekte": [],
             "ware_farbe": None, "warum": t.warum, "zeitraum": t.zeitraum,
-            "zielgruppe": t.zielgruppe, "spruch": t.spruch,
+            "zielgruppe": t.zielgruppe, "kaufmoment": t.kaufmoment,
+            "verkaufswinkel": t.verkaufswinkel, "spruch": t.spruch,
+            "produkt": t.produkt, "druckhinweis": t.druckhinweis, "risiko": t.risiko,
             "quellen": t.quellen or belege[:3], "ebay_suchbegriff": begriff,
             "ebay_angebote": angebote.get(fid), "stand": heute.isoformat(),
         }, ensure_ascii=False)

@@ -297,6 +297,18 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
       </div>
     </div>
 
+    <div class="panel">
+      <h3>Design-Empfehlungen</h3>
+      <p class="muted">Bis zu sechs kuratierte Ideen statt einer langen Zufallsliste. Jede Empfehlung
+        wird auf Käufer, Kaufmoment, Eigenständigkeit, Quellenlage und Drucktauglichkeit
+        geprüft. <b>Ein Bild entsteht erst</b>, wenn du bewusst auf „Motiv erzeugen“ drückst.</p>
+      <div class="zeile">
+        <button class="btn" id="b-trends">Neue Empfehlungen ausarbeiten</button>
+        <span class="muted">Dauert etwa 2–4 Minuten · enthält aktuelle und immergrüne Ideen</span>
+      </div>
+      <div id="t-liste"><p class="muted">Noch keine Empfehlungen ausgearbeitet.</p></div>
+    </div>
+
     <div class="panel" id="anprobe-panel" hidden>
       <h3>Motiv bearbeiten <span class="muted" id="anprobe-titel"></span></h3>
       <p class="muted">Die Produktfotos, wie sie bei eBay erscheinen – in dieser Reihenfolge:
@@ -348,22 +360,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
           <div class="farben" id="v-farbe"></div>
         </div>
       </div>
-    </div>
-
-    <div class="panel">
-      <h3>Trend-Vorschläge</h3>
-      <p class="muted">Sucht im Netz nach aktuellen und kommenden Trends und schlägt eigene,
-        ausgearbeitete Motive vor. <b>Es entsteht kein Bild</b>, bis du bei einem Vorschlag
-        auf „Erzeugen“ drückst. Eine Suche dauert 1–2 Minuten und kostet ein paar Cent.
-        Marken, Vereine und Figuren sortiert der Rechtefilter vorher aus.</p>
-      <div class="zeile">
-        <div class="feld" style="flex:0 0 130px">
-          <label>Vorschläge</label>
-          <input id="t-anzahl" type="number" min="3" max="20" value="12">
-        </div>
-        <button class="btn" id="b-trends">Trends suchen</button>
-      </div>
-      <div id="t-liste"><p class="muted">Noch keine Trends gesucht.</p></div>
     </div>
 
     <div class="panel">
@@ -1402,8 +1398,8 @@ function radarZeile(idee) {
   return karte;
 }
 
-// ---------- Trend-Vorschläge ----------
-// Text aus der Websuche — kein Bild. Erst „Erzeugen“ kostet ein Bild.
+// ---------- Design-Empfehlungen ----------
+// Text aus der Websuche — kein Bild. Erst „Motiv erzeugen“ kostet ein Bild.
 function trendZeile(label, text) {
   const z = el('div');
   z.style.cssText = 'font-size:13px;margin-top:6px';
@@ -1414,17 +1410,23 @@ function trendZeile(label, text) {
 function trendKarte(idee) {
   const d = idee.beschreibung || {};
   const karte = el('div', 'panel');
-  karte.style.cssText = 'padding:12px;margin-bottom:10px';
+  karte.style.cssText = 'padding:16px;margin-bottom:12px;border-left:3px solid var(--accent)';
   const kopf = el('div');
   kopf.style.cssText = 'display:flex;gap:10px;align-items:baseline;flex-wrap:wrap';
-  kopf.append(el('b', null, `#${idee.platz ?? '?'}`), el('b', null, idee.thema || ''));
+  kopf.append(el('span', 'badge', `Empfehlung #${idee.platz ?? '?'}`),
+              el('b', null, idee.thema || ''));
   if (d.zeitraum) kopf.append(el('span', 'muted', d.zeitraum));
   karte.append(kopf);
-  if (d.warum) karte.append(trendZeile('Warum im Trend: ', d.warum));
+  if (d.warum) karte.append(trendZeile('Warum empfohlen: ', d.warum));
   if (d.zielgruppe) karte.append(trendZeile('Zielgruppe: ', d.zielgruppe));
-  if (d.motiv) karte.append(trendZeile('Motiv: ', d.motiv));
+  if (d.kaufmoment) karte.append(trendZeile('Kaufmoment: ', d.kaufmoment));
+  if (d.verkaufswinkel) karte.append(trendZeile('Eigenständiger Winkel: ', d.verkaufswinkel));
+  if (d.motiv) karte.append(trendZeile('Designaufbau: ', d.motiv));
   if (d.stil) karte.append(trendZeile('Stil: ', d.stil));
   if (d.spruch) karte.append(trendZeile('Spruch: ', `„${d.spruch}“`));
+  if (d.produkt) karte.append(trendZeile('Am besten für: ', d.produkt));
+  if (d.druckhinweis) karte.append(trendZeile('Druckumsetzung: ', d.druckhinweis));
+  if (d.risiko) karte.append(trendZeile('Vorher beachten: ', d.risiko));
   const markt = el('div', 'muted');
   markt.style.cssText = 'font-size:12px;margin-top:6px';
   const teile = [];
@@ -1460,7 +1462,7 @@ async function ladeTrends() {
   const daten = await hole('/api/v1/studio/radar/ideen?limit=50&status=neu&quelle=trend');
   ziel.textContent = '';
   if (!daten.length) {
-    ziel.append(el('p', 'muted', 'Keine offenen Trend-Vorschläge — „Trends suchen“ drücken.'));
+    ziel.append(el('p', 'muted', 'Keine offenen Empfehlungen — „Neue Empfehlungen ausarbeiten“ drücken.'));
     return;
   }
   for (const idee of daten) ziel.append(trendKarte(idee));
@@ -1469,21 +1471,21 @@ async function ladeTrends() {
 $('b-trends').onclick = async () => {
   const knopf = $('b-trends');
   knopf.disabled = true;
-  knopf.textContent = 'Suche Trends … (1–2 Min.)';
+  knopf.textContent = 'Empfehlungen werden recherchiert und geprüft …';
   try {
     const b = await hole('/api/v1/studio/radar/trends', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ anzahl: Number($('t-anzahl').value) || 12 }),
+      body: JSON.stringify({ anzahl: 6 }),
     });
     melde(`${b.neu} neue Vorschläge · ${b.aufgefrischt} aufgefrischt · ` +
-          `${b.abgelehnt.length} vom Rechtefilter aussortiert · kein Bild erzeugt`);
+          `${b.abgelehnt.length} durch Qualitäts-/Rechteprüfung aussortiert · kein Bild erzeugt`);
     await ladeTrends();
     await ladeStand();
   } catch (err) {
     zeigeFehler(err);
   } finally {
     knopf.disabled = false;
-    knopf.textContent = 'Trends suchen';
+    knopf.textContent = 'Neue Empfehlungen ausarbeiten';
   }
 };
 

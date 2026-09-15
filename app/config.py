@@ -120,12 +120,15 @@ class Settings(BaseSettings):
     mockup_montage_ordner: str = "./data/mockup_vorlagen"
 
     # --- Trend-Radar (app/studio/radar/trends.py) ---
-    # Websuche ueber die OpenAI Responses API. Laut Doku (13.09.2026) koennen das
-    # u. a. gpt-4.1-mini, gpt-4.1 und gpt-5.5 - Vorgabe ist das guenstigste.
-    trend_modell: str = "gpt-4.1-mini"
+    # Empfehlungen brauchen Auswahl und Abwaegung, nicht nur billige Textmenge.
+    # gpt-5.5 kann die Kandidaten mit eigener Denkzeit gegeneinander abwaegen
+    # und unterstuetzt Websuche + Structured Output. Der guenstige Mini-Lauf
+    # lieferte zu oft nur generische Themenlisten.
+    trend_modell: str = "gpt-5.5"
     # Motivname + Beschreibung fuer eBay (app/studio/verkaufstext.py) - sieht das Motivbild.
     verkaufstext_modell: str = "gpt-4.1-mini"
-    trend_anzahl: int = 12
+    # Eine kleine kuratierte Auswahl ist nuetzlicher als zwoelf oberflaechliche Karten.
+    trend_anzahl: int = 6
     # Taeglich morgens von selbst suchen (braucht BACKGROUND_JOBS_ENABLED=true).
     trend_radar_taeglich: bool = False
     ebay_marketplace_id: str = "EBAY_DE"   # EBAY_DE | EBAY_US | EBAY_GB | ...

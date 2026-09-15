@@ -22,11 +22,20 @@ HEUTE = date(2026, 9, 13)
 
 def _eintrag(thema, motiv=None, **over):
     d = {"thema": thema, "warum": f"{thema} steht an (Beleg).", "zeitraum": "Sept–Okt",
-         "zielgruppe": "Erwachsene",
-         "motiv": motiv or f"Ein detailreich gezeichneter Fuchs mit Angel am See zum Thema {thema}, "
-                           "Schilf im Vordergrund, Sonnenuntergang, klare Konturen.",
+         "zielgruppe": "Hobbyangler, die gemeinsame Herbsttouren verschenken",
+         "kaufmoment": "Ein Freund kauft es als persoenliches Geschenk vor der gemeinsamen Herbsttour.",
+         "verkaufswinkel": "Der ruhige Pausenmoment am Wasser ersetzt die uebliche Pose mit grossem Fang.",
+         "motiv": motiv or f"Ein ausdrucksstarker Fuchs sitzt zum Thema {thema} seitlich auf einer "
+                           "kleinen Uferkiste und haelt eine gebogene Angel. Ein einzelner runder "
+                           "Wasserkringel und drei Schilfhalme rahmen die Figur, waehrend ein Blatt "
+                           "auf der Krempe seines Hutes den Herbst andeutet. Die kompakte dreieckige "
+                           "Komposition bleibt aus der Entfernung lesbar, besitzt klare Konturen und "
+                           "eine geschlossene freigestellte Silhouette ohne Landschaftshintergrund.",
          "stil": "Retro-Linienzeichnung", "farben": ["Orange", "Dunkelblau", "Creme"],
-         "spruch": "Petri Heil", "suchbegriffe": [f"{thema} Shirt", "Angler Geschenk"],
+         "spruch": "Ruhe am Haken", "produkt": "T-Shirt, alternativ Hoodie",
+         "druckhinweis": "Kompakte Zentralform mit breiten Konturen und ohne feine Verlaeufe.",
+         "risiko": "Saisonfenster ist kurz; den Spruch vor Veroeffentlichung nochmals pruefen.",
+         "suchbegriffe": [f"{thema} Shirt", "Angler Geschenk", "Angelurlaub Pullover"],
          "quellen": ["https://beispiel.de/trend"]}
     d.update(over)
     return d
@@ -37,7 +46,11 @@ class _FakeOpenAI:
         text = "Hier die Ergebnisse:\n```json\n" + json.dumps(eintraege, ensure_ascii=False) + "\n```"
         annot = [SimpleNamespace(type="url_citation", url=u) for u in urls]
         self._antwort = SimpleNamespace(output_text=text, output=[
-            SimpleNamespace(type="message", content=[SimpleNamespace(annotations=annot)])])
+            SimpleNamespace(type="web_search_call",
+                            action=SimpleNamespace(sources=[SimpleNamespace(url=u) for u in urls]),
+                            content=[]),
+            SimpleNamespace(type="message", action=None,
+                            content=[SimpleNamespace(annotations=annot)])])
         self.gesehen = {}
         self.responses = SimpleNamespace(create=self._create)
 
@@ -51,7 +64,7 @@ def _filter(text):
 
 
 def _s(**over):
-    return Settings(_env_file=None, openai_api_key="k", trend_modell="gpt-4.1-mini",
+    return Settings(_env_file=None, openai_api_key="k", trend_modell="gpt-5.5",
                     trend_anzahl=12, **over)
 
 
@@ -75,6 +88,13 @@ def test_zerlegen_mit_codezaun_und_vorrede():
     assert trends.zerlege("keine Liste") == []
 
 
+def test_zerlegen_versteht_strukturiertes_empfehlungsobjekt():
+    eintrag = _eintrag("Angelrunde Herbst")
+    text = json.dumps({"empfehlungen": [eintrag]}, ensure_ascii=False)
+
+    assert trends.zerlege(text) == [eintrag]
+
+
 async def test_lauf_legt_gepruefte_vorschlaege_ohne_bild_ab(db):
     b = await _lauf(db, [_eintrag("Angeln Herbst"), _eintrag("Adidas Retro"), _eintrag("Oktoberfest")])
 
@@ -86,9 +106,12 @@ async def test_lauf_legt_gepruefte_vorschlaege_ohne_bild_ab(db):
     assert erste.platz == 1 and erste.signal is None                        # kein erfundenes Volumen
     assert erste.status == "neu" and erste.design_id is None
     assert "Eigenstaendige, detailreiche Illustration" in erste.eigener_prompt
-    assert 'Schriftzug "Petri Heil"' in erste.eigener_prompt
+    assert 'Schriftzug "Ruhe am Haken"' in erste.eigener_prompt
     d = json.loads(erste.beschreibung)
     assert d["ebay_angebote"] == 4321 and d["quellen"] == ["https://beispiel.de/trend"]
+    assert d["kaufmoment"].startswith("Ein Freund")
+    assert d["verkaufswinkel"].startswith("Der ruhige Pausenmoment")
+    assert d["druckhinweis"].startswith("Kompakte Zentralform")
     assert db.query(StudioDesign).count() == 0                               # kein Bild
 
 
@@ -98,8 +121,86 @@ async def test_websuche_wird_mit_deutschem_standort_aufgerufen(db):
                       heute=HEUTE, kostenbremse=False)
     werkzeug = client.gesehen["tools"][0]
     assert werkzeug["type"] == "web_search" and werkzeug["user_location"]["country"] == "DE"
-    assert client.gesehen["model"] == "gpt-4.1-mini"
+    assert client.gesehen["model"] == "gpt-5.5"
     assert "13.09.2026" in client.gesehen["input"] and "KEINE Marken" in client.gesehen["input"]
+    assert client.gesehen["tools"][0]["search_context_size"] == "high"
+    assert client.gesehen["text"]["format"]["type"] == "json_schema"
+    assert client.gesehen["text"]["format"]["schema"]["properties"]["empfehlungen"]["minItems"] == 12
+    assert client.gesehen["include"] == ["web_search_call.action.sources"]
+    assert client.gesehen["store"] is False
+    assert client.gesehen["reasoning"] == {"effort": "medium"}
+
+
+async def test_quelle_wird_der_richtigen_empfehlung_zugeordnet(db):
+    ohne_links = _eintrag(
+        "Angelrunde Herbst", quellen=[],
+        warum=("Der Termin steht im aktuellen Kalender. "
+               "([Beleg](https://quelle.de/bericht?utm_source=openai))"),
+    )
+    client = _FakeOpenAI([ohne_links], urls=("https://andere-quelle.de/allgemein",))
+
+    await trends.lauf(db, s=_s(), client=client, zaehle_angebote=None,
+                      filter_check=_filter, heute=HEUTE, kostenbremse=False)
+
+    gespeichert = ideen.liste(db, quelle="trend")[0]
+    beschreibung = json.loads(gespeichert.beschreibung)
+    assert beschreibung["quellen"] == ["https://quelle.de/bericht"]
+    assert beschreibung["warum"] == "Der Termin steht im aktuellen Kalender."
+
+
+async def test_generische_empfehlung_wird_nicht_abgelegt(db):
+    beliebig = _eintrag("Herbstlandschaft", zielgruppe="Erwachsene")
+
+    bericht = await _lauf(db, [beliebig])
+
+    assert bericht["neu"] == 0
+    assert bericht["abgelehnt"] == [
+        {"thema": "Herbstlandschaft", "grund": "Qualitaet: Zielgruppe ist zu allgemein"}
+    ]
+    assert ideen.liste(db, quelle="trend") == []
+
+
+def test_knapper_bildaufbau_reicht_wenn_die_gesamte_empfehlung_substanz_hat():
+    eintrag = _eintrag(
+        "Pilzsammler Pause",
+        motiv=("Ein Dachs kniet neben einem Korb mit drei Pfifferlingen. Ein Farnbogen "
+               "fasst die kompakte Figur ein; breite Linien und eine ruhige Silhouette "
+               "halten das Motiv auch aus Entfernung klar lesbar."),
+    )
+
+    assert 20 <= len(eintrag["motiv"].split()) < 45
+    assert trends.qualitaetsgrund(trends.aus_eintrag(eintrag)) is None
+
+
+def test_einzelnes_ebay_listing_ist_kein_nachfragebeleg():
+    eintrag = _eintrag(
+        "Pilzsammler Pause",
+        quellen=["https://www.ebay.de/itm/123456789"],
+    )
+
+    assert trends.qualitaetsgrund(trends.aus_eintrag(eintrag)) == (
+        "nur einzelne Produktanzeigen statt eines Nachfragebelegs"
+    )
+
+
+def test_alte_empfehlungen_bekommen_ihre_eigene_quelle_zurueck(db):
+    idee = MotivIdee(
+        quelle_plattform="trend", quelle_shop="websuche", fremd_id="alt",
+        fremdtitel="", thema="Alt", status="neu", beschreibung=json.dumps({
+            "warum": ("Der konkrete Anlass ist belegt. "
+                      "([Quelle](https://beispiel.de/anlass?utm_source=openai))"),
+            "quellen": ["https://falsche-sammelquelle.de"],
+        }),
+    )
+    db.add(idee)
+    db.commit()
+
+    assert trends.repariere_gespeicherte_quellen(db) == 1
+    db.refresh(idee)
+    daten = json.loads(idee.beschreibung)
+    assert daten["warum"] == "Der konkrete Anlass ist belegt."
+    assert daten["quellen"] == ["https://beispiel.de/anlass"]
+    assert idee.quelle_url == "https://beispiel.de/anlass"
 
 
 async def test_verworfene_idee_kommt_nicht_als_neu_zurueck(db):
