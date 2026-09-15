@@ -24,8 +24,10 @@ __pycache__/
 *.py[cod]
 .venv/
 .venv-mcp/
+.venv-codex*/
 venv/
 .pytest_cache/
+.pytest_tmp/
 .coverage
 htmlcov/
 *.egg-info/
