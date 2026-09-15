@@ -76,6 +76,11 @@ class OpenAIProvider:
                 detail = "OpenAI hat den API-Schluessel abgelehnt. OPENAI_API_KEY pruefen."
             elif code in {"insufficient_quota", "billing_hard_limit_reached", "billing_limit_user_error"}:
                 detail = "OpenAI-API-Guthaben oder Kontolimit erschoepft. Das lokale Tagesbudget ist davon unabhaengig."
+            elif status == 429:
+                # Kein Guthabenproblem (das faengt der Zweig darueber), sondern zu viele
+                # Anfragen in kurzer Zeit - etwa, wenn parallel Vorlagen erzeugt werden.
+                detail = ("OpenAI meldet zu viele Anfragen in kurzer Zeit (429). Eine Minute "
+                          "warten und erneut erzeugen - es wurde nichts berechnet.")
             elif status == 403:
                 detail = "OpenAI verweigert den Modellzugriff. Modellfreigabe und Organisationsverifizierung pruefen."
             else:
