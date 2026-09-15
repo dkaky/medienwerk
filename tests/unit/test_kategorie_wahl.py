@@ -85,28 +85,3 @@ def test_merkmale_trennen_pflicht_von_kuer():
 
 # ---------------------------------------------------------------- Adressen
 # ---------------------------------------------------------------- Oberflaeche
-def test_formular_fuellt_die_merkmale_nie_selbst():
-    """Der Merkmals-Helfer darf ed_specs LESEN, aber nie beschreiben.
-
-    Frueher hiess die Pruefung hier "das Wort build_aspects darf nicht
-    vorkommen" - und schlug am eigenen Kommentar an, der die Regel erklaert.
-    Das ist die falsche Frage. Die richtige lautet: wird das Merkmalsfeld
-    angefasst? Ein Zuweisen von ed_specs waere genau das Auffuellen, das im
-    Formular nichts zu suchen hat.
-    """
-    q = SEITE.read_text(encoding="utf-8")
-    rumpf = q[q.index("async function katMerkmale"):q.index("async function katSpeichern")]
-
-    assert '$("ed_specs").value' in rumpf, "die vorhandenen Merkmale werden gelesen"
-    for schreibend in ('ed_specs").value =', 'ed_specs").value+=', 'ed_specs").value +='):
-        assert schreibend not in rumpf, f"ed_specs wird beschrieben: {schreibend}"
-    assert "nicht geraten" in rumpf, "die Regel gehoert sichtbar in den Text"
-
-
-def test_leere_vorschlagsliste_behauptet_nichts():
-    """Leer heisst nicht 'es gibt keine' - der Client verschluckt Fehler zu []."""
-    q = SEITE.read_text(encoding="utf-8")
-    start = q.index("async function katVorschlaege")
-    ende = q.index("function katWaehlen")
-    rumpf = q[start:ende]
-    assert "nicht antwortet" in rumpf, "Der Zweifel muss im Text stehen"

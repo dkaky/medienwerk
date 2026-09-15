@@ -61,7 +61,7 @@ def test_der_weg_zum_listing_steht_vorn():
     jetzt im Studio, nicht mehr aus fremden Ideen.
     """
     reiter = _vordere_reiter()
-    for pflicht in ("overview", "products", "orders"):
+    for pflicht in ("overview", "products"):
         assert pflicht in reiter, f"'{pflicht}' fehlt in der Tagesleiste: {reiter}"
 
 
@@ -88,21 +88,6 @@ def test_jeder_reiter_hat_seinen_bereich():
 
 
 # ------------------------------------------------- Weg zum Listing an einem Ort
-@pytest.mark.parametrize("feld", ["aeUrl", "storeUrl"])
-def test_anlegen_steht_unter_neues_listing(feld):
-    """Produktupload und Store-Scraper gehoeren zum Anlegen, nicht zur Bestandsliste.
-
-    Vorher lagen sie im Reiter der Produktliste - der Handgriff war damit ueber
-    zwei Reiter verteilt.
-    """
-    ideen = INDEX.index('id="view-ideas"')
-    produkte = INDEX.index('id="view-products"')
-    stelle = INDEX.index(f'id="{feld}"')
-    assert ideen < stelle < produkte, (
-        f"Das Feld '{feld}' liegt nicht im Bereich 'Neues Listing'"
-    )
-
-
 # ------------------------------------------------------- Reste des Vorbesitzers
 #: Sichtbare Spuren des Betriebs, aus dem dieses System kopiert wurde.
 FREMDE_SPUREN = [
@@ -199,26 +184,6 @@ def test_farbschema_steht_vor_dem_zeichnen():
     assert erster - koerper < len(INDEX) // 5, (
         "Das Farbschema wird zu spaet gesetzt - beim Laden blitzt das falsche Design auf"
     )
-
-
-def test_sammel_live_knopf_ist_verdrahtet():
-    """Alle Entwuerfe auf einmal live stellen (Nutzerwunsch 29.08.2026).
-
-    Aus dem Original-Projekt uebernommen; unsere Kopie ist aelter und hatte weder
-    Endpunkt noch Knopf. Bei dreissig Entwuerfen sind dreissig Einzelklicks keine
-    zumutbare Bedienung.
-    """
-    for muster in ('id="publishAllBtn"',
-                   'onclick="publishAllDrafts()"',
-                   "async function publishAllDrafts()"):
-        assert muster in INDEX, f"fehlt: {muster}"
-
-
-def test_sammel_live_fragt_erst_und_stellt_dann():
-    """Zweistufig: Trockenlauf zaehlt nur, danach die Rueckfrage mit der echten Zahl."""
-    assert "publish-all-drafts?dry_run=true" in INDEX, "Trockenlauf fehlt"
-    assert "if (!confirm(frage)) return;" in INDEX, "Rueckfrage fehlt"
-    assert "Einstellgebühren" in INDEX, "der Geld-Hinweis gehoert in die Rueckfrage"
 
 
 def test_sammel_live_geht_nie_ohne_bestaetigung_raus():

@@ -54,7 +54,7 @@ def _logik_aus_der_seite() -> str:
     """Den Baustein aus index.html schneiden - zwischen zwei festen Marken."""
     quelle = SEITE.read_text(encoding="utf-8")
     start = quelle.index("const HEUTE_AUFGABEN")
-    ende = quelle.index('    // "Alles synchronisieren"')
+    ende = quelle.index("    // ---------- Einstellungen: Zugaenge ----------")
     return quelle[start:ende]
 
 
@@ -124,10 +124,12 @@ def test_alle_aufgaben_gleichzeitig():
     aus = _zeichne(_summary(listings__drafts=4, listings__publish_errors=2,
                             listings__out_of_stock=1, fulfillment__to_order=7,
                             tasks__failed=3))
-    assert aus["kacheln"] == 5
-    for wort in ("Upload fehlgeschlagen", "Entwürfe warten", "Zu bestellen",
-                 "Quelle ausverkauft", "Aufgaben fehlgeschlagen"):
+    # Bestellen, Quellen und Aufgabenprotokoll gehoerten zur AliExpress-Zeit und sind entfernt.
+    assert aus["kacheln"] == 2
+    for wort in ("Upload fehlgeschlagen", "Entwürfe warten"):
         assert wort in aus["text"]
+    for wort in ("Zu bestellen", "Quelle ausverkauft", "Aufgaben fehlgeschlagen", "AliExpress"):
+        assert wort not in aus["text"]
 
 
 def test_unvollstaendige_antwort_zerlegt_die_startseite_nicht():

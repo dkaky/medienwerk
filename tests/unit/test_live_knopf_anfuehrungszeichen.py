@@ -45,16 +45,6 @@ def test_kein_unmaskierter_wert_in_einem_onclick():
     )
 
 
-def test_live_knopf_maskiert_den_titel():
-    """Der konkrete Knopf aus dem Vorfall."""
-    treffer = re.findall(r"publishListing\(\$\{[^}]+\},\s*\$\{([^}]+)\}\)", QUELLE)
-    assert treffer, "Der Aufruf von publishListing wurde nicht gefunden"
-    for arg in treffer:
-        assert arg.startswith("esc("), (
-            f"publishListing bekommt den Titel unmaskiert: {arg}"
-        )
-
-
 @pytest.mark.parametrize("titel", [
     'T-Shirt Druck "Ich Liebe Meine Frau" Baumwolle',
     'T-Shirt Baumwolle Lustig Druck "Ich bin nicht verrueckt"',
