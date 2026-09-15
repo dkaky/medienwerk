@@ -73,6 +73,14 @@ def test_studio_links_back_to_original_business_sections(client):
         assert f'href="/#{section}"' in html
 
 
+def test_generated_image_is_shown_next_to_the_form(client):
+    html = client.get("/studio").text
+    assert 'id="ergebnis-neu"' in html
+    assert 'id="ergebnis-neu-bild"' in html
+    assert "zeigeErzeugtesMotiv(e.design, true" in html
+    assert "Bild konnte nicht erzeugt werden:" in html
+
+
 def test_radar_result_allows_unlimited_budget():
     from app.studio.schemas import NutzenOut
 

@@ -161,6 +161,15 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   border: 1px solid var(--border); border-radius: 11px; padding: 12px 16px; font-size: 14px;
   box-shadow: 0 8px 28px rgba(0,0,0,.5); }
 .toast.err { border-color: var(--red); }
+.ergebnis-neu { display: grid; grid-template-columns: minmax(220px, 360px) 1fr; gap: 18px;
+  align-items: center; margin-top: 16px; padding: 14px; border: 2px solid var(--accent);
+  border-radius: 12px; background: var(--panel-2); scroll-margin-top: 20px; }
+.ergebnis-neu[hidden], .ergebnis-fehler[hidden] { display: none; }
+.ergebnis-neu img { width: 100%; max-height: 420px; object-fit: contain; border-radius: 9px; }
+.ergebnis-neu h4 { margin: 8px 0 6px; font-size: 18px; }
+.ergebnis-neu .aktionen { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.ergebnis-fehler { margin: 14px 0 0; border-left-color: var(--red); scroll-margin-top: 20px; }
+@media (max-width: 720px) { .ergebnis-neu { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -271,6 +280,20 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
            style="margin-top:12px;background:rgba(0,0,0,.15)">
         <h4 style="margin:0 0 6px">Prüfbericht <span class="muted" id="veredel-quelle"></span></h4>
         <ul id="veredel-liste" class="muted" style="margin:0;padding-left:18px"></ul>
+      </div>
+      <div id="ergebnis-fehler" class="hinweis ergebnis-fehler" hidden role="alert"></div>
+      <div id="ergebnis-neu" class="ergebnis-neu" hidden aria-live="polite">
+        <img id="ergebnis-neu-bild" class="schachbrett" alt="Zuletzt erzeugtes Motiv">
+        <div>
+          <span class="badge" id="ergebnis-neu-label">Zuletzt erzeugt</span>
+          <h4 id="ergebnis-neu-titel"></h4>
+          <p class="muted" id="ergebnis-neu-meta"></p>
+          <p>Das Bild ist gespeichert und steht auch unten in der Motivliste.</p>
+          <div class="aktionen">
+            <a class="btn" id="ergebnis-neu-original" target="_blank" rel="noopener">Original öffnen</a>
+            <button class="btn ghost" type="button" id="ergebnis-neu-bearbeiten">Motiv bearbeiten</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -467,6 +490,13 @@ function zeichneFilter() {
 
 async function ladeMotive() {
   _motive = await hole('/api/v1/studio/designs');
+  // Das neueste echte Motiv bleibt direkt beim Erzeugungsformular sichtbar.
+  // Sonst liegt es erst nach Produktvorlagen, Trends und Radar weit unten und
+  // der erfolgreiche Klick sieht fuer den Betreiber wie ein Fehlschlag aus.
+  if ($('ergebnis-neu').hidden) {
+    const zuletzt = _motive.find((d) => d.image_url && d.source !== 'mock');
+    if (zuletzt) zeigeErzeugtesMotiv(zuletzt, false, 'Zuletzt erzeugt');
+  }
   zeichneFilter();
   const liste = gefiltert();
   $('anzahl').textContent = _motive.length ? `(${liste.length} von ${_motive.length})` : '';
@@ -1245,7 +1275,9 @@ $('b-erzeugen').onclick = async () => {
   if (prompt.length < 3) { melde('Bitte ein Motiv beschreiben.', true); return; }
   const knopf = $('b-erzeugen');
   knopf.disabled = true;
-  knopf.textContent = 'Erzeuge …';
+  knopf.setAttribute('aria-busy', 'true');
+  knopf.textContent = 'Bild wird erzeugt … (bis zu 3 Min.)';
+  $('ergebnis-fehler').hidden = true;
   try {
     const e = await hole('/api/v1/studio/generate', {
       method: 'POST',
@@ -1267,6 +1299,7 @@ $('b-erzeugen').onclick = async () => {
         hoehe: Number($('f-format').value.split('x')[1]),
       }),
     });
+    zeigeErzeugtesMotiv(e.design, true, 'Gerade erzeugt', e.anbieter, e.kosten_usd);
     melde(`Motiv erzeugt (${e.anbieter}) · ${usd(e.kosten_usd)} · Rest heute ${e.rest_budget_usd == null ? 'unbegrenzt' : usd(e.rest_budget_usd)}`
       + (e.ebay ? ` · ${e.ebay}` : ''));
     $('f-prompt').value = '';
@@ -1276,12 +1309,31 @@ $('b-erzeugen').onclick = async () => {
     $('veredel-bericht').hidden = true;
     await Promise.all([ladeStand(), ladeMotive()]);
   } catch (err) {
-    melde(String(err.message || err), true);
+    const text = String(err.message || err);
+    $('ergebnis-fehler').textContent = `Bild konnte nicht erzeugt werden: ${text}`;
+    $('ergebnis-fehler').hidden = false;
+    $('ergebnis-fehler').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    melde(text, true);
   } finally {
     knopf.disabled = false;
+    knopf.removeAttribute('aria-busy');
     knopf.textContent = 'Erzeugen';
   }
 };
+
+function zeigeErzeugtesMotiv(design, scrollen = false, label = 'Zuletzt erzeugt', anbieter = null, kosten = null) {
+  if (!design || !design.image_url) return;
+  const panel = $('ergebnis-neu');
+  $('ergebnis-neu-label').textContent = label;
+  $('ergebnis-neu-titel').textContent = design.title || 'Neues Motiv';
+  $('ergebnis-neu-bild').src = vorschau(design.image_url, 700);
+  $('ergebnis-neu-original').href = design.image_url;
+  $('ergebnis-neu-meta').textContent = [anbieter || design.source, kosten == null ? null : usd(kosten)]
+    .filter(Boolean).join(' · ');
+  $('ergebnis-neu-bearbeiten').onclick = () => oeffneAnprobe(Number(design.id));
+  panel.hidden = false;
+  if (scrollen) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
 
 /* --------------------------------------------------------------------------
    Motiv-Radar
