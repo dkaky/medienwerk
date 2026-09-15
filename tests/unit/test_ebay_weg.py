@@ -144,12 +144,27 @@ def test_preise_lassen_sich_ueberschreiben(tmp_path):
     assert ebay_weg.preis(ebay_weg.PRODUKTE["polo"], s) == 17.90
 
 
-def test_tshirt_beschreibung_nennt_material_je_farbe(db, tmp_path):
-    text = ebay_weg.beschreibung(_motiv(db, tmp_path), ebay_weg.PRODUKTE["tshirt"], _settings(tmp_path))
+def test_beschreibung_nennt_material_und_mwst(db, tmp_path):
+    design = _motiv(db, tmp_path)
+    s = _settings(tmp_path)
+    text = ebay_weg.beschreibung(design, ebay_weg.PRODUKTE["tshirt"], s)
     assert "Material: 100 % Baumwolle" in text
     assert "Grau meliert: 85 % Baumwolle, 15 % Viskose" in text
-    assert "Material" not in ebay_weg.beschreibung(
-        _motiv(db, tmp_path), ebay_weg.PRODUKTE["hoodie"], _settings(tmp_path))
+    for key, material in (("polo", "100 % Baumwolle"), ("oversize", "100 % Baumwolle"),
+                          ("hoodie", "80 % Baumwolle, 20 % recyceltes Polyester")):
+        assert f"Material: {material}" in ebay_weg.beschreibung(design, ebay_weg.PRODUKTE[key], s)
+    for p in ebay_weg.PRODUKTE.values():
+        assert "inkl. 19 % MwSt." in ebay_weg.beschreibung(design, p, s)
+
+
+def test_prompt_steht_nicht_im_angebot(db, tmp_path):
+    """Der Erzeugungsprompt ist eine Arbeitsanweisung, kein Verkaufstext."""
+    design = _motiv(db, tmp_path, titel="ich will einen löwenkopf der majestätisch aussieht, freigestellt")
+    p = ebay_weg.PRODUKTE["tshirt"]
+    t, text = ebay_weg.titel(design, p), ebay_weg.beschreibung(design, p, _settings(tmp_path))
+    for wort in ("ich will", "freigestellt"):
+        assert wort not in t.lower() and wort not in text.lower()
+    assert "Löwenkopf" in t
 
 
 def test_artikelnummern_sind_ascii(tmp_path):
@@ -469,3 +484,14 @@ async def test_vorhandenes_angebot_laesst_sich_aktualisieren(db, tmp_path):
     assert neu["aktualisiert"] is True and neu["listing_id"] == erst["listing_id"]
     assert any(a[0] == "artikel" for a in ebay.aufrufe[anzahl:])
     assert db.query(PodListing).count() == 1
+
+
+@pytest.fixture(autouse=True)
+def _kein_ki_text(monkeypatch):
+    """Tests rufen nie OpenAI - der Verkaufstext kommt als Standardtext."""
+    from app.studio import verkaufstext
+
+    def _nie(*a, **k):
+        raise verkaufstext.VerkaufstextFehler("im Test kein Netz")
+
+    monkeypatch.setattr(verkaufstext, "_ki_text", _nie)

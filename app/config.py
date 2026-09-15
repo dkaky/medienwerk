@@ -123,6 +123,8 @@ class Settings(BaseSettings):
     # Websuche ueber die OpenAI Responses API. Laut Doku (13.09.2026) koennen das
     # u. a. gpt-4.1-mini, gpt-4.1 und gpt-5.5 - Vorgabe ist das guenstigste.
     trend_modell: str = "gpt-4.1-mini"
+    # Motivname + Beschreibung fuer eBay (app/studio/verkaufstext.py) - sieht das Motivbild.
+    verkaufstext_modell: str = "gpt-4.1-mini"
     trend_anzahl: int = 12
     # Taeglich morgens von selbst suchen (braucht BACKGROUND_JOBS_ENABLED=true).
     trend_radar_taeglich: bool = False

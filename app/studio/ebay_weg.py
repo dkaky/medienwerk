@@ -35,9 +35,16 @@ sitzt, legt ``druckseiten`` fest; eine Seite ohne Motiv wird unbedruckt gezeigt,
 und ist nur hinten bedruckt, kommt die Rueckseite zuerst. Die Galerie des
 Angebots beginnt mit diesen Bildern in der Hauptfarbe, danach je Farbe das erste.
 
-**Material** nennt nur das T-Shirt (Angabe des Betreibers), und zwar je Farbe in
-der Beschreibung: B&C Sport Grey ist 85 % Baumwolle / 15 % Viskose. Ein
-pauschales Merkmal "Baumwolle" waere fuer graue Shirts falsch.
+**Texte** (Betreiber, 15.09.2026): Titel und Beschreibung nehmen NICHT den
+Erzeugungsprompt, sondern den Verkaufstext aus ``verkaufstext`` (Motivname und
+zwei, drei Saetze, von der KI am Motivbild geschrieben). Jede Beschreibung nennt
+das Material und "Preis inkl. 19 % MwSt.".
+
+**Material** laut Hersteller (geprueft 15.09.2026): T-Shirt B&C #E190 100 %
+Baumwolle, nur Sport Grey 85 % Baumwolle / 15 % Viskose; Polo B&C ID.001 und
+Oversize BYB BY102 100 % Baumwolle; Hoodie B&C ID.333 80 % Baumwolle / 20 %
+recyceltes Polyester. Eine pauschale "100 % Baumwolle"-Angabe waere fuer Hoodie
+und graue Shirts falsch - und abmahnbar.
 
 **Wiederholbar.** Artikel und Gruppe werden per PUT ersetzt, ein vorhandenes
 Angebot erkennt der Client und aktualisiert es.
@@ -91,6 +98,7 @@ class Produkt:
     stichpunkte: tuple[str, ...]
     groessen: tuple[str, ...] | None = None      # None -> EBAY_TEXTIL_GROESSEN
     material_je_farbe: bool = False              # Material aus mockup_plan.FARBEN nennen
+    material: str | None = None                  # feste Angabe, wenn nicht je Farbe
 
 
 PRODUKTE: dict[str, Produkt] = {
@@ -101,23 +109,23 @@ PRODUKTE: dict[str, Produkt] = {
     "polo": Produkt(
         "polo", "Poloshirt", "185101", 17.90, True, "polo", "Poloshirt",
         {"Produktart": ["Polo"], "Abteilung": ["Unisex Erwachsene"], "Ärmellänge": ["Kurzarm"]},
-        ("Polokragen", "Kurzarm")),
+        ("Polokragen", "Kurzarm"), material="100 % Baumwolle (Piqué)"),
     "oversize": Produkt(
         "oversize", "Oversize T-Shirt", "15687", 34.90, True, "oversize", "Oversize T-Shirt",
         {"Produktart": ["T-Shirt"], "Abteilung": ["Unisex Erwachsene"],
          "Passform": ["Oversize"], "Ärmellänge": ["Kurzarm"]},
         ("Oversize-Schnitt", "Kurzarm"),
         # Eigene Produktlinie mit eigenem Groessenlauf (Betreiber, 13.09.2026).
-        groessen=("S", "M", "L", "XL", "2XL", "3XL")),
+        groessen=("S", "M", "L", "XL", "2XL", "3XL"), material="100 % Baumwolle, schwere Qualität"),
     "hoodie": Produkt(
         "hoodie", "Hoodie", "155183", 34.90, True, "hoodie", "Hoodie",
         {"Produktart": ["Kapuzenpullover"], "Stil": ["Pullover"],
          "Abteilung": ["Unisex Erwachsene"], "Ärmellänge": ["Langarm"]},
-        ("Mit Kapuze", "Langarm")),
+        ("Mit Kapuze", "Langarm"), material="80 % Baumwolle, 20 % recyceltes Polyester"),
     "tasse": Produkt(
         "tasse", "Tasse", "20695", 11.90, False, "tasse", "Tasse",
         {"Produktart": ["Kaffeetasse"]},
-        ("Bedruckt mit eigenem Motiv",)),
+        ("Bedruckt mit eigenem Motiv",), material="Keramik"),
 }
 
 TASSENFARBE = "Weiß"
@@ -199,16 +207,28 @@ def motivname(design: Any) -> str:
     return kern or "Motiv"
 
 
-def titel(design: Any, p: Produkt) -> str:
+def titel(design: Any, p: Produkt, name: str | None = None) -> str:
+    """Titel mit dem Verkaufsnamen - gespeicherter KI-Name, sonst bereinigter Titel."""
+    from app.studio import verkaufstext
+
+    if not name:
+        gespeichert = verkaufstext.gespeichert(design)
+        name = gespeichert.name if gespeichert else verkaufstext.bereinigter_name(getattr(design, "title", None))
     zusatz = "Kaffeetasse Motiv Geschenk" if p.key == "tasse" else "Unisex Motiv"
-    voll = f"{p.titel_wort} {motivname(design)} {zusatz}"
+    voll = f"{p.titel_wort} {name} {zusatz}"
     if len(voll) <= 80:
         return voll
     return voll[:80].rsplit(" ", 1)[0]
 
 
-def beschreibung(design: Any, p: Produkt, s: Settings, druck: str | None = None) -> str:
+def beschreibung(design: Any, p: Produkt, s: Settings, druck: str | None = None,
+                 verkauf: Any = None) -> str:
+    from app.studio import verkaufstext
+
+    verkauf = verkauf or verkaufstext.gespeichert(design) or verkaufstext.standard(design)
     punkte = list(p.stichpunkte)
+    if p.material:
+        punkte.insert(0, f"Material: {p.material}")
     if p.material_je_farbe:
         materialien: dict[str, list[str]] = {}
         for f in mockup_plan.FARBEN:
@@ -222,11 +242,19 @@ def beschreibung(design: Any, p: Produkt, s: Settings, druck: str | None = None)
         punkte.append(f"Größen: {', '.join(groessen(p, s))}")
     if druck:
         punkte.append(druck)
-    punkte += ["Eigenes Motiv, auf Bestellung gedruckt", "Preis inkl. Versand"]
-    liste = "".join(f"<li>{x}</li>" for x in punkte)
-    return (f"<h2>{motivname(design)} – {p.label}</h2>"
-            f"<p>Ein eigenes Motiv von {s.ebay_marke or s.seller_name or 'uns'}.</p>"
-            f"<ul>{liste}</ul>")
+    punkte += ["Eigenes Motiv, auf Bestellung für dich gedruckt",
+               "Preis inkl. 19 % MwSt., Versand inklusive"]
+    liste = "".join(f"<li>{esc_html(x)}</li>" for x in punkte)
+    return (f"<h2>{esc_html(verkauf.name)} – {esc_html(p.label)}</h2>"
+            f"<p>{esc_html(verkauf.absatz)}</p>"
+            f"<ul>{liste}</ul>"
+            f"<p>Ein Motiv von {esc_html(s.ebay_marke or s.seller_name or 'uns')}.</p>")
+
+
+def esc_html(wert: Any) -> str:
+    import html
+
+    return html.escape(str(wert), quote=False)
 
 
 def basis_merkmale(p: Produkt, s: Settings) -> dict[str, list[str]]:
@@ -526,8 +554,11 @@ async def veroeffentliche(db, design: Any, *, produkt_key: str, ebay: Any, s: Se
         for achse in ("Größe", "Farbe"):           # tragen die Varianten selbst
             merkmale.pop(achse, None)
         ergaenzt = sorted(set(merkmale) - set(basis))
-        t = titel(design, p)
-        text = beschreibung(design, p, s, druck=seiten.beschreibung if p.textil else None)
+        from app.studio import verkaufstext
+
+        vtext = await asyncio.to_thread(verkaufstext.fuer, db, design, s=s, bildordner=bildordner)
+        t = titel(design, p, name=vtext.name)
+        text = beschreibung(design, p, s, druck=seiten.beschreibung if p.textil else None, verkauf=vtext)
 
         if p.textil:
             skus = []
