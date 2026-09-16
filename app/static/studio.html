@@ -1414,7 +1414,7 @@ function radarZeile(idee) {
 // ---------- Design-Empfehlungen ----------
 // Text aus der Websuche — kein Bild. Erst „Motiv erzeugen“ kostet ein Bild.
 const trendKategorien = {
-  mix: 'Mix', fussball: 'Fußball', sport: 'Fußball', zeichen: 'Japanisch / Chinesisch', anime: 'Anime',
+  mix: 'Mix', fussball: 'Fußball', sport: 'Sport (alt)', zeichen: 'Japanisch / Chinesisch', anime: 'Anime',
   gothic: 'Gothic', astronomie: 'Astronomie', sonntag: 'Sonntagsspruch',
 };
 
@@ -1487,10 +1487,7 @@ async function ladeTrends() {
   const kategorie = $('t-kategorie').value;
   const daten = kategorie === 'mix'
     ? alle
-    : alle.filter(idee => {
-        const k = (idee.beschreibung || {}).kategorie;
-        return k === kategorie || (kategorie === 'fussball' && k === 'sport');   // alte Sport-Empfehlungen
-      });
+    : alle.filter(idee => (idee.beschreibung || {}).kategorie === kategorie);
   ziel.textContent = '';
   if (!daten.length) {
     ziel.append(el('p', 'muted', `Keine offenen Empfehlungen in „${trendKategorien[kategorie]}“ — neue Empfehlungen ausarbeiten.`));
