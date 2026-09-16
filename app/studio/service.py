@@ -14,13 +14,20 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.studio import guard
 from app.studio import kosten
-from app.studio.models import DESIGN_STATUS, StudioDesign, StudioListingLink
+from app.studio.models import (
+    DESIGN_STATUS,
+    MotivIdee,
+    PodProduct,
+    StudioDesign,
+    StudioListingLink,
+)
 
 
 class StudioFehler(ValueError):
@@ -72,6 +79,78 @@ def set_design_status(db: Session, *, design_id: int, status: str) -> StudioDesi
     db.commit()
     db.refresh(design)
     return design
+
+
+def delete_design(db: Session, *, design_id: int, bildordner: Path | str) -> dict:
+    """Ein noch nicht verknuepftes Motiv hart entfernen.
+
+    Archivieren bleibt der normale Arbeitsweg. Hartes Loeschen ist fuer
+    Fehlversuche und frisch erzeugte Motive gedacht, die noch nirgends als
+    Angebot, Produkt oder Radar-Ergebnis haengen.
+    """
+    design = db.get(StudioDesign, design_id)
+    if design is None:
+        raise StudioFehler("Motiv nicht gefunden.")
+
+    links = db.scalar(
+        select(func.count()).select_from(StudioListingLink)
+        .where(StudioListingLink.design_id == design_id)
+    ) or 0
+    produkte = db.scalar(
+        select(func.count()).select_from(PodProduct)
+        .where(PodProduct.design_id == design_id)
+    ) or 0
+    ideen = db.scalar(
+        select(func.count()).select_from(MotivIdee)
+        .where(MotivIdee.design_id == design_id)
+    ) or 0
+    if links or produkte or ideen:
+        teile = []
+        if links:
+            teile.append(f"{links} verknuepfte Angebote")
+        if produkte:
+            teile.append(f"{produkte} POD-Produkte")
+        if ideen:
+            teile.append(f"{ideen} Radar-Ideen")
+        raise StudioFehler(
+            "Motiv ist noch verknuepft und wird nicht geloescht: " + ", ".join(teile)
+        )
+
+    wurzel = Path(bildordner).resolve()
+
+    def _loesche_lokal(url: str | None, prefix: str) -> bool:
+        if not url or not url.startswith(prefix):
+            return False
+        relativ = url.removeprefix(prefix)
+        pfad = (wurzel / Path(*relativ.split("/"))).resolve()
+        try:
+            pfad.relative_to(wurzel)
+        except ValueError as exc:
+            raise StudioFehler("Dateipfad liegt ausserhalb des Studio-Ordners.") from exc
+        if pfad.exists():
+            pfad.unlink()
+            return True
+        return False
+
+    bild_geloescht = _loesche_lokal(design.image_url, "/studio/bilder/")
+    original_geloescht = False
+    try:
+        meta = json.loads(design.meta_json) if design.meta_json else {}
+    except (TypeError, ValueError):
+        meta = {}
+    if isinstance(meta, dict):
+        original_geloescht = _loesche_lokal(
+            meta.get("upload", {}).get("original_url"), "/studio/dateien/"
+        )
+
+    db.delete(design)
+    db.commit()
+    return {
+        "design_id": design_id,
+        "geloescht": True,
+        "bild_geloescht": bild_geloescht,
+        "original_geloescht": original_geloescht,
+    }
 
 
 def merke_printify(db: Session, *, design_id: int, printify_id: str,

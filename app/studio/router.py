@@ -13,7 +13,7 @@ import logging
 import json
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -94,6 +94,26 @@ def create_design(body: DesignIn, db: Session = Depends(get_db)) -> DesignOut:
     return DesignOut.model_validate(design)
 
 
+@router.post("/designs/upload", response_model=DesignOut, status_code=201)
+async def upload_design(
+    datei: UploadFile = File(...),
+    titel: str | None = Form(default=None),
+    db: Session = Depends(get_db),
+) -> DesignOut:
+    """Eigene Bild- oder PDF-Datei als Studio-Motiv ablegen.
+
+    Bilddateien werden als PNG uebernommen. PDFs bleiben als Original erhalten;
+    fuer die Motivliste entsteht eine lokale PNG-Vorschau. Ein echter PDF-Render
+    waere schoener, braucht aber eine zusaetzliche native Abhaengigkeit. Diese
+    Version bleibt rein lokal und sichtbar, statt Uploads still abzulehnen.
+    """
+    try:
+        design = await _upload_ablegen(db, datei=datei, titel=titel)
+    except service.StudioFehler as exc:
+        raise _fehler(exc) from exc
+    return DesignOut.model_validate(design)
+
+
 @router.get("/designs/{design_id}", response_model=DesignOut)
 def get_design(design_id: int, db: Session = Depends(get_db)) -> DesignOut:
     design = service.get_design(db, design_id)
@@ -111,6 +131,22 @@ def set_design_status(
     except service.StudioFehler as exc:
         raise _fehler(exc) from exc
     return DesignOut.model_validate(design)
+
+
+@router.delete("/designs/{design_id}")
+def delete_design(design_id: int, db: Session = Depends(get_db)) -> dict:
+    """Ein unverknuepftes Motiv loeschen.
+
+    Das ist absichtlich enger als "verwerfen": sobald ein Motiv an Angebot,
+    Produkt oder Radar-Idee haengt, bleibt nur Archivieren bzw. vorheriges
+    Entkoppeln. Keine Verkaufsware verschwindet durch einen Aufraeumklick.
+    """
+    try:
+        return service.delete_design(
+            db, design_id=design_id, bildordner=Path(get_settings().studio_image_dir)
+        )
+    except service.StudioFehler as exc:
+        raise _fehler(exc) from exc
 
 
 # --- Verknuepfung -------------------------------------------------------------
@@ -635,6 +671,79 @@ def _ablegen(bild, titel: str):
     ziel = ordner / name
     bild.save(ziel, "PNG")
     return ziel
+
+
+async def _upload_ablegen(db: Session, *, datei: UploadFile, titel: str | None):
+    """Upload speichern und als Motiv eintragen."""
+    import re
+    from datetime import datetime
+    from io import BytesIO
+
+    from PIL import Image, ImageDraw
+
+    name = Path(datei.filename or "upload").name
+    suffix = Path(name).suffix.lower()
+    roh = await datei.read()
+    if not roh:
+        raise service.StudioFehler("Die Datei ist leer.")
+    if len(roh) > 25 * 1024 * 1024:
+        raise service.StudioFehler("Datei ist zu gross (maximal 25 MB).")
+
+    ordner = Path(get_settings().studio_image_dir)
+    upload_ordner = ordner / "uploads"
+    upload_ordner.mkdir(parents=True, exist_ok=True)
+    zeit = datetime.now().strftime("%Y%m%d-%H%M%S")
+    basis = re.sub(r"[^a-z0-9]+", "-", (titel or Path(name).stem).lower()).strip("-")[:50] or "upload"
+
+    meta = {"upload": {"dateiname": name, "content_type": datei.content_type}}
+    if suffix in {".png", ".jpg", ".jpeg", ".webp"}:
+        try:
+            bild = Image.open(BytesIO(roh)).convert("RGBA")
+        except Exception as exc:  # noqa: BLE001
+            raise service.StudioFehler("Bilddatei konnte nicht gelesen werden.") from exc
+        ziel = upload_ordner / f"{zeit}-{basis}.png"
+        bild.save(ziel, "PNG")
+        meta["upload"]["typ"] = "bild"
+        meta["upload"]["original_url"] = f"/studio/bilder/uploads/{ziel.name}"
+    elif suffix == ".pdf":
+        original = upload_ordner / f"{zeit}-{basis}.pdf"
+        original.write_bytes(roh)
+        ziel = upload_ordner / f"{zeit}-{basis}-pdf.png"
+        _pdf_vorschau(ziel, name)
+        meta["upload"]["typ"] = "pdf"
+        meta["upload"]["original_url"] = f"/studio/dateien/uploads/{original.name}"
+    else:
+        raise service.StudioFehler("Erlaubt sind PNG, JPG, WEBP und PDF.")
+
+    design = service.create_design(
+        db,
+        title=(titel or Path(name).stem or "Upload"),
+        source="upload",
+        image_url=f"/studio/bilder/uploads/{ziel.name}",
+        meta_json=json.dumps(meta, ensure_ascii=False),
+    )
+    return design
+
+
+def _pdf_vorschau(ziel: Path, dateiname: str) -> None:
+    """Schlichte lokale PDF-Vorschau ohne externen Renderer."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    bild = Image.new("RGBA", (1024, 1024), (245, 247, 250, 0))
+    draw = ImageDraw.Draw(bild)
+    gross = ImageFont.load_default(size=72)
+    mittel = ImageFont.load_default(size=34)
+    klein = ImageFont.load_default(size=28)
+    draw.rounded_rectangle((222, 126, 802, 898), radius=28, fill=(255, 255, 255, 255),
+                           outline=(28, 42, 57, 255), width=6)
+    draw.polygon([(654, 126), (802, 274), (654, 274)], fill=(226, 232, 240, 255),
+                 outline=(28, 42, 57, 255))
+    draw.rounded_rectangle((306, 410, 718, 556), radius=16, fill=(220, 38, 38, 255))
+    draw.text((418, 452), "PDF", fill=(255, 255, 255, 255), font=gross)
+    name = dateiname[:38] + ("..." if len(dateiname) > 38 else "")
+    draw.text((292, 620), name, fill=(28, 42, 57, 255), font=mittel)
+    draw.text((308, 690), "Original gespeichert", fill=(71, 85, 105, 255), font=klein)
+    bild.save(ziel, "PNG")
 
 
 # --------------------------------------------------------------------------

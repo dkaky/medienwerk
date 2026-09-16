@@ -291,8 +291,25 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
           <div class="aktionen">
             <a class="btn" id="ergebnis-neu-original" target="_blank" rel="noopener">Original öffnen</a>
             <button class="btn ghost" type="button" id="ergebnis-neu-bearbeiten">Motiv bearbeiten</button>
+            <button class="btn ghost" type="button" id="ergebnis-neu-loeschen">Motiv löschen</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Motiv hochladen</h3>
+      <p class="muted">PNG, JPG, WEBP oder PDF. PDFs werden als Original gespeichert und mit einer Vorschau in die Motivliste gelegt.</p>
+      <div class="zeile">
+        <div class="feld" style="flex:2 1 320px">
+          <label>Datei</label>
+          <input id="upload-datei" type="file" accept="image/png,image/jpeg,image/webp,application/pdf,.png,.jpg,.jpeg,.webp,.pdf">
+        </div>
+        <div class="feld" style="flex:1 1 260px">
+          <label>Titel (optional)</label>
+          <input id="upload-titel" maxlength="255" placeholder="Name in der Motivliste">
+        </div>
+        <button class="btn" id="b-upload" type="button">Hochladen</button>
       </div>
     </div>
 
@@ -479,6 +496,19 @@ function vorschau(url, breite) {
   return `${url}${url.includes('?') ? '&' : '?'}breite=${breite}`;
 }
 
+function metaVon(design) {
+  try {
+    const m = JSON.parse(design.meta_json || '{}');
+    return m && typeof m === 'object' ? m : {};
+  } catch {
+    return {};
+  }
+}
+
+function originalUrl(design) {
+  return metaVon(design).upload?.original_url || design.image_url;
+}
+
 const FILTER = [
   ['aktiv', 'Aktive'], ['draft', 'Entwürfe'], ['ready', 'Übernommen'],
   ['archived', 'Verworfen'], ['alle', 'Alle'],
@@ -525,14 +555,18 @@ async function ladeMotive() {
         <div class="titel">${String(d.title).replace(/</g, '&lt;')}</div>
         <span class="badge">${d.status}</span>
         ${d.source ? `<span class="badge">${d.source}</span>` : ''}
+        ${metaVon(d).upload?.typ === 'pdf' ? '<span class="badge">PDF</span>' : ''}
         ${d.source === 'mock' ? '<span class="platzhalter">Platzhalter — kein echtes Motiv. Der Attrappen-Anbieter malt nur ein farbiges Feld mit dem Titel.</span>' : ''}
         <div class="produktweg" id="pw-${d.id}">
           <button class="btn klein" data-anprobe="${d.id}" title="Vorder-/Rückseite gestalten, verschieben, Größe ändern, weitere Motive">✎ Motiv bearbeiten</button>
+          ${originalUrl(d) ? `<a class="btn ghost klein" href="${esc(originalUrl(d))}" target="_blank" rel="noopener">Original</a>` : ''}
           <button class="btn ghost klein" onclick="druckcheck(${d.id})">Als Produkt?</button>
           <button class="btn ghost klein" onclick="alsSvg(${d.id})"
             title="Vektordatei zum Selberdrucken: beliebig vergrößerbar, ohne unscharf zu werden">SVG</button>
           <button class="btn ghost klein" onclick="beiEbay(${d.id})"
             title="Als T-Shirt-Angebot mit Größen bei eBay einstellen">eBay</button>
+          <button class="btn ghost klein" onclick="loescheMotiv(${d.id})"
+            title="Nur unverknüpfte Motive löschen; Angebote und Produkte werden nie mitgelöscht">Löschen</button>
         </div>
       </div>
     </div>`).join('');
@@ -949,6 +983,27 @@ async function entscheide(status) {
   }
 }
 
+async function loescheMotiv(id) {
+  const design = _motive.find((d) => d.id === Number(id)) || (_anprobe.design?.id === Number(id) ? _anprobe.design : null);
+  const titel = design?.title || `Motiv ${id}`;
+  if (!confirm(`Motiv "${titel}" wirklich löschen?\n\nDas geht nur, solange es noch mit keinem Angebot oder Produkt verknüpft ist.`)) return;
+  try {
+    await hole(`/api/v1/studio/designs/${id}`, { method: 'DELETE' });
+    if (_anprobe.design?.id === Number(id)) {
+      $('anprobe-panel').hidden = true;
+      _anprobe.design = null;
+    }
+    if (Number($('ergebnis-neu').dataset.designId || 0) === Number(id)) {
+      $('ergebnis-neu').hidden = true;
+      delete $('ergebnis-neu').dataset.designId;
+    }
+    melde('Motiv gelöscht.');
+    await Promise.all([ladeStand(), ladeMotive()]);
+  } catch (e) {
+    melde(e.message, true);
+  }
+}
+
 document.addEventListener('click', (ev) => {
   const t = ev.target.closest('[data-anprobe],[data-ware],[data-farbe],[data-filter]');
   if (!t) return;
@@ -1052,6 +1107,7 @@ const FOTOQUELLE = {
 
 function ebayProduktZeile(p, opts = {}) {
   const auswahlen = opts.auswahlen !== false;
+  const designId = Number(opts.designId || _anprobe.design?.id || 0);
   const blockiert = p.fotoquelle === 'blockiert' || (p.fehlende_vorlagen || []).length;
   const details = [
     `${euro(p.preis_eur)} inkl. Versand`,
@@ -1069,7 +1125,7 @@ function ebayProduktZeile(p, opts = {}) {
            <input type="checkbox" data-ebay-produkt="${p.key}" data-ebay-update="1">
            aktualisieren – neue Fotos und Gestaltung ins bestehende Angebot</label>`
       : `<button class="btn ghost klein" style="margin-top:4px"
-           onclick="ebayEinstellenDirekt(${_anprobe.design?.id || 0}, '${p.key}', true)">Angebot aktualisieren</button>`;
+           onclick="ebayEinstellenDirekt(${designId}, '${p.key}', true)">Angebot aktualisieren</button>`;
     return `<div class="panel" style="padding:10px;margin:8px 0">
       <div class="klein"><b>${p.label}</b> · ${details} · <span class="pos">live</span></div>
       <div class="klein"><a href="${p.angebot.url}" target="_blank" rel="noopener">bei eBay ansehen</a></div>
@@ -1080,7 +1136,7 @@ function ebayProduktZeile(p, opts = {}) {
     ? `<input type="checkbox" data-ebay-produkt="${p.key}" ${blockiert ? 'disabled' : 'checked'}>`
     : '';
   const aktion = !auswahlen && !blockiert
-    ? `<button class="btn klein" onclick="ebayEinstellenDirekt(${_anprobe.design?.id || 0}, '${p.key}')">Dieses Produkt einstellen</button>`
+    ? `<button class="btn klein" onclick="ebayEinstellenDirekt(${designId}, '${p.key}')">Dieses Produkt einstellen</button>`
     : '';
   return `<label class="panel klein" style="display:block;padding:10px;margin:8px 0;${blockiert ? 'opacity:.72' : ''}">
     ${eingabe} <b>${p.label}</b> · ${details}
@@ -1110,7 +1166,7 @@ async function ladeEbayVorschau(id, ziel, { kompakt = true } = {}) {
   ziel.innerHTML = (blockiert
       ? `<div class="hinweis" style="margin-bottom:10px">Textilien werden erst eingestellt, wenn echte Produkt- und Modelbilder hinterlegt sind.</div>`
       : '')
-    + b.produkte.map(p => ebayProduktZeile(p, { auswahlen: kompakt })).join('')
+    + b.produkte.map(p => ebayProduktZeile(p, { auswahlen: kompakt, designId: id })).join('')
     + (kompakt
       ? `<button class="btn klein" onclick="ebayEinstellen(${id})">Ausgewählte einstellen / aktualisieren</button>
          <button class="btn ghost klein" onclick="ladeMotive()">Zurück</button>`
@@ -1154,7 +1210,9 @@ async function ebayEinstellen(id) {
 }
 
 async function ebayEinstellenDirekt(id, key, aktualisieren = false) {
-  const ziel = $('anprobe-ebay');
+  if (!id) { melde('Motiv fehlt - bitte die eBay-Vorschau neu öffnen.', true); return; }
+  const inAnprobe = !$('anprobe-panel').hidden && _anprobe.design?.id === Number(id);
+  const ziel = inAnprobe ? $('anprobe-ebay') : ($('pw-' + id) || $('anprobe-ebay'));
   const frage = aktualisieren
     ? `Bestehendes eBay-Angebot „${key}“ mit den aktuellen Fotos und der Gestaltung aktualisieren?`
     : `${key} bei eBay einstellen?`;
@@ -1338,13 +1396,43 @@ function zeigeErzeugtesMotiv(design, scrollen = false, label = 'Zuletzt erzeugt'
   $('ergebnis-neu-label').textContent = label;
   $('ergebnis-neu-titel').textContent = design.title || 'Neues Motiv';
   $('ergebnis-neu-bild').src = vorschau(design.image_url, 700);
-  $('ergebnis-neu-original').href = design.image_url;
+  $('ergebnis-neu-original').href = originalUrl(design);
   $('ergebnis-neu-meta').textContent = [anbieter || design.source, kosten == null ? null : usd(kosten)]
     .filter(Boolean).join(' · ');
   $('ergebnis-neu-bearbeiten').onclick = () => oeffneAnprobe(Number(design.id));
+  $('ergebnis-neu-loeschen').onclick = () => loescheMotiv(Number(design.id));
+  panel.dataset.designId = design.id;
   panel.hidden = false;
   if (scrollen) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
+
+$('b-upload').onclick = async () => {
+  const feld = $('upload-datei');
+  const datei = feld.files && feld.files[0];
+  if (!datei) { melde('Bitte erst eine Datei auswählen.', true); return; }
+  const fd = new FormData();
+  fd.append('datei', datei);
+  const titel = $('upload-titel').value.trim();
+  if (titel) fd.append('titel', titel);
+  const knopf = $('b-upload');
+  knopf.disabled = true;
+  knopf.setAttribute('aria-busy', 'true');
+  knopf.textContent = 'Lade hoch...';
+  try {
+    const design = await hole('/api/v1/studio/designs/upload', { method: 'POST', body: fd });
+    feld.value = '';
+    $('upload-titel').value = '';
+    zeigeErzeugtesMotiv(design, true, 'Hochgeladen');
+    melde('Motiv hochgeladen.');
+    await Promise.all([ladeStand(), ladeMotive()]);
+  } catch (e) {
+    melde(e.message, true);
+  } finally {
+    knopf.disabled = false;
+    knopf.removeAttribute('aria-busy');
+    knopf.textContent = 'Hochladen';
+  }
+};
 
 /* --------------------------------------------------------------------------
    Motiv-Radar

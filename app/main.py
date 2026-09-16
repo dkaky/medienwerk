@@ -180,6 +180,24 @@ def studio_bild(name: str, breite: int | None = None, zuschnitt: bool = False) -
     return FileResponse(ziel, media_type="image/png")
 
 
+@app.get("/studio/dateien/{name:path}", include_in_schema=False)
+def studio_datei(name: str) -> FileResponse:
+    """Originale hochgeladene Studio-Dateien ausliefern, z. B. PDFs.
+
+    Die Dateien liegen im selben Studio-Ordner wie Motive, werden aber bewusst
+    ueber eine eigene Route ausgeliefert: Bilder koennen verkleinert werden,
+    PDFs und andere Originale sollen unveraendert bleiben.
+    """
+    from fastapi import HTTPException
+
+    ordner = Path(get_settings().studio_image_dir).resolve()
+    ziel = (ordner / name).resolve()
+    if not str(ziel).startswith(str(ordner)) or not ziel.is_file():
+        raise HTTPException(status_code=404, detail="Nicht gefunden")
+    typ = "application/pdf" if ziel.suffix.lower() == ".pdf" else "application/octet-stream"
+    return FileResponse(ziel, media_type=typ, filename=ziel.name)
+
+
 @app.get("/studio/druckdateien/{name}", include_in_schema=False)
 def studio_druckdatei(name: str):
     """Eine erzeugte Druckdatei oder SVG herunterladen.
