@@ -704,7 +704,8 @@ async def radar_trends(body: TrendLaufIn, db: Session = Depends(get_db)) -> dict
     from app.studio.radar import trends
 
     try:
-        return await trends.lauf(db, s=get_settings(), anzahl=body.anzahl)
+        return await trends.lauf(db, s=get_settings(), anzahl=body.anzahl,
+                                 kategorie=body.kategorie)
     except kosten.BudgetErschoepft as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
     except trends.TrendFehler as exc:

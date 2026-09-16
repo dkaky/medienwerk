@@ -60,6 +60,8 @@ STANDARDFORMAT = "textil"
 #: Sprachmodell waehlt dieses. Bewusst grob: der Notweg soll nicht raten, er
 #: soll einen vertretbaren Stil setzen und das im Bericht sagen.
 _STILWORTE: tuple[tuple[str, str], ...] = (
+    (r"anime|manga", "anime-realistic"),
+    (r"realistisch|realistic|naturalistisch|editorial", "realistic-graphic"),
     (r"vintage|retro|70er|siebziger|sunset", "vintage-retro"),
     (r"line[-\s]?art|strichzeichnung|umriss|kontur", "line-art"),
     (r"grunge|distressed|used|abgenutzt", "distressed-typo"),
@@ -74,7 +76,7 @@ _STILWORTE: tuple[tuple[str, str], ...] = (
 
 #: Wenn kein Wort trifft. Flat Vector ist die sicherste Wahl fuer Direktdruck:
 #: klare Flaechen, keine Verlaeufe, die in der Transparenz auslaufen.
-STANDARDSTIL = "flat-vector"
+STANDARDSTIL = "realistic-graphic"
 
 _ZEILE = re.compile(
     r"^\|\s*`(?P<id>[a-z0-9-]+)`\s*\|\s*(?P<name>[^|]+?)\s*\|\s*(?P<text>[^|]+?)\s*\|\s*$"
@@ -177,8 +179,9 @@ def _regelweg(roh: str, stil: str) -> str:
     kern = roh.rstrip(".,; ")
     # OHNE Technikzusatz - den haengt ``veredle`` erst nach der Nachpruefung an
     # (siehe ``ohne_zusatz``).
-    return (f"Druckfertiges Motiv: {kern}, {baustein}. Zentriert, symmetrisch, "
-            f"geschlossene Silhouette, begrenzte Farbpalette")
+    return (f"Druckfertiges Motiv: {kern}, {baustein}. Ein Hauptmotiv, hoechstens "
+            f"ein kleines Nebenelement, zentriert, geschlossene Silhouette, "
+            f"grosszuegiger Negativraum und begrenzte Farbpalette")
 
 
 def ohne_zusatz(text: str) -> str:

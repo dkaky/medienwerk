@@ -105,13 +105,14 @@ async def test_lauf_legt_gepruefte_vorschlaege_ohne_bild_ab(db):
     erste = liste[0]
     assert erste.platz == 1 and erste.signal is None                        # kein erfundenes Volumen
     assert erste.status == "neu" and erste.design_id is None
-    assert "Eigenstaendige, detailreiche Illustration" in erste.eigener_prompt
+    assert "Eigenstaendige, reduzierte realistische Print-Illustration" in erste.eigener_prompt
     assert 'Schriftzug "Ruhe am Haken"' in erste.eigener_prompt
     d = json.loads(erste.beschreibung)
     assert d["ebay_angebote"] == 4321 and d["quellen"] == ["https://beispiel.de/trend"]
     assert d["kaufmoment"].startswith("Ein Freund")
     assert d["verkaufswinkel"].startswith("Der ruhige Pausenmoment")
     assert d["druckhinweis"].startswith("Kompakte Zentralform")
+    assert d["kategorie"] == "mix"
     assert db.query(StudioDesign).count() == 0                               # kein Bild
 
 
@@ -129,6 +130,55 @@ async def test_websuche_wird_mit_deutschem_standort_aufgerufen(db):
     assert client.gesehen["include"] == ["web_search_call.action.sources"]
     assert client.gesehen["store"] is False
     assert client.gesehen["reasoning"] == {"effort": "medium"}
+
+
+async def test_sport_sucht_breit_aber_gibt_keine_clubmerkmale_aus(db):
+    client = _FakeOpenAI([_eintrag("Torwartfokus", kategorie="sport")])
+    await trends.lauf(db, s=_s(), client=client, zaehle_angebote=None,
+                      filter_check=_filter, heute=HEUTE, kostenbremse=False,
+                      kategorie="sport")
+
+    auftrag = client.gesehen["input"]
+    assert "ALLER relevanten nationalen Ligen" in auftrag
+    assert "Basketball" in auftrag and "Eishockey" in auftrag
+    assert "NUR intern als Nachfragesignal" in auftrag
+    assert "niemals Namen, Logos, Wappen" in auftrag
+
+
+def test_ideen_sind_kurz_realistisch_und_nicht_ueberladen():
+    auftrag = trends.anweisung(6, HEUTE, "gothic")
+
+    assert "Genau ein Hauptmotiv" in auftrag
+    assert "hoechstens ein kleines Nebenelement" in auftrag
+    assert "Motiv 18-45 Woerter" in auftrag
+    assert "Keine Cartoon-" in auftrag
+
+
+def test_animierter_stil_fliegt_ausserhalb_von_anime_raus():
+    eintrag = _eintrag("Rabenwache", kategorie="gothic", stil="niedlicher Comic Cartoon")
+    assert trends.qualitaetsgrund(trends.aus_eintrag(eintrag), "gothic") == (
+        "Stil wirkt zu animiert statt realistisch"
+    )
+
+
+def test_anime_bleibt_als_eigene_erwachsene_kategorie_erlaubt():
+    eintrag = _eintrag("Nachtlaeufer", kategorie="anime",
+                       stil="erwachsene realistische Anime-Illustration")
+    assert trends.qualitaetsgrund(trends.aus_eintrag(eintrag), "anime") is None
+
+
+def test_zeitlose_stilidee_braucht_keine_erfundene_aktuelle_quelle():
+    eintrag = _eintrag("Samtmotte", kategorie="gothic", zeitraum="Immergrün",
+                       quellen=[], stil="realistische Siebdruckillustration")
+    assert trends.qualitaetsgrund(trends.aus_eintrag(eintrag), "gothic") is None
+
+
+def test_aktueller_astronomie_anlass_braucht_einen_beleg():
+    eintrag = _eintrag("Saturnkante", kategorie="astronomie", zeitraum="Oktober 2026",
+                       quellen=[], stil="realistische Editorial-Illustration")
+    assert trends.qualitaetsgrund(trends.aus_eintrag(eintrag), "astronomie") == (
+        "kein pruefbarer Quellenbeleg"
+    )
 
 
 async def test_quelle_wird_der_richtigen_empfehlung_zugeordnet(db):

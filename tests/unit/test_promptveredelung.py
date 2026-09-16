@@ -54,6 +54,8 @@ def test_stilkatalog_kommt_aus_dem_dokument():
     name, baustein = katalog["vintage-retro"]
     assert "Vintage" in name
     assert "1970" in baustein
+    assert "realistic-graphic" in katalog
+    assert "anime-realistic" in katalog
 
 
 def test_regelwerk_traegt_den_technikzusatz():
@@ -168,6 +170,8 @@ def test_leere_modellantwort_faellt_auf_den_regelweg():
     ("suesser baer kawaii", "kawaii"),
     ("totenkopf tattoo", "tattoo-oldschool"),
     ("berg aquarell", "aquarell"),
+    ("realistischer rabe", "realistic-graphic"),
+    ("erwachsener anime charakter", "anime-realistic"),
     ("dackel", pv.STANDARDSTIL),
 ])
 def test_stilwahl_des_notwegs(eingabe, erwartet):

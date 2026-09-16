@@ -72,16 +72,16 @@ Platzhalter.
 | # | Baustein | Inhalt |
 |---|---|---|
 | 1 | **Bildart** | Immer zuerst, immer vorhanden. Aus dem Stilkatalog übernommen. |
-| 2 | **Subjekt** | Das Hauptelement, konkret. „Berglandschaft" ist zu vage, „schroffer Bergkamm mit drei Gipfeln und einem Kiefernzweig im Vordergrund" trägt. |
+| 2 | **Subjekt** | Genau ein Hauptelement, konkret. Höchstens ein kleines Nebenelement; nie eine Collage oder volle Szene. |
 | 3 | **Stil** | Der Textbaustein aus dem Katalog, wörtlich. Nicht umformulieren. |
-| 4 | **Komposition** | Anordnung, Blickführung, Schwerpunkt. Standard: zentriert, symmetrisch, in sich geschlossene Silhouette. |
+| 4 | **Komposition** | Zentriert, klare Außenkontur, in sich geschlossene Silhouette und großzügiger Negativraum. |
 | 5 | **Farbe** | Begrenzte Palette, benannte Farben, Kontrastangabe. Zwei bis vier Farben sind der Normalfall — DTG-Druck belohnt Reduktion. |
 | 6 | **Text** | Nur wenn gefordert. Regeln siehe unten. |
 | 7 | **Technikzusatz** | Wörtlich der `ZUSATZ` aus `app/studio/generation/motivregeln.py`. Nie kürzen, nie umformulieren. |
 
 Der fertige Prompt ist ein zusammenhängender Satzblock, keine Stichwortliste mit
 Kommas — deutsche Beschreibungen wirken in ganzen Wendungen zuverlässiger. Länge:
-40 bis 120 Wörter. Kürzer trägt zu wenig Steuerung, länger verwässert; das
+35 bis 80 Wörter. Kürzer trägt zu wenig Steuerung, länger verwässert; das
 Eingabefeld ist ohnehin bei 1000 Zeichen gedeckelt (`GenerateIn` in
 `app/studio/schemas.py`).
 
@@ -89,11 +89,12 @@ Eingabefeld ist ohnehin bei 1000 Zeichen gedeckelt (`GenerateIn` in
 
 Er lautet unverändert:
 
-> druckfertige flache Illustration, freigestellt auf vollstaendig transparentem
-> Hintergrund, klare Konturen, hoher Kontrast, zentriert. KEIN Kleidungsstueck
+> druckfertige Print-Illustration, freigestellt auf vollstaendig transparentem
+> Hintergrund, klare Außenkontur, hoher Kontrast, zentriert, ein Hauptmotiv und
+> hoechstens ein kleines Nebenelement, grosszuegiger Negativraum. KEIN Kleidungsstueck
 > im Bild, kein T-Shirt, kein Hoodie, keine Tasse, kein Mockup, kein Model, kein
 > Mensch, kein Stoff, kein Kleiderbuegel, kein Produktfoto, kein Rahmen, kein
-> Hintergrund, keine Schlagschatten.
+> Szenerie, kein dekoratives Beiwerk, keine Schlagschatten.
 
 Das ist kein Zierrat. Bildmodelle neigen von sich aus zum Mockup, weil ihr
 Trainingsmaterial voll davon ist. Der Zusatz hängt der Code selbst an
@@ -119,11 +120,13 @@ englischen Bildunterschriften trainiert sind — sie bleiben deshalb stehen.
 
 | ID | Name | Textbaustein (wörtlich einsetzen) |
 |---|---|---|
+| `realistic-graphic` | Realistische Print-Illustration | realistische erwachsene Editorial- und Siebdruckillustration, natürliche Proportionen, glaubwürdige Oberflächen, kontrollierte Schattierung, keine Cartoon-, Clipart-, Kinderbuch-, Chibi- oder Kawaii-Optik |
+| `anime-realistic` | Erwachsener realistischer Anime | eigenständige erwachsene Anime-/Manga-Illustration, glaubwürdige Anatomie, ruhige Mimik, kontrollierte Schattierung, nicht Chibi oder Kawaii, keine bekannte Figur |
 | `vintage-retro` | Vintage / Retro 70er | im Vintage-Stil der 1970er, Sunset-Streifen, Halftone-Raster, leicht abgenutzte Kanten (Distressed Texture), warme Erdtöne |
 | `flat-vector` | Flat Vector | flache Vektorillustration, gleichmässig starke Konturen, keine Verläufe, klar getrennte Farbflächen |
 | `line-art` | Line Art | einfarbige Line-Art, durchgehend gleichbleibende Linienstärke, keine Füllflächen, viel Weissraum innerhalb der Silhouette |
 | `distressed-typo` | Distressed Typografie | kräftige Display-Typografie mit Grunge-Textur, angerauten Kanten und Rissen, gedeckte Farben |
-| `kawaii` | Kawaii / Cute | Kawaii-Stil, runde weiche Formen, grosse Augen, Pastellfarben, dünne dunkle Kontur |
+| `kawaii` | Kawaii / Cute (nur ausdrücklich) | Kawaii-Stil, runde weiche Formen, grosse Augen, Pastellfarben, dünne dunkle Kontur |
 | `y2k` | Y2K / Chrom | Y2K-Ästhetik, Chrom- und Metallic-Verlauf, Sterne und Blob-Formen, kräftige Kontrastfarben |
 | `tattoo-oldschool` | Old-School-Tattoo | Old-School-Tattoo-Stil, dicke schwarze Kontur, begrenzte Palette aus Rot, Schwarz und Beige, Schraffur als Schattierung |
 | `aquarell` | Aquarell | Aquarell-Illustration, weiche auslaufende Ränder, lasierende Farbschichten, sichtbare Papierstruktur nur im Motiv |

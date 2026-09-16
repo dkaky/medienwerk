@@ -76,6 +76,15 @@ def test_schaerfe_haengt_die_ausschluesse_an():
     assert "transparentem Hintergrund" in ergebnis
     assert "kein T-Shirt" in ergebnis
     assert "kein Mockup" in ergebnis
+    assert "Realistische, erwachsene Bildsprache" in ergebnis
+    assert "Keine Cartoon-" in ergebnis
+
+
+def test_anime_bekommt_erwachsene_anime_regeln_statt_chibi():
+    ergebnis = motivregeln.schaerfe("originale Anime-Kriegerin im Profil")
+    assert "Anime-/Manga-Illustration" in ergebnis
+    assert "glaubwuerdiger Anatomie" in ergebnis
+    assert "nicht chibi" in ergebnis
 
 
 def test_schaerfe_haengt_nicht_doppelt_an():

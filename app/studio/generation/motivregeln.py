@@ -65,11 +65,27 @@ _SPERREN: tuple[tuple[str, str], ...] = (
 #: Was dem Modell zusaetzlich gesagt wird. Ohne diese Zeile liefert es bereitwillig
 #: Produktfotos - erprobte Formulierung aus der POD-Praxis (Recherche 01.09.2026).
 ZUSATZ = (
-    "druckfertige flache Illustration, freigestellt auf vollstaendig "
-    "transparentem Hintergrund, klare Konturen, hoher Kontrast, zentriert. "
+    "druckfertige Print-Illustration, freigestellt auf vollstaendig "
+    "transparentem Hintergrund, klare Außenkontur, hoher Kontrast, zentriert, "
+    "ein Hauptmotiv und hoechstens ein kleines Nebenelement, grosszuegiger "
+    "Negativraum. "
     "KEIN Kleidungsstueck im Bild, kein T-Shirt, kein Hoodie, keine Tasse, "
     "kein Mockup, kein Model, kein Mensch, kein Stoff, kein Kleiderbuegel, "
-    "kein Produktfoto, kein Rahmen, kein Hintergrund, keine Schlagschatten."
+    "kein Produktfoto, kein Rahmen, keine Szenerie, kein dekoratives Beiwerk, "
+    "keine Schlagschatten."
+)
+
+REALISMUS_ZUSATZ = (
+    "Realistische, erwachsene Bildsprache mit natuerlichen Proportionen, "
+    "glaubwuerdigen Oberflaechen und kontrollierter Schattierung; hochwertig "
+    "wie eine moderne Editorial- oder Siebdruckillustration. Keine Cartoon-, "
+    "Clipart-, Kinderbuch-, Chibi- oder Kawaii-Optik."
+)
+
+ANIME_ZUSATZ = (
+    "Eigenstaendige erwachsene Anime-/Manga-Illustration mit glaubwuerdiger "
+    "Anatomie, ruhiger Mimik und kontrollierter Schattierung; nicht chibi, "
+    "nicht niedlich und keine bekannte Figur."
 )
 
 
@@ -150,8 +166,11 @@ def schaerfe(prompt: str) -> str:
     Neigung des Modells dazu.
     """
     roh = (prompt or "").strip()
+    stilzusatz = (ANIME_ZUSATZ if re.search(r"\b(?:anime|manga)\b", roh,
+                                           flags=re.IGNORECASE)
+                   else REALISMUS_ZUSATZ)
     if not roh:
-        return ZUSATZ
+        return f"{stilzusatz} {ZUSATZ}"
     # Auf den Zusatz OHNE Schlusspunkt pruefen und den Text UNVERAENDERT
     # zurueckgeben. Beides gehoert zusammen: verglichen wird mit dem gekuerzten
     # Zusatz, weil das rstrip() unten den Punkt abschneiden wuerde - und
@@ -159,4 +178,4 @@ def schaerfe(prompt: str) -> str:
     # jedem Durchlauf seinen Schlusspunkt verliert.
     if ZUSATZ.rstrip(".") in roh:
         return roh
-    return f"{roh.rstrip('.,; ')}. {ZUSATZ}"
+    return f"{roh.rstrip('.,; ')}. {stilzusatz} {ZUSATZ}"

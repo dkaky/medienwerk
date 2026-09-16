@@ -49,6 +49,15 @@ PLATTFORM = "trend"
 SHOP = "websuche"
 KOSTEN_JE_LAUF_USD = 0.05
 _MARKDOWN_QUELLE = re.compile(r"\s*\(?\[[^\]]+\]\((https?://[^)\s]+)\)\)?")
+KATEGORIEN = {
+    "mix": "Ausgewogener Mix",
+    "sport": "Sport",
+    "zeichen": "Japanische / chinesische Zeichen",
+    "anime": "Anime",
+    "gothic": "Goth / Gothic",
+    "astronomie": "Astronomie",
+    "sonntag": "Deutsche Sonntagssprueche",
+}
 
 
 class TrendFehler(RuntimeError):
@@ -58,6 +67,7 @@ class TrendFehler(RuntimeError):
 @dataclass
 class Trend:
     thema: str
+    kategorie: str = "mix"
     warum: str = ""
     zeitraum: str = ""
     zielgruppe: str = ""
@@ -74,7 +84,51 @@ class Trend:
     quellen: list[str] = field(default_factory=list)
 
 
-def anweisung(anzahl: int, heute: date) -> str:
+def _kategorie_auftrag(kategorie: str, anzahl: int) -> str:
+    auftraege = {
+        "sport": """SPORT: Recherchiere aktuelle Fan- und Nachfrageimpulse im europaeischen
+Fussball ueber die fuehrenden Clubs ALLER relevanten nationalen Ligen hinweg (nicht nur
+Deutschland, England, Spanien, Italien und Frankreich, sondern auch u.a. Niederlande,
+Portugal, Belgien, Tuerkei, Schottland, Oesterreich und Schweiz) sowie UEFA-Wettbewerbe.
+Ergaenze andere Sportarten wie Basketball, Handball, Eishockey, Motorsport, Tennis,
+Radsport, Laufen, Boxen, Darts und American Football. Club-, Liga- und Spielernamen dienen
+NUR intern als Nachfragesignal: In der Ausgabe niemals Namen, Logos, Wappen, Trikots,
+Stadionmerkmale, Maskottchen, Fan-Gesänge oder typische geschuetzte Farb-/Formkombinationen
+nennen oder nachahmen. Entwickle neutrale, eigenstaendige Motive zu Sportidentitaet,
+Positionen, Ausruestung, Ritualen und Emotionen. Verteile die Empfehlungen ueber mehrere
+Laender und mindestens zwei Sportarten; rotiere statt immer dieselben Maerkte zu waehlen.""",
+        "zeichen": """JAPANISCHE / CHINESISCHE ZEICHEN: Nutze pro Entwurf genau ein echtes,
+sprachlich geprueftes Kanji/Hanzi oder einen etablierten Ausdruck aus hoechstens zwei
+Zeichen. Nenne Sprache, deutsche Bedeutung und Lesung im Verkaufswinkel. Keine erfundenen
+Pseudozeichen, keine fremden Marken und kein kultureller Mischmasch. Das Zeichen ist der
+Hauptfokus; hoechstens ein kleiner ruhiger Pinsel- oder Siegeleindruck als Nebenelement.""",
+        "anime": """ANIME: Ausschliesslich neu erfundene erwachsene Figuren ohne Bezug zu
+bekannten Serien, Studios oder Charakteren. Eine Figur, glaubwuerdige Anatomie, ruhige
+ausdrucksstarke Pose, hochwertiges realistisches Manga-/Anime-Rendering; niemals Chibi,
+Kawaii, kindliche Proportionen, Action-Collage oder ueberladene Effekte.""",
+        "gothic": """GOTH / GOTHIC: Erwachsene, elegante dunkle Aesthetik mit einem klaren
+Hauptsymbol, etwa anatomisch glaubwuerdiger Rabe, Motte, Rose, Kathedralbogen oder
+Mondsichel. Realistische Texturen und kontrollierte Schattierung, kein Comic-Horror, kein
+Splatter und keine Collage aus Totenkopf, Rosen, Ketten und Ornamenten zugleich.""",
+        "astronomie": """ASTRONOMIE: Recherchiere aktuelle Himmelsereignisse und immergruene
+Nischen. Ein glaubwuerdig dargestelltes Hauptobjekt wie Mond, Planet, Sternbild oder
+Teleskopdetail; hoechstens ein Nebenelement. Keine vollgepackte Weltraumszene, kein
+beliebiges Sci-Fi-Poster und keine wissenschaftlich falschen Beschriftungen.""",
+        "sonntag": """DEUTSCHE SONNTAGSSPRUECHE: Kurze, neu formulierte deutsche Sprueche
+mit hoechstens vier Woertern ueber Ruhe, Kaffee, Ausschlafen, Familie oder gemuetlichen
+Sonntag. Der Spruch ist der Fokus und muss grammatisch korrekt sein; hoechstens ein kleines
+realistisch gezeichnetes Symbol. Keine Zitate, Songtexte, Kalenderfloskeln oder Dialekte,
+deren Schreibweise nicht sicher belegt ist.""",
+    }
+    if kategorie == "mix":
+        verteilung = ("Bei sechs Empfehlungen liefere genau je eine aus Sport, Zeichen, "
+                       "Anime, Gothic, Astronomie und Sonntag; bei anderer Anzahl verteile "
+                       "moeglichst gleichmaessig und rotiere die ausgelassenen Kategorien.")
+        return verteilung + "\n\n" + "\n\n".join(auftraege.values())
+    return auftraege[kategorie]
+
+
+def anweisung(anzahl: int, heute: date, kategorie: str = "mix") -> str:
     return f"""Heute ist der {heute:%d.%m.%Y}. Du recherchierst fuer einen deutschen Shop, der
 eigene Motive auf T-Shirts, Hoodies, Poloshirts und Tassen druckt und bei eBay verkauft.
 
@@ -88,7 +142,7 @@ Bewerte jeden Kandidaten nach diesen Kriterien:
 2. ein aktueller, saisonaler oder plausibler immergruener Nachfragegrund,
 3. ein eigenstaendiger Winkel statt eines austauschbaren Standardspruchs,
 4. ein Motiv, das in einer kleinen eBay-Vorschau sofort lesbar ist,
-5. technisch sinnvoller Textildruck: ein Fokus, klare Silhouette, 3-5 Farben,
+5. technisch sinnvoller Textildruck: ein Fokus, klare Silhouette, 2-4 Farben,
 6. geringe Rechte- und Kurzlebigkeitsrisiken.
 
 Stelle eine ausgewogene Auswahl zusammen: bei sechs Empfehlungen ungefaehr drei
@@ -97,24 +151,35 @@ eine Empfehlung je Nische. Ein Kalendertag allein ist noch kein guter Vorschlag.
 einen spezifischen Identitaets-, Geschenk- oder Insiderwinkel, fuer den jemand das Motiv
 wirklich tragen oder verschenken moechte.
 
+Gewaehlte Kategorie: {KATEGORIEN[kategorie]}
+{_kategorie_auftrag(kategorie, anzahl)}
+
 Harte Regeln:
 - KEINE Marken, Firmen, Vereine, Sportclubs, Serien, Filme, Spieletitel, Figuren,
   Promis, Logos, Songtexte oder geschuetzte Sprueche - auch nicht angedeutet.
 - Keine Nachbildung bestehender Designs. Jede Bildidee ist neu erfunden.
-- Keine generische Landschaft und keine beliebige Ansammlung vieler Details. Jede
-  Bildidee hat einen starken Hauptfokus, hoechstens zwei Nebenelemente, klare Konturen,
-  3-5 Farben und eine geschlossene, freigestellte Silhouette.
-- Keine fotorealistische oder impressionistische Szene. Waehle eine reproduzierbare
-  Illustrationssprache, die auch in einer kleinen Produktvorschau funktioniert.
+- Keine generische Landschaft und keine Ansammlung vieler Details. Genau ein Hauptmotiv,
+  hoechstens ein kleines Nebenelement, 2-4 Farben, klare Außenkontur, viel Negativraum und
+  eine geschlossene freigestellte Silhouette. Kein Hintergrund und keine Szenerie.
+- Ausser in der Kategorie Anime: realistische erwachsene Bildsprache, natuerliche
+  Proportionen, glaubwuerdige Materialien und kontrollierte Schattierung wie eine moderne
+  Editorial- oder Siebdruckillustration. Keine Cartoon-, Clipart-, Kinderbuch-, Chibi- oder
+  Kawaii-Optik. Anime bleibt eigenstaendig, erwachsen, anatomisch glaubwuerdig und reduziert.
 - Kein Kleidungsstueck, keine Tasse, kein Mockup und kein Mensch, der Ware traegt, im Bild.
-- Sprueche sind optional, kurz, auf Deutsch und neu formuliert. Wenn Bild und Zielgruppe
+- Sprueche sind optional, hoechstens vier Woerter, auf Deutsch und neu formuliert. Wenn Bild und Zielgruppe
   ohne Text staerker funktionieren, bleibt der Spruch leer.
 - Eine einzelne Produktanzeige ist kein ausreichender Nachfragebeleg. Nutze nach
   Moeglichkeit mehrere aktuelle, voneinander unabhaengige Quellen.
+- Wenn eine Empfehlung auf einem aktuellen Termin, Wettbewerb oder Trend beruht, muss
+  quellen mindestens eine direkte vollstaendige https-URL zum konkreten Beleg enthalten.
+  Reine zeitlose Stil- und Identitaetsideen duerfen ohne kuenstlich erzwungene Quelle auskommen.
 - Behaupte keine Verkaufszahlen oder Suchvolumina, die eine Quelle nicht wirklich nennt.
 
 Sortiere die finale Auswahl nach begruendeter Verkaufschance. Platz 1 muss der insgesamt
-staerkste, nicht einfach der lauteste oder aktuellste Vorschlag sein."""
+staerkste, nicht einfach der lauteste oder aktuellste Vorschlag sein. Schreibe knapp:
+Motiv 18-45 Woerter, Begruendung hoechstens 22 Woerter, alle anderen Textfelder hoechstens
+18 Woerter. Jede Ausgabe traegt als kategorie exakt eine dieser IDs:
+sport, zeichen, anime, gothic, astronomie, sonntag."""
 
 
 def antwort_format(anzahl: int) -> dict:
@@ -134,14 +199,15 @@ def antwort_format(anzahl: int) -> dict:
                         "type": "object", "additionalProperties": False,
                         "properties": {
                             "thema": {**text, "description": "Praegnanter eigener Konzeptname, 2-5 Woerter"},
+                            "kategorie": {**text, "enum": ["sport", "zeichen", "anime", "gothic", "astronomie", "sonntag"]},
                             "warum": {**text, "description": "Konkretes Nachfragesignal mit Anlass oder Beleg, keine Floskel"},
                             "zeitraum": {**text, "description": "Sinnvolles Verkaufsfenster oder immergruen"},
                             "zielgruppe": {**text, "description": "Spezifische Personengruppe, niemals nur Erwachsene"},
                             "kaufmoment": {**text, "description": "Wer kauft es wann fuer wen und warum"},
                             "verkaufswinkel": {**text, "description": "Was die Idee von gaengigen Standardmotiven unterscheidet"},
-                            "motiv": {**text, "description": "Konkreter druckbarer Bildaufbau mit Fokus, 50-110 Woerter"},
-                            "stil": {**text, "description": "Klare reproduzierbare Illustrationssprache"},
-                            "farben": {"type": "array", "minItems": 3, "maxItems": 5,
+                            "motiv": {**text, "description": "Reduzierter druckbarer Bildaufbau, genau ein Fokus, 18-45 Woerter"},
+                            "stil": {**text, "description": "Realistische erwachsene Print-Illustration; bei Anime glaubwuerdiges erwachsenes Anime-Rendering"},
+                            "farben": {"type": "array", "minItems": 2, "maxItems": 4,
                                        "items": {"type": "string"}},
                             "spruch": {**text, "description": "Optionaler neuer deutscher Kurzspruch oder leer"},
                             "produkt": {**text, "description": "Staerkstes Hauptprodukt plus optionales Zweitprodukt"},
@@ -152,7 +218,7 @@ def antwort_format(anzahl: int) -> dict:
                             "quellen": {"type": "array", "minItems": 1, "maxItems": 4,
                                         "items": {"type": "string"}},
                         },
-                        "required": ["thema", "warum", "zeitraum", "zielgruppe",
+                        "required": ["thema", "kategorie", "warum", "zeitraum", "zielgruppe",
                                      "kaufmoment", "verkaufswinkel", "motiv", "stil",
                                      "farben", "spruch", "produkt", "druckhinweis",
                                      "risiko", "suchbegriffe", "quellen"],
@@ -242,6 +308,9 @@ def aus_eintrag(d: dict) -> Trend:
     direkte_quellen.extend(quellen_aus_text(warum_roh))
     return Trend(
         thema=str(d.get("thema") or "").strip()[:120],
+        kategorie=(str(d.get("kategorie") or "mix").strip().lower()
+                   if str(d.get("kategorie") or "mix").strip().lower() in KATEGORIEN
+                   else "mix"),
         warum=ohne_quellen_markup(warum_roh),
         zeitraum=str(d.get("zeitraum") or "").strip(),
         zielgruppe=str(d.get("zielgruppe") or "").strip(),
@@ -279,20 +348,22 @@ def schutzgrund(t: Trend, filter_check: Callable[[str], Any]) -> str | None:
     return None
 
 
-def qualitaetsgrund(t: Trend) -> str | None:
+def qualitaetsgrund(t: Trend, erwartete_kategorie: str = "mix") -> str | None:
     """Unvollstaendige oder austauschbare Antworten werden nicht empfohlen."""
+    if erwartete_kategorie != "mix" and t.kategorie != erwartete_kategorie:
+        return f"falsche Kategorie {t.kategorie} statt {erwartete_kategorie}"
     ziel = t.zielgruppe.strip().lower().rstrip(".")
     if ziel in {"erwachsene", "maenner", "männer", "frauen", "alle", "familien"}:
         return "Zielgruppe ist zu allgemein"
     if len(t.zielgruppe.split()) < 3:
         return "Zielgruppe ist nicht konkret genug"
-    if len(t.kaufmoment.split()) < 7:
+    if len(t.kaufmoment.split()) < 5:
         return "kein konkreter Kauf- oder Geschenkmoment"
-    if len(t.verkaufswinkel.split()) < 7:
+    if len(t.verkaufswinkel.split()) < 5:
         return "kein nachvollziehbarer eigener Verkaufswinkel"
     motivwoerter = len(t.motiv.split())
-    if not 20 <= motivwoerter <= 125:
-        return f"Bildidee ist mit {motivwoerter} Woertern nicht ausreichend ausgearbeitet"
+    if not 12 <= motivwoerter <= 70:
+        return f"Bildidee ist mit {motivwoerter} Woertern nicht klar und kompakt genug"
     # Die Empfehlung ist auf mehrere bewusst getrennte Felder verteilt. Ein
     # knapper, klarer Bildaufbau darf deshalb nicht durchfallen, wenn Kaufmoment,
     # Differenzierung und Druckentscheidung zusammen wirklich durchdacht sind.
@@ -300,17 +371,26 @@ def qualitaetsgrund(t: Trend) -> str | None:
         t.warum, t.zielgruppe, t.kaufmoment, t.verkaufswinkel, t.motiv,
         t.stil, t.druckhinweis, t.risiko,
     ]).split())
-    if gesamttiefe < 65:
+    if gesamttiefe < 40:
         return "Empfehlung ist insgesamt nicht tief genug begruendet"
-    if any(w in t.stil.lower() for w in ("fotoreal", "fotograf", "impressionis")):
-        return "Stil ist fuer ein klar lesbares POD-Motiv ungeeignet"
-    if len(t.farben) < 3:
+    stil_klein = t.stil.lower()
+    realistisch = any(w in stil_klein for w in (
+        "realistisch", "naturalistisch", "glaubwuerdig", "editorial", "siebdruck"
+    ))
+    if t.kategorie != "anime" and not realistisch and any(w in stil_klein for w in (
+            "cartoon", "comic", "chibi", "kawaii", "kinderbuch", "animiert")):
+        return "Stil wirkt zu animiert statt realistisch"
+    if len(t.farben) < 2:
         return "Farbkonzept ist unvollstaendig"
     if len(t.suchbegriffe) < 3:
         return "zu wenige konkrete Kaeufer-Suchbegriffe"
-    if not t.quellen:
+    aktuell = not any(w in (t.zeitraum or "").lower() for w in (
+        "immergr", "zeitlos", "ganzj", "dauerhaft"
+    ))
+    if not t.quellen and aktuell and t.kategorie in {"sport", "astronomie"}:
         return "kein pruefbarer Quellenbeleg"
-    if all("ebay." in q.lower() and "/itm/" in q.lower() for q in t.quellen):
+    if t.quellen and all("ebay." in q.lower() and "/itm/" in q.lower()
+                          for q in t.quellen):
         return "nur einzelne Produktanzeigen statt eines Nachfragebelegs"
     if len(t.druckhinweis.split()) < 5:
         return "Druckumsetzung ist nicht durchdacht"
@@ -321,7 +401,10 @@ def qualitaetsgrund(t: Trend) -> str | None:
 
 def prompt_aus(t: Trend) -> str:
     """Die Bildanweisung, die beim Klick auf 'Erzeugen' an das Bildmodell geht."""
-    teile = [f"Eigenstaendige, detailreiche Illustration. Bildinhalt: {t.motiv.rstrip(' .')}"]
+    grundstil = ("Eigenstaendige, reduzierte erwachsene Anime-Illustration mit "
+                 "glaubwuerdiger Anatomie" if t.kategorie == "anime" else
+                 "Eigenstaendige, reduzierte realistische Print-Illustration")
+    teile = [f"{grundstil}. Bildinhalt: {t.motiv.rstrip(' .')}"]
     if t.stil:
         teile.append(f"Machart: {t.stil.rstrip(' .')}")
     if t.farben:
@@ -334,6 +417,7 @@ def prompt_aus(t: Trend) -> str:
 
 
 async def recherchiere(*, api_key: str, modell: str, anzahl: int, heute: date,
+                       kategorie: str = "mix",
                        client: Any = None) -> tuple[list[Trend], list[str]]:
     """Websuche ausfuehren. Gibt Vorschlaege und die zitierten Quellen zurueck."""
     eigener = client is None
@@ -350,7 +434,7 @@ async def recherchiere(*, api_key: str, modell: str, anzahl: int, heute: date,
             model=modell,
             tools=[{"type": "web_search", "search_context_size": "high",
                     "user_location": {"type": "approximate", "country": "DE"}}],
-            input=anweisung(anzahl, heute),
+            input=anweisung(anzahl, heute, kategorie),
             text={"format": antwort_format(anzahl)},
             include=["web_search_call.action.sources"],
             store=False,
@@ -409,11 +493,12 @@ def _schutzfilter_check(text: str) -> Any:
 
 
 def speichere(db, trends: list[Trend], *, belege: list[str], angebote: dict[str, int | None],
-              filter_check: Callable[[str], Any], heute: date) -> dict:
+              filter_check: Callable[[str], Any], heute: date,
+              erwartete_kategorie: str = "mix") -> dict:
     neu = aufgefrischt = 0
     abgelehnt: list[dict] = []
     for rang, t in enumerate(trends, start=1):
-        grund = qualitaetsgrund(t)
+        grund = qualitaetsgrund(t, erwartete_kategorie)
         if grund:
             grund = f"Qualitaet: {grund}"
         else:
@@ -427,7 +512,7 @@ def speichere(db, trends: list[Trend], *, belege: list[str], angebote: dict[str,
             abgelehnt.append({"thema": t.thema, "grund": grund})
             continue
 
-        fid = schluessel(t.thema)
+        fid = schluessel(f"{t.kategorie}-{t.thema}")
         idee = db.execute(select(MotivIdee).where(MotivIdee.quelle_plattform == PLATTFORM,
                                                   MotivIdee.fremd_id == fid)).scalars().first()
         if idee is None:
@@ -442,7 +527,8 @@ def speichere(db, trends: list[Trend], *, belege: list[str], angebote: dict[str,
         idee.thema = t.thema[:255]
         idee.stichworte = json.dumps(t.suchbegriffe, ensure_ascii=False)
         idee.beschreibung = json.dumps({
-            "motiv": t.motiv, "stil": t.stil, "farben": t.farben, "effekte": [],
+            "kategorie": t.kategorie, "motiv": t.motiv, "stil": t.stil,
+            "farben": t.farben, "effekte": [],
             "ware_farbe": None, "warum": t.warum, "zeitraum": t.zeitraum,
             "zielgruppe": t.zielgruppe, "kaufmoment": t.kaufmoment,
             "verkaufswinkel": t.verkaufswinkel, "spruch": t.spruch,
@@ -464,6 +550,7 @@ def speichere(db, trends: list[Trend], *, belege: list[str], angebote: dict[str,
 
 
 async def lauf(db, *, s: Any, anzahl: int | None = None, client: Any = None,
+               kategorie: str = "mix",
                zaehle_angebote: Callable[[str], Awaitable[int | None]] | None = None,
                filter_check: Callable[[str], Any] | None = None,
                heute: date | None = None, kostenbremse: bool = True) -> dict:
@@ -472,10 +559,13 @@ async def lauf(db, *, s: Any, anzahl: int | None = None, client: Any = None,
 
     heute = heute or date.today()
     anzahl = max(3, min(int(anzahl or s.trend_anzahl), 20))
+    if kategorie not in KATEGORIEN:
+        raise TrendFehler(f"Unbekannte Kategorie: {kategorie}")
     if kostenbremse:
         kosten.pruefe(db, KOSTEN_JE_LAUF_USD)
     trends, belege = await recherchiere(api_key=s.openai_api_key, modell=s.trend_modell,
-                                        anzahl=anzahl, heute=heute, client=client)
+                                        anzahl=anzahl, heute=heute,
+                                        kategorie=kategorie, client=client)
     if kostenbremse:
         kosten.verbuche(db, provider="openai-websuche", kosten_usd=KOSTEN_JE_LAUF_USD)
 
@@ -491,14 +581,15 @@ async def lauf(db, *, s: Any, anzahl: int | None = None, client: Any = None,
     try:
         if zaehle_angebote is not None:
             for t in trends:
-                angebote[schluessel(t.thema)] = await zaehle_angebote(
+                angebote[schluessel(f"{t.kategorie}-{t.thema}")] = await zaehle_angebote(
                     t.suchbegriffe[0] if t.suchbegriffe else t.thema)
     finally:
         if ebay is not None and ebay._client is not None:
             await ebay._client.aclose()
 
     bericht = speichere(db, trends, belege=belege, angebote=angebote,
-                        filter_check=filter_check or _schutzfilter_check, heute=heute)
+                        filter_check=filter_check or _schutzfilter_check, heute=heute,
+                        erwartete_kategorie=kategorie)
     bericht["kosten_usd"] = KOSTEN_JE_LAUF_USD if kostenbremse else 0.0
     logger.info("trend-radar fertig", extra={k: bericht[k] for k in ("neu", "aufgefrischt")})
     return bericht

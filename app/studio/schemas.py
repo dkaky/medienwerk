@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -207,6 +207,9 @@ class TrendLaufIn(BaseModel):
     """Trends im Netz suchen. Es entsteht kein Bild."""
 
     anzahl: int = Field(default=12, ge=3, le=20)
+    kategorie: Literal[
+        "mix", "sport", "zeichen", "anime", "gothic", "astronomie", "sonntag"
+    ] = "mix"
 
 
 class RadarErzeugenIn(BaseModel):

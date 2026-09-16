@@ -235,16 +235,15 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
                WAS zu sehen ist und WIE es aussehen soll. In einem Feld
                vermischt sich beides - "Dackel im Comicstil" laesst offen, ob
                der Comic zum Motiv oder zur Machart gehoert. -->
-          <label>Stil (optional)</label>
+          <label>Stil</label>
           <input id="f-stil" list="stil-vorschlaege" maxlength="200"
-                 placeholder="realistisch, Comic, Retro-Linien …">
+                 value="realistische Print-Illustration, natürliche Proportionen, glaubwürdige Oberflächen">
           <datalist id="stil-vorschlaege">
-            <option value="realistisch, fotografisch">
-            <option value="Comic, kräftige Konturen">
-            <option value="animiert, weiche Formen">
+            <option value="realistische Print-Illustration, natürliche Proportionen, glaubwürdige Oberflächen">
+            <option value="erwachsener realistischer Anime, glaubwürdige Anatomie, nicht Chibi">
             <option value="Retro-Linien, zwei Farben">
             <option value="Vintage, verwaschene Farben">
-            <option value="minimalistisch, flache Flächen">
+            <option value="minimalistisch, realistische Materialtextur">
             <option value="Aquarell, weiche Verläufe">
             <option value="Scherenschnitt, einfarbig">
           </datalist>
@@ -299,12 +298,25 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 
     <div class="panel">
       <h3>Design-Empfehlungen</h3>
-      <p class="muted">Bis zu sechs kuratierte Ideen statt einer langen Zufallsliste. Jede Empfehlung
-        wird auf Käufer, Kaufmoment, Eigenständigkeit, Quellenlage und Drucktauglichkeit
-        geprüft. <b>Ein Bild entsteht erst</b>, wenn du bewusst auf „Motiv erzeugen“ drückst.</p>
+      <p class="muted">Sechs kurze, recherchierte Ideen mit realistischem, reduziertem Bildaufbau.
+        Beim Sport werden europäische Top-Clubs und weitere Sportarten als Nachfrage-Signal
+        ausgewertet, aber keine geschützten Clubmerkmale kopiert. <b>Ein Bild entsteht erst</b>
+        mit „Motiv erzeugen“.</p>
       <div class="zeile">
+        <div class="feld">
+          <label for="t-kategorie">Kategorie</label>
+          <select id="t-kategorie">
+            <option value="mix">Mix aus allen Kategorien</option>
+            <option value="sport">Sport</option>
+            <option value="zeichen">Japanische / chinesische Zeichen</option>
+            <option value="anime">Anime</option>
+            <option value="gothic">Goth / Gothic</option>
+            <option value="astronomie">Astronomie</option>
+            <option value="sonntag">Deutsche Sonntagssprüche</option>
+          </select>
+        </div>
         <button class="btn" id="b-trends">Neue Empfehlungen ausarbeiten</button>
-        <span class="muted">Dauert etwa 2–4 Minuten · enthält aktuelle und immergrüne Ideen</span>
+        <span class="muted">Dauert etwa 2–4 Minuten · recherchiert die gewählte Kategorie</span>
       </div>
       <div id="t-liste"><p class="muted">Noch keine Empfehlungen ausgearbeitet.</p></div>
     </div>
@@ -1400,6 +1412,11 @@ function radarZeile(idee) {
 
 // ---------- Design-Empfehlungen ----------
 // Text aus der Websuche — kein Bild. Erst „Motiv erzeugen“ kostet ein Bild.
+const trendKategorien = {
+  mix: 'Mix', sport: 'Sport', zeichen: 'Japanisch / Chinesisch', anime: 'Anime',
+  gothic: 'Gothic', astronomie: 'Astronomie', sonntag: 'Sonntagsspruch',
+};
+
 function trendZeile(label, text) {
   const z = el('div');
   z.style.cssText = 'font-size:13px;margin-top:6px';
@@ -1414,26 +1431,31 @@ function trendKarte(idee) {
   const kopf = el('div');
   kopf.style.cssText = 'display:flex;gap:10px;align-items:baseline;flex-wrap:wrap';
   kopf.append(el('span', 'badge', `Empfehlung #${idee.platz ?? '?'}`),
+              el('span', 'badge', trendKategorien[d.kategorie] || 'Mix'),
               el('b', null, idee.thema || ''));
   if (d.zeitraum) kopf.append(el('span', 'muted', d.zeitraum));
   karte.append(kopf);
-  if (d.warum) karte.append(trendZeile('Warum empfohlen: ', d.warum));
-  if (d.zielgruppe) karte.append(trendZeile('Zielgruppe: ', d.zielgruppe));
-  if (d.kaufmoment) karte.append(trendZeile('Kaufmoment: ', d.kaufmoment));
-  if (d.verkaufswinkel) karte.append(trendZeile('Eigenständiger Winkel: ', d.verkaufswinkel));
-  if (d.motiv) karte.append(trendZeile('Designaufbau: ', d.motiv));
-  if (d.stil) karte.append(trendZeile('Stil: ', d.stil));
+  if (d.motiv) karte.append(trendZeile('Idee: ', d.motiv));
   if (d.spruch) karte.append(trendZeile('Spruch: ', `„${d.spruch}“`));
-  if (d.produkt) karte.append(trendZeile('Am besten für: ', d.produkt));
-  if (d.druckhinweis) karte.append(trendZeile('Druckumsetzung: ', d.druckhinweis));
-  if (d.risiko) karte.append(trendZeile('Vorher beachten: ', d.risiko));
+  if (d.zielgruppe) karte.append(trendZeile('Für: ', d.zielgruppe));
+  if (d.warum) karte.append(trendZeile('Warum jetzt: ', d.warum));
+
+  const details = el('details');
+  details.style.marginTop = '9px';
+  details.append(el('summary', 'muted', 'Recherche & Umsetzung anzeigen'));
+  if (d.kaufmoment) details.append(trendZeile('Kaufmoment: ', d.kaufmoment));
+  if (d.verkaufswinkel) details.append(trendZeile('Eigenständiger Winkel: ', d.verkaufswinkel));
+  if (d.stil) details.append(trendZeile('Stil: ', d.stil));
+  if (d.produkt) details.append(trendZeile('Am besten für: ', d.produkt));
+  if (d.druckhinweis) details.append(trendZeile('Druckumsetzung: ', d.druckhinweis));
+  if (d.risiko) details.append(trendZeile('Vorher beachten: ', d.risiko));
   const markt = el('div', 'muted');
   markt.style.cssText = 'font-size:12px;margin-top:6px';
   const teile = [];
   if ((idee.stichworte || []).length) teile.push('Suchbegriffe: ' + idee.stichworte.join(', '));
   if (d.ebay_angebote != null) teile.push(`eBay: ${d.ebay_angebote} Angebote zu „${d.ebay_suchbegriff}“ (Konkurrenz, keine Verkaufszahl)`);
   markt.textContent = teile.join(' · ');
-  karte.append(markt);
+  if (teile.length) details.append(markt);
   const quellen = (d.quellen || []).slice(0, 3);
   if (quellen.length) {
     const q = el('div', 'muted');
@@ -1444,11 +1466,12 @@ function trendKarte(idee) {
       a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer nofollow';
       q.append(a, el('span', null, ' '));
     });
-    karte.append(q);
+    details.append(q);
   }
+  karte.append(details);
   const knoepfe = el('div', 'wahl');
   knoepfe.style.marginTop = '10px';
-  for (const [text, tat] of [['Erzeugen', 'erzeugen'], ['Verwerfen', 'verworfen']]) {
+  for (const [text, tat] of [['Motiv erzeugen', 'erzeugen'], ['Verwerfen', 'verworfen']]) {
     const b = el('button', null, text);
     b.type = 'button'; b.dataset.radar = tat; b.dataset.id = String(idee.id);
     knoepfe.append(b);
@@ -1459,10 +1482,14 @@ function trendKarte(idee) {
 
 async function ladeTrends() {
   const ziel = $('t-liste');
-  const daten = await hole('/api/v1/studio/radar/ideen?limit=50&status=neu&quelle=trend');
+  const alle = await hole('/api/v1/studio/radar/ideen?limit=50&status=neu&quelle=trend');
+  const kategorie = $('t-kategorie').value;
+  const daten = kategorie === 'mix'
+    ? alle
+    : alle.filter(idee => (idee.beschreibung || {}).kategorie === kategorie);
   ziel.textContent = '';
   if (!daten.length) {
-    ziel.append(el('p', 'muted', 'Keine offenen Empfehlungen — „Neue Empfehlungen ausarbeiten“ drücken.'));
+    ziel.append(el('p', 'muted', `Keine offenen Empfehlungen in „${trendKategorien[kategorie]}“ — neue Empfehlungen ausarbeiten.`));
     return;
   }
   for (const idee of daten) ziel.append(trendKarte(idee));
@@ -1475,7 +1502,7 @@ $('b-trends').onclick = async () => {
   try {
     const b = await hole('/api/v1/studio/radar/trends', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ anzahl: 6 }),
+      body: JSON.stringify({ anzahl: 6, kategorie: $('t-kategorie').value }),
     });
     melde(`${b.neu} neue Vorschläge · ${b.aufgefrischt} aufgefrischt · ` +
           `${b.abgelehnt.length} durch Qualitäts-/Rechteprüfung aussortiert · kein Bild erzeugt`);
@@ -1488,6 +1515,8 @@ $('b-trends').onclick = async () => {
     knopf.textContent = 'Neue Empfehlungen ausarbeiten';
   }
 };
+
+$('t-kategorie').onchange = () => ladeTrends().catch(zeigeFehler);
 
 async function ladeRadar() {
   ladeTrends().catch(zeigeFehler);
