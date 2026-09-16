@@ -51,7 +51,7 @@ KOSTEN_JE_LAUF_USD = 0.05
 _MARKDOWN_QUELLE = re.compile(r"\s*\(?\[[^\]]+\]\((https?://[^)\s]+)\)\)?")
 KATEGORIEN = {
     "mix": "Ausgewogener Mix",
-    "sport": "Sport",
+    "fussball": "Fußball",
     "zeichen": "Japanische / chinesische Zeichen",
     "anime": "Anime",
     "gothic": "Goth / Gothic",
@@ -86,17 +86,17 @@ class Trend:
 
 def _kategorie_auftrag(kategorie: str, anzahl: int) -> str:
     auftraege = {
-        "sport": """SPORT: Recherchiere aktuelle Fan- und Nachfrageimpulse im europaeischen
-Fussball ueber die fuehrenden Clubs ALLER relevanten nationalen Ligen hinweg (nicht nur
-Deutschland, England, Spanien, Italien und Frankreich, sondern auch u.a. Niederlande,
-Portugal, Belgien, Tuerkei, Schottland, Oesterreich und Schweiz) sowie UEFA-Wettbewerbe.
-Ergaenze andere Sportarten wie Basketball, Handball, Eishockey, Motorsport, Tennis,
-Radsport, Laufen, Boxen, Darts und American Football. Club-, Liga- und Spielernamen dienen
-NUR intern als Nachfragesignal: In der Ausgabe niemals Namen, Logos, Wappen, Trikots,
-Stadionmerkmale, Maskottchen, Fan-Gesänge oder typische geschuetzte Farb-/Formkombinationen
-nennen oder nachahmen. Entwickle neutrale, eigenstaendige Motive zu Sportidentitaet,
-Positionen, Ausruestung, Ritualen und Emotionen. Verteile die Empfehlungen ueber mehrere
-Laender und mindestens zwei Sportarten; rotiere statt immer dieselben Maerkte zu waehlen.""",
+        "fussball": """FUSSBALL: Recherchiere aktuelle Fan- und Nachfrageimpulse im
+europaeischen Fussball (Deutschland, England, Spanien, Italien, Frankreich, Tuerkei und
+weitere Laender) sowie bei grossen Turnieren. Nur Fussball, keine anderen Sportarten.
+Vereins-, Liga-, Verbands- und Spielernamen dienen NUR intern als Nachfragesignal: In der
+Ausgabe niemals Namen, Logos, Wappen, Trikots, Stadionnamen, Maskottchen, Fan-Gesaenge,
+Vereinssprueche, Ligennamen oder typische Vereinsfarben-Kombinationen nennen oder
+nachahmen. Entwickle sehr minimalistische, eigenstaendige Motive zu Fussballkultur,
+Positionen, Spielzeit, Taktik, Ritualen und Emotionen; ein Hauptelement, viel Freiraum.
+Ab und zu ein neu formulierter kurzer Spruch, der allen Fans gehoert. Fussballkultur
+einzelner Laender darf ueber allgemeine Begriffe und Sprache anklingen (z. B. Catenaccio,
+Tiki-Taka, Petit Pont), nie ueber Vereine.""",
         "zeichen": """JAPANISCHE / CHINESISCHE ZEICHEN: Nutze pro Entwurf genau ein echtes,
 sprachlich geprueftes Kanji/Hanzi oder einen etablierten Ausdruck aus hoechstens zwei
 Zeichen. Nenne Sprache, deutsche Bedeutung und Lesung im Verkaufswinkel. Keine erfundenen
@@ -121,7 +121,7 @@ realistisch gezeichnetes Symbol. Keine Zitate, Songtexte, Kalenderfloskeln oder 
 deren Schreibweise nicht sicher belegt ist.""",
     }
     if kategorie == "mix":
-        verteilung = ("Bei sechs Empfehlungen liefere genau je eine aus Sport, Zeichen, "
+        verteilung = ("Bei sechs Empfehlungen liefere genau je eine aus Fußball, Zeichen, "
                        "Anime, Gothic, Astronomie und Sonntag; bei anderer Anzahl verteile "
                        "moeglichst gleichmaessig und rotiere die ausgelassenen Kategorien.")
         return verteilung + "\n\n" + "\n\n".join(auftraege.values())
@@ -179,7 +179,7 @@ Sortiere die finale Auswahl nach begruendeter Verkaufschance. Platz 1 muss der i
 staerkste, nicht einfach der lauteste oder aktuellste Vorschlag sein. Schreibe knapp:
 Motiv 18-45 Woerter, Begruendung hoechstens 22 Woerter, alle anderen Textfelder hoechstens
 18 Woerter. Jede Ausgabe traegt als kategorie exakt eine dieser IDs:
-sport, zeichen, anime, gothic, astronomie, sonntag."""
+fussball, zeichen, anime, gothic, astronomie, sonntag."""
 
 
 def antwort_format(anzahl: int) -> dict:
@@ -199,7 +199,7 @@ def antwort_format(anzahl: int) -> dict:
                         "type": "object", "additionalProperties": False,
                         "properties": {
                             "thema": {**text, "description": "Praegnanter eigener Konzeptname, 2-5 Woerter"},
-                            "kategorie": {**text, "enum": ["sport", "zeichen", "anime", "gothic", "astronomie", "sonntag"]},
+                            "kategorie": {**text, "enum": ["fussball", "zeichen", "anime", "gothic", "astronomie", "sonntag"]},
                             "warum": {**text, "description": "Konkretes Nachfragesignal mit Anlass oder Beleg, keine Floskel"},
                             "zeitraum": {**text, "description": "Sinnvolles Verkaufsfenster oder immergruen"},
                             "zielgruppe": {**text, "description": "Spezifische Personengruppe, niemals nur Erwachsene"},
@@ -387,7 +387,7 @@ def qualitaetsgrund(t: Trend, erwartete_kategorie: str = "mix") -> str | None:
     aktuell = not any(w in (t.zeitraum or "").lower() for w in (
         "immergr", "zeitlos", "ganzj", "dauerhaft"
     ))
-    if not t.quellen and aktuell and t.kategorie in {"sport", "astronomie"}:
+    if not t.quellen and aktuell and t.kategorie in {"fussball", "astronomie"}:
         return "kein pruefbarer Quellenbeleg"
     if t.quellen and all("ebay." in q.lower() and "/itm/" in q.lower()
                           for q in t.quellen):

@@ -299,15 +299,15 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
     <div class="panel">
       <h3>Design-Empfehlungen</h3>
       <p class="muted">Sechs kurze, recherchierte Ideen mit realistischem, reduziertem Bildaufbau.
-        Beim Sport werden europäische Top-Clubs und weitere Sportarten als Nachfrage-Signal
-        ausgewertet, aber keine geschützten Clubmerkmale kopiert. <b>Ein Bild entsteht erst</b>
+        Beim Fußball entstehen sehr reduzierte, eigene Motive – ohne Vereine, Ligen, Wappen oder
+        Vereinssprüche, die sind markenrechtlich geschützt. <b>Ein Bild entsteht erst</b>
         mit „Motiv erzeugen“.</p>
       <div class="zeile">
         <div class="feld">
           <label for="t-kategorie">Kategorie</label>
           <select id="t-kategorie">
             <option value="mix">Mix aus allen Kategorien</option>
-            <option value="sport">Sport</option>
+            <option value="fussball">Fußball</option>
             <option value="zeichen">Japanische / chinesische Zeichen</option>
             <option value="anime">Anime</option>
             <option value="gothic">Goth / Gothic</option>
@@ -316,6 +316,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
           </select>
         </div>
         <button class="btn" id="b-trends">Neue Empfehlungen ausarbeiten</button>
+        <button class="btn ghost" id="b-fussball" title="40 durchdachte, markenfreie Fußball-Motive als Empfehlungen – kostenlos, es entsteht kein Bild">Fußball-Kollektion laden (0 $)</button>
         <span class="muted">Dauert etwa 2–4 Minuten · recherchiert die gewählte Kategorie</span>
       </div>
       <div id="t-liste"><p class="muted">Noch keine Empfehlungen ausgearbeitet.</p></div>
@@ -1413,7 +1414,7 @@ function radarZeile(idee) {
 // ---------- Design-Empfehlungen ----------
 // Text aus der Websuche — kein Bild. Erst „Motiv erzeugen“ kostet ein Bild.
 const trendKategorien = {
-  mix: 'Mix', sport: 'Sport', zeichen: 'Japanisch / Chinesisch', anime: 'Anime',
+  mix: 'Mix', fussball: 'Fußball', sport: 'Fußball', zeichen: 'Japanisch / Chinesisch', anime: 'Anime',
   gothic: 'Gothic', astronomie: 'Astronomie', sonntag: 'Sonntagsspruch',
 };
 
@@ -1482,11 +1483,14 @@ function trendKarte(idee) {
 
 async function ladeTrends() {
   const ziel = $('t-liste');
-  const alle = await hole('/api/v1/studio/radar/ideen?limit=50&status=neu&quelle=trend');
+  const alle = await hole('/api/v1/studio/radar/ideen?limit=200&status=neu&quelle=trend');
   const kategorie = $('t-kategorie').value;
   const daten = kategorie === 'mix'
     ? alle
-    : alle.filter(idee => (idee.beschreibung || {}).kategorie === kategorie);
+    : alle.filter(idee => {
+        const k = (idee.beschreibung || {}).kategorie;
+        return k === kategorie || (kategorie === 'fussball' && k === 'sport');   // alte Sport-Empfehlungen
+      });
   ziel.textContent = '';
   if (!daten.length) {
     ziel.append(el('p', 'muted', `Keine offenen Empfehlungen in „${trendKategorien[kategorie]}“ — neue Empfehlungen ausarbeiten.`));
@@ -1517,6 +1521,22 @@ $('b-trends').onclick = async () => {
 };
 
 $('t-kategorie').onchange = () => ladeTrends().catch(zeigeFehler);
+
+$('b-fussball').onclick = async () => {
+  const knopf = $('b-fussball');
+  knopf.disabled = true;
+  try {
+    const b = await hole('/api/v1/studio/radar/fussball-kollektion', { method: 'POST' });
+    $('t-kategorie').value = 'fussball';
+    melde(`Fußball-Kollektion: ${b.neu} neu · ${b.aufgefrischt} schon vorhanden · ` +
+          `${b.abgelehnt.length} aussortiert · kostenlos, kein Bild erzeugt`);
+    await ladeTrends();
+  } catch (err) {
+    zeigeFehler(err);
+  } finally {
+    knopf.disabled = false;
+  }
+};
 
 async function ladeRadar() {
   ladeTrends().catch(zeigeFehler);

@@ -712,6 +712,14 @@ async def radar_trends(body: TrendLaufIn, db: Session = Depends(get_db)) -> dict
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
+@router.post("/radar/fussball-kollektion")
+def radar_fussball_kollektion(db: Session = Depends(get_db)) -> dict:
+    """Die feste, markenfreie Fussball-Kollektion als Empfehlungen laden. Kostenlos, erzeugt kein Bild."""
+    from app.studio.radar import fussball_kollektion
+
+    return fussball_kollektion.lade(db)
+
+
 @router.post("/radar/ideen/{idee_id}/erzeugen", status_code=201)
 def radar_erzeugen(idee_id: int, body: RadarErzeugenIn | None = None,
                    db: Session = Depends(get_db)) -> dict:

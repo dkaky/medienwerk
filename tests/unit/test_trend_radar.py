@@ -132,17 +132,17 @@ async def test_websuche_wird_mit_deutschem_standort_aufgerufen(db):
     assert client.gesehen["reasoning"] == {"effort": "medium"}
 
 
-async def test_sport_sucht_breit_aber_gibt_keine_clubmerkmale_aus(db):
-    client = _FakeOpenAI([_eintrag("Torwartfokus", kategorie="sport")])
+async def test_fussball_sucht_breit_aber_gibt_keine_vereinsmerkmale_aus(db):
+    client = _FakeOpenAI([_eintrag("Torwartfokus", kategorie="fussball")])
     await trends.lauf(db, s=_s(), client=client, zaehle_angebote=None,
                       filter_check=_filter, heute=HEUTE, kostenbremse=False,
-                      kategorie="sport")
+                      kategorie="fussball")
 
     auftrag = client.gesehen["input"]
-    assert "ALLER relevanten nationalen Ligen" in auftrag
-    assert "Basketball" in auftrag and "Eishockey" in auftrag
+    assert "FUSSBALL" in auftrag and "keine anderen Sportarten" in auftrag
+    assert "Basketball" not in auftrag
     assert "NUR intern als Nachfragesignal" in auftrag
-    assert "niemals Namen, Logos, Wappen" in auftrag
+    assert "niemals Namen, Logos, Wappen" in auftrag and "Vereinssprueche" in auftrag
 
 
 def test_ideen_sind_kurz_realistisch_und_nicht_ueberladen():
