@@ -41,7 +41,7 @@ def belegzeilen_nachtragen(jahr: int | None = None, anwenden: bool = False,
 
 @router.post("/backfill")
 def backfill(db: Session = Depends(get_db)):
-    """Fehlende Belege fuer ALLE Verkaeufe (§19) + AliExpress-Kaeufe nachtragen."""
+    """Fehlende Belege fuer ALLE Verkaeufe und Kaeufe nachtragen."""
     return invoice_service.backfill_invoices(db)
 
 
@@ -323,7 +323,7 @@ async def gebuehren_nachziehen(year: int | None = None, db: Session = Depends(ge
 
 @router.post("/generate/sale/{sale_id}", status_code=201)
 def generate_sale(sale_id: int, db: Session = Depends(get_db)):
-    """§ 19-Verkaufsrechnung fuer eine eBay-Sale erzeugen (idempotent)."""
+    """Verkaufsrechnung fuer eine eBay-Sale erzeugen (idempotent; USt-Ausweis ab Stichtag)."""
     try:
         return invoice_service.generate_sale_invoice(db, sale_id=sale_id)
     except PersistentError as exc:

@@ -413,11 +413,16 @@ class Settings(BaseSettings):
     invoice_storage: str = "local"
     invoice_dir: str = "./data/invoices"
     google_drive_credentials_json: str = ""
-    # Verkaeufer-Stammdaten fuer § 19-Verkaufsrechnungen (bitte in .env anpassen)
+    # Umsatzsteuer (Betreiber, 16.09.2026): KEIN Kleinunternehmer, Regelbesteuerung mit 19 %.
+    # Verkaeufe ab diesem Tag bekommen Rechnungen mit USt-Ausweis, fruehere bleiben § 19.
+    # Stimmt der Tag nicht, in der .env setzen: UST_REGELBESTEUERUNG_AB=JJJJ-MM-TT
+    ust_regelbesteuerung_ab: str = "2026-09-16"
+    ust_satz: float = 0.19
+    # Verkaeufer-Stammdaten fuer Verkaufsrechnungen (bitte in .env anpassen)
     seller_name: str = ""            # Gewerbe laut Papier -> .env: SELLER_NAME
     seller_address: str = ""         # -> .env: SELLER_ADDRESS
     seller_email: str = ""
-    seller_tax_id: str = ""          # Steuernummer/USt-IdNr. (bei § 19 optional)
+    seller_tax_id: str = ""          # Steuernummer/USt-IdNr. - Pflicht auf Rechnungen mit USt (§ 14 Abs. 4 UStG)
     invoice_number_prefix: str = "MW"
     # Empfaenger auf der AliExpress-KAUFRECHNUNG. Bewusst NICHT seller_*: dort steht die
     # eBay-Shop-Marke (Druckhelden), waehrend AliExpress an die bei ihnen

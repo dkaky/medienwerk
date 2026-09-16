@@ -1,4 +1,4 @@
-"""Tests fuer die Belege-Funktion (§19-Verkaufsrechnung + AliExpress-Kaufbeleg)."""
+"""Tests fuer die Belege-Funktion (Verkaufsrechnung mit/ohne USt + Kaufbeleg)."""
 from __future__ import annotations
 
 from decimal import Decimal
@@ -23,7 +23,9 @@ def _sale(db, *, tx="TX-INV-1", price="19.99"):
     return sale
 
 
-def test_generate_sale_invoice_is_paragraph19_and_idempotent(db):
+def test_generate_sale_invoice_is_idempotent_and_shows_vat(db, monkeypatch):
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "ust_regelbesteuerung_ab", "2026-01-01")
     sale = _sale(db)
     r = invoice_service.generate_sale_invoice(db, sale_id=sale.id)
     assert r["created"] is True
@@ -38,9 +40,13 @@ def test_generate_sale_invoice_is_paragraph19_and_idempotent(db):
     assert again["created"] is False
     assert again["invoice_number"] == r["invoice_number"]
 
-    # Datei ist eine § 19-HTML-Rechnung
+    # Regelbesteuert: Netto + 19 % USt + Brutto, kein § 19-Hinweis
     data, name, ctype = invoice_service.read_invoice_file(db, invoice_id=r["id"])
-    assert b"19 UStG" in data
+    text = data.decode("utf-8")
+    assert "Nettobetrag" in text and "16,80 €" in text
+    assert "zzgl. 19 % USt" in text and "3,19 €" in text
+    assert "Gesamtbetrag (brutto)" in text and "19,99 €" in text
+    assert "§ 19" not in text and "Leistungsdatum" in text
     assert "text/html" in ctype
     assert name.endswith(".html")
 
@@ -269,3 +275,24 @@ def test_anschrift_wird_an_den_strichen_umgebrochen(db, monkeypatch):
     html = data.decode("utf-8")
     assert "Inhaber: Aleyna Nur Aydin<br>Hauptstraße 439<br>53639 Königswinter" in html
     assert "|" not in html.split("<h1>")[0]
+
+
+def test_verkauf_vor_dem_stichtag_bleibt_paragraph19(db, monkeypatch):
+    from datetime import datetime, timezone
+
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "ust_regelbesteuerung_ab", "2026-09-16")
+    sale = _sale(db, tx="TX-ALT-19")
+    sale.sale_date = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db.commit()
+    r = invoice_service.generate_sale_invoice(db, sale_id=sale.id)
+    data, _, _ = invoice_service.read_invoice_file(db, invoice_id=r["id"])
+    assert "§ 19 UStG" in data.decode("utf-8") and "USt</td>" not in data.decode("utf-8")
+
+
+def test_steuerexport_nennt_die_besteuerung_im_jahr(monkeypatch):
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "ust_regelbesteuerung_ab", "2026-09-16")
+    assert invoice_service._besteuerung_im_jahr(2025) == "§19 Kleinunternehmer"
+    assert "ab 16.09. Regelbesteuerung (19 % USt)" in invoice_service._besteuerung_im_jahr(2026)
+    assert invoice_service._besteuerung_im_jahr(2027) == "Regelbesteuerung, 19 % USt"

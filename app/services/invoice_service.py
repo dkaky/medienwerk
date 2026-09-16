@@ -123,7 +123,11 @@ async def attach_invoices(db: Session, *, order_id: int,
 
 
 # ==========================================================================
-# § 19-Verkaufsrechnungen (eBay) + AliExpress-Kaufbelege – erzeugen & ablegen
+# Verkaufsrechnungen (eBay) + Kaufbelege – erzeugen & ablegen
+#
+# Umsatzsteuer: bis zum Stichtag UST_REGELBESTEUERUNG_AB § 19 (Kleinunternehmer,
+# keine USt), ab dann Regelbesteuerung mit ausgewiesener USt. Schon erzeugte
+# Rechnungen werden nie umgeschrieben - sie sind so ausgestellt.
 # ==========================================================================
 def _eur(value) -> str:
     return f"{Decimal(str(value or 0)):.2f} €".replace(".", ",")
@@ -137,7 +141,28 @@ def _next_sale_invoice_number(db: Session) -> str:
     return f"{s.invoice_number_prefix}-{datetime.now(timezone.utc).year}-{count + 1:04d}"
 
 
-def _render_sale_invoice_html(*, number: str, date: datetime, sale: Sale, listing: Listing | None) -> str:
+def _ust_ab():
+    """Stichtag der Regelbesteuerung als date - oder None, wenn nicht gesetzt/ungueltig."""
+    from datetime import date as _date
+
+    roh = (get_settings().ust_regelbesteuerung_ab or "").strip()
+    try:
+        return _date.fromisoformat(roh) if roh else None
+    except ValueError:
+        return None
+
+
+def regelbesteuert(zeitpunkt: datetime | None) -> bool:
+    """Gilt fuer einen Verkauf an diesem Tag die Regelbesteuerung (USt-Ausweis)?"""
+    ab = _ust_ab()
+    if ab is None:
+        return False
+    tag = (zeitpunkt or datetime.now(timezone.utc)).date()
+    return tag >= ab
+
+
+def _render_sale_invoice_html(*, number: str, date: datetime, sale: Sale, listing: Listing | None,
+                              mit_ust: bool = False) -> str:
     s = get_settings()
     title = (listing.title_seo if listing else None) or "Artikel"
     qty = sale.quantity or 1
@@ -157,6 +182,23 @@ def _render_sale_invoice_html(*, number: str, date: datetime, sale: Sale, listin
         if teil.strip()
     )
     tax_line = f"<div>Steuernr./USt-IdNr.: {html.escape(s.seller_tax_id)}</div>" if s.seller_tax_id else ""
+    leistung = (sale.sale_date or date).strftime("%d.%m.%Y")
+    if mit_ust:
+        satz = Decimal(str(s.ust_satz))
+        netto = (total / (1 + satz)).quantize(Decimal("0.01"))
+        ust = total - netto
+        prozent = f"{satz * 100:.0f}"
+        summen = (f'<tfoot><tr><td colspan="4" class="n">Nettobetrag</td><td class="n">{_eur(netto)}</td></tr>'
+                  f'<tr><td colspan="4" class="n">zzgl. {prozent} % USt</td><td class="n">{_eur(ust)}</td></tr>'
+                  f'<tr class="tot"><td colspan="4" class="n">Gesamtbetrag (brutto)</td>'
+                  f'<td class="n">{_eur(total)}</td></tr></tfoot></table>')
+        hinweis = (f'<div class="note">Alle Preise inkl. {prozent} % Umsatzsteuer. '
+                   f'Leistungsdatum: {leistung}.</div>')
+    else:
+        summen = (f'<tfoot><tr class="tot"><td colspan="4" class="n">Gesamtbetrag</td>'
+                  f'<td class="n">{_eur(total)}</td></tr></tfoot></table>')
+        hinweis = ('<div class="note">Gemäß § 19 UStG (Kleinunternehmerregelung) wird keine '
+                   f'Umsatzsteuer berechnet und ausgewiesen. Leistungsdatum: {leistung}.</div>')
     return f"""<!doctype html><html lang="de"><head><meta charset="utf-8">
 <title>Rechnung {html.escape(number)}</title>
 <style>body{{font-family:Arial,sans-serif;color:#111;max-width:760px;margin:24px auto;padding:0 20px}}
@@ -174,14 +216,16 @@ td.n,th.n{{text-align:right}} .tot{{font-weight:bold}} .muted{{color:#666;font-s
 <div style="margin-top:26px"><div class="muted">Rechnung an</div>{buyer}</div>
 <table><thead><tr><th>Pos.</th><th>Beschreibung</th><th class="n">Menge</th><th class="n">Einzel</th><th class="n">Betrag</th></tr></thead>
 <tbody><tr><td>1</td><td>{html.escape(title)}</td><td class="n">{qty}</td><td class="n">{_eur(unit)}</td><td class="n">{_eur(total)}</td></tr></tbody>
-<tfoot><tr class="tot"><td colspan="4" class="n">Gesamtbetrag</td><td class="n">{_eur(total)}</td></tr></tfoot></table>
-<div class="note">Gemäß § 19 UStG (Kleinunternehmerregelung) wird keine Umsatzsteuer berechnet und ausgewiesen.</div>
+{summen}
+{hinweis}
 <div class="muted" style="margin-top:24px">Vielen Dank für Ihren Einkauf.</div>
 </body></html>"""
 
 
 def generate_sale_invoice(db: Session, *, sale_id: int) -> dict:
-    """Erzeugt eine § 19-Verkaufsrechnung (HTML) fuer eine eBay-Sale und legt sie ab.
+    """Erzeugt die Verkaufsrechnung (HTML) fuer eine eBay-Sale und legt sie ab.
+
+    Ab dem Stichtag der Regelbesteuerung mit USt-Ausweis, davor nach § 19.
 
     Idempotent: existiert bereits eine Verkaufsrechnung zur Transaktion, wird sie
     zurueckgegeben statt neu erzeugt.
@@ -200,7 +244,8 @@ def generate_sale_invoice(db: Session, *, sale_id: int) -> dict:
     listing = db.get(Listing, sale.listing_id) if sale.listing_id else None
     now = datetime.now(timezone.utc)
     number = _next_sale_invoice_number(db)
-    content = _render_sale_invoice_html(number=number, date=now, sale=sale, listing=listing).encode("utf-8")
+    content = _render_sale_invoice_html(number=number, date=now, sale=sale, listing=listing,
+                                        mit_ust=regelbesteuert(sale.sale_date or now)).encode("utf-8")
     stored = get_storage().store(content=content, period=_period(now),
                                  file_type="ebay_sales", ref_id=ref, ext="html")
     inv = Invoice(
@@ -216,7 +261,7 @@ def generate_sale_invoice(db: Session, *, sale_id: int) -> dict:
 
 
 def backfill_invoices(db: Session, *, limit: int = 5000) -> dict:
-    """Erzeugt fehlende Belege fuer ALLE Verkaeufe (§19) und AliExpress-Kaeufe.
+    """Erzeugt fehlende Belege fuer ALLE Verkaeufe und alle Kaeufe.
 
     Idempotent – vorhandene Belege werden uebersprungen. Fuer den Erst-Nachtrag der
     importierten Alt-Verkaeufe und als Reparatur, falls die Automatik mal aussetzte.
@@ -737,7 +782,7 @@ def tax_export_zip(db: Session, *, year: int) -> bytes:
     gewinn = (su["einnahmen_eur"] - su["ebay_gebuehren_eur"]
               - su["einkauf_gesamt_eur"] - t_betriebs - (weitere or 0.0))
     summ = (
-        f"STEUER-EXPORT {year} — §19 Kleinunternehmer ({get_settings().seller_name})\n"
+        f"STEUER-EXPORT {year} — {_besteuerung_im_jahr(year)} ({get_settings().seller_name})\n"
         f"Nur tatsaechlich erfasste Werte, nichts geschaetzt.\n"
         f"{'='*52}\n\n"
         f"Einnahmen (eBay-Verkaeufe):     {_de_amount(su['einnahmen_eur']):>12} EUR   ({su['verkaeufe']} Verkaeufe)\n"
@@ -1157,3 +1202,17 @@ def search_invoices(db: Session, *, date_from=None, date_to=None,
         }
         for inv in rows
     ]
+
+
+def _besteuerung_im_jahr(jahr: int) -> str:
+    """Kopfzeile des Steuerexports: welche Besteuerung galt in diesem Jahr?"""
+    from datetime import timedelta
+
+    ab = _ust_ab()
+    prozent = f"{get_settings().ust_satz * 100:.0f}"
+    if ab is None or jahr < ab.year:
+        return "§19 Kleinunternehmer"
+    if jahr > ab.year or (ab.month, ab.day) == (1, 1):
+        return f"Regelbesteuerung, {prozent} % USt"
+    bis = ab - timedelta(days=1)
+    return f"§19 Kleinunternehmer bis {bis:%d.%m.}, ab {ab:%d.%m.} Regelbesteuerung ({prozent} % USt)"
