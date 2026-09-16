@@ -313,9 +313,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
             <option value="gothic">Goth / Gothic</option>
             <option value="astronomie">Astronomie</option>
             <option value="sonntag">Deutsche Sonntagssprüche</option>
+            <option value="stadtliebe">Stadtliebe (Städte der großen Vereine)</option>
           </select>
         </div>
         <button class="btn" id="b-trends">Neue Empfehlungen ausarbeiten</button>
+        <button class="btn ghost" id="b-stadtliebe" title="Minimalistische Stadtmotive – München, Dortmund, Istanbul, Neapel … – ohne Vereinsbezug, kostenlos">Stadtliebe laden (0 $)</button>
         <button class="btn ghost" id="b-fussball" title="40 durchdachte, markenfreie Fußball-Motive als Empfehlungen – kostenlos, es entsteht kein Bild">Fußball-Kollektion laden (0 $)</button>
         <span class="muted">Dauert etwa 2–4 Minuten · recherchiert die gewählte Kategorie</span>
       </div>
@@ -1415,7 +1417,7 @@ function radarZeile(idee) {
 // Text aus der Websuche — kein Bild. Erst „Motiv erzeugen“ kostet ein Bild.
 const trendKategorien = {
   mix: 'Mix', fussball: 'Fußball', sport: 'Sport (alt)', zeichen: 'Japanisch / Chinesisch', anime: 'Anime',
-  gothic: 'Gothic', astronomie: 'Astronomie', sonntag: 'Sonntagsspruch',
+  gothic: 'Gothic', astronomie: 'Astronomie', sonntag: 'Sonntagsspruch', stadtliebe: 'Stadtliebe',
 };
 
 function trendZeile(label, text) {
@@ -1519,13 +1521,13 @@ $('b-trends').onclick = async () => {
 
 $('t-kategorie').onchange = () => ladeTrends().catch(zeigeFehler);
 
-$('b-fussball').onclick = async () => {
-  const knopf = $('b-fussball');
+async function kollektionLaden(knopfId, pfad, kategorie, name) {
+  const knopf = $(knopfId);
   knopf.disabled = true;
   try {
-    const b = await hole('/api/v1/studio/radar/fussball-kollektion', { method: 'POST' });
-    $('t-kategorie').value = 'fussball';
-    melde(`Fußball-Kollektion: ${b.neu} neu · ${b.aufgefrischt} schon vorhanden · ` +
+    const b = await hole(`/api/v1/studio/radar/${pfad}`, { method: 'POST' });
+    $('t-kategorie').value = kategorie;
+    melde(`${name}: ${b.neu} neu · ${b.aufgefrischt} schon vorhanden · ` +
           `${b.abgelehnt.length} aussortiert · kostenlos, kein Bild erzeugt`);
     await ladeTrends();
   } catch (err) {
@@ -1533,7 +1535,9 @@ $('b-fussball').onclick = async () => {
   } finally {
     knopf.disabled = false;
   }
-};
+}
+$('b-fussball').onclick = () => kollektionLaden('b-fussball', 'fussball-kollektion', 'fussball', 'Fußball-Kollektion');
+$('b-stadtliebe').onclick = () => kollektionLaden('b-stadtliebe', 'stadtliebe-kollektion', 'stadtliebe', 'Stadtliebe');
 
 async function ladeRadar() {
   ladeTrends().catch(zeigeFehler);

@@ -37,7 +37,7 @@ def test_kollektion_ist_gross_und_frei_von_vereinen_und_ligen():
     assert len({i.thema for i in ideen}) == len(ideen)
     for i in ideen:
         text = " ".join([i.thema, i.motiv, i.spruch, i.verkaufswinkel, " ".join(i.suchbegriffe)]).lower()
-        treffer = [w for w in GESCHUETZT if re.search(rf"{re.escape(w)}", text)]
+        treffer = [w for w in GESCHUETZT if re.search(rf"(?<![\w]){re.escape(w)}(?![\w])", text)]
         assert not treffer, (i.thema, treffer)
         assert trends.qualitaetsgrund(i, "fussball") is None, (i.thema, trends.qualitaetsgrund(i, "fussball"))
         assert len(i.motiv.split()) <= 40                      # minimalistisch: kurze Bildidee

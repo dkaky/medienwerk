@@ -57,6 +57,7 @@ KATEGORIEN = {
     "gothic": "Goth / Gothic",
     "astronomie": "Astronomie",
     "sonntag": "Deutsche Sonntagssprueche",
+    "stadtliebe": "Stadtliebe",
 }
 
 
@@ -97,6 +98,12 @@ Positionen, Spielzeit, Taktik, Ritualen und Emotionen; ein Hauptelement, viel Fr
 Ab und zu ein neu formulierter kurzer Spruch, der allen Fans gehoert. Fussballkultur
 einzelner Laender darf ueber allgemeine Begriffe und Sprache anklingen (z. B. Catenaccio,
 Tiki-Taka, Petit Pont), nie ueber Vereine.""",
+        "stadtliebe": """STADTLIEBE: Minimalistische Motive zu Staedten mit grossen
+Fussballvereinen (z. B. Muenchen, Dortmund, Istanbul, Madrid, Neapel). Nutze nur, was der
+STADT gehoert: Wahrzeichen, Mundart, Essen, Geschichte, Landschaft. Niemals Vereinsnamen,
+Wappen oder Wappenteile, Spitznamen, Gruendungsjahre, Stadionnamen, Vereinssprueche,
+Stadtteile, die Vereinsnamen sind, oder das Vereinsfarben-Paar der Stadt. Ein Hauptelement,
+eine Linie oder wenige Flaechen, hoechstens zwei Farben, viel Freiraum.""",
         "zeichen": """JAPANISCHE / CHINESISCHE ZEICHEN: Nutze pro Entwurf genau ein echtes,
 sprachlich geprueftes Kanji/Hanzi oder einen etablierten Ausdruck aus hoechstens zwei
 Zeichen. Nenne Sprache, deutsche Bedeutung und Lesung im Verkaufswinkel. Keine erfundenen
@@ -124,7 +131,8 @@ deren Schreibweise nicht sicher belegt ist.""",
         verteilung = ("Bei sechs Empfehlungen liefere genau je eine aus Fußball, Zeichen, "
                        "Anime, Gothic, Astronomie und Sonntag; bei anderer Anzahl verteile "
                        "moeglichst gleichmaessig und rotiere die ausgelassenen Kategorien.")
-        return verteilung + "\n\n" + "\n\n".join(auftraege.values())
+        return verteilung + "\n\n" + "\n\n".join(
+            v for k, v in auftraege.items() if k != "stadtliebe")
     return auftraege[kategorie]
 
 

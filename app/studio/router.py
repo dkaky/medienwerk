@@ -720,6 +720,14 @@ def radar_fussball_kollektion(db: Session = Depends(get_db)) -> dict:
     return fussball_kollektion.lade(db)
 
 
+@router.post("/radar/stadtliebe-kollektion")
+def radar_stadtliebe_kollektion(db: Session = Depends(get_db)) -> dict:
+    """Minimalistische Stadtmotive (ohne Vereinsbezug) als Empfehlungen laden. Kostenlos."""
+    from app.studio.radar import stadtliebe_kollektion
+
+    return stadtliebe_kollektion.lade(db)
+
+
 @router.post("/radar/ideen/{idee_id}/erzeugen", status_code=201)
 def radar_erzeugen(idee_id: int, body: RadarErzeugenIn | None = None,
                    db: Session = Depends(get_db)) -> dict:
