@@ -208,7 +208,7 @@ class TrendLaufIn(BaseModel):
 
     anzahl: int = Field(default=12, ge=3, le=20)
     kategorie: Literal[
-        "mix", "fussball", "zeichen", "anime", "gothic", "astronomie", "sonntag", "stadtliebe"
+        "mix", "fussball", "zeichen", "anime", "gothic", "astronomie", "sonntag", "stadtliebe", "funshirt"
     ] = "mix"
 
 

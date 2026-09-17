@@ -829,6 +829,14 @@ def radar_fussball_kollektion(db: Session = Depends(get_db)) -> dict:
     return fussball_kollektion.lade(db)
 
 
+@router.post("/radar/funshirt-kollektion")
+def radar_funshirt_kollektion(db: Session = Depends(get_db)) -> dict:
+    """Kuratierte Fun-Shirt-Sprueche mit passendem Mini-Motiv laden. Kostenlos, erzeugt kein Bild."""
+    from app.studio.radar import funshirt_kollektion
+
+    return funshirt_kollektion.lade(db)
+
+
 @router.post("/radar/stadtliebe-kollektion")
 def radar_stadtliebe_kollektion(db: Session = Depends(get_db)) -> dict:
     """Minimalistische Stadtmotive (ohne Vereinsbezug) als Empfehlungen laden. Kostenlos."""

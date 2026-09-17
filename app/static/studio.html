@@ -323,19 +323,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
         <div class="feld">
           <label for="t-kategorie">Kategorie</label>
           <select id="t-kategorie">
-            <option value="mix">Mix aus allen Kategorien</option>
-            <option value="fussball">Fußball</option>
-            <option value="zeichen">Japanische / chinesische Zeichen</option>
-            <option value="anime">Anime</option>
-            <option value="gothic">Goth / Gothic</option>
-            <option value="astronomie">Astronomie</option>
-            <option value="sonntag">Deutsche Sonntagssprüche</option>
-            <option value="stadtliebe">Stadtliebe (Städte der großen Vereine)</option>
+            <option value="funshirt" selected>Fun-Shirt-Sprüche</option>
           </select>
         </div>
         <button class="btn" id="b-trends">Neue Empfehlungen ausarbeiten</button>
-        <button class="btn ghost" id="b-stadtliebe" title="Minimalistische Stadtmotive – München, Dortmund, Istanbul, Neapel … – ohne Vereinsbezug, kostenlos">Stadtliebe laden (0 $)</button>
-        <button class="btn ghost" id="b-fussball" title="40 durchdachte, markenfreie Fußball-Motive als Empfehlungen – kostenlos, es entsteht kein Bild">Fußball-Kollektion laden (0 $)</button>
+        <button class="btn ghost" id="b-funshirt" title="Kuratierte Fun-Shirt-Sprüche mit kleinem passendem Motiv – kostenlos, es entsteht kein Bild">Fun-Shirt-Sprüche laden (0 $)</button>
         <span class="muted">Dauert etwa 2–4 Minuten · recherchiert die gewählte Kategorie</span>
       </div>
       <div id="t-liste"><p class="muted">Noch keine Empfehlungen ausgearbeitet.</p></div>
@@ -1506,6 +1498,7 @@ function radarZeile(idee) {
 const trendKategorien = {
   mix: 'Mix', fussball: 'Fußball', sport: 'Sport (alt)', zeichen: 'Japanisch / Chinesisch', anime: 'Anime',
   gothic: 'Gothic', astronomie: 'Astronomie', sonntag: 'Sonntagsspruch', stadtliebe: 'Stadtliebe',
+  funshirt: 'Fun-Shirt-Spruch',
 };
 
 function trendZeile(label, text) {
@@ -1624,8 +1617,7 @@ async function kollektionLaden(knopfId, pfad, kategorie, name) {
     knopf.disabled = false;
   }
 }
-$('b-fussball').onclick = () => kollektionLaden('b-fussball', 'fussball-kollektion', 'fussball', 'Fußball-Kollektion');
-$('b-stadtliebe').onclick = () => kollektionLaden('b-stadtliebe', 'stadtliebe-kollektion', 'stadtliebe', 'Stadtliebe');
+$('b-funshirt').onclick = () => kollektionLaden('b-funshirt', 'funshirt-kollektion', 'funshirt', 'Fun-Shirt-Sprüche');
 
 async function ladeRadar() {
   ladeTrends().catch(zeigeFehler);

@@ -58,6 +58,7 @@ KATEGORIEN = {
     "astronomie": "Astronomie",
     "sonntag": "Deutsche Sonntagssprueche",
     "stadtliebe": "Stadtliebe",
+    "funshirt": "Fun-Shirt-Sprueche",
 }
 
 
@@ -98,6 +99,13 @@ Positionen, Spielzeit, Taktik, Ritualen und Emotionen; ein Hauptelement, viel Fr
 Ab und zu ein neu formulierter kurzer Spruch, der allen Fans gehoert. Fussballkultur
 einzelner Laender darf ueber allgemeine Begriffe und Sprache anklingen (z. B. Catenaccio,
 Tiki-Taka, Petit Pont), nie ueber Vereine.""",
+        "funshirt": """FUN-SHIRT-SPRUECHE: Der Shop fokussiert sich AUSSCHLIESSLICH auf diese
+Nische. Entwickle kurze, witzige, selbst formulierte deutsche Sprueche (hoechstens acht
+Woerter, grammatisch korrekt, KEINE bekannten Zitate, Songtexte oder Werbeslogans) zu
+Alltagsthemen wie Kaffee, Montag, Buero, Haustiere, Sport-Unlust, Schlaf, Essen, Wetter,
+Technik-Frust. Der Spruch ist der klare Fokus; dazu genau EIN kleines, passendes Motiv als
+Nebenelement, das dem Spruch klar untergeordnet bleibt (kein grosses Bild). Keine Marken,
+keine Prominenten, keine politischen oder anzueglichen Themen.""",
         "stadtliebe": """STADTLIEBE: Minimalistische Motive zu Staedten mit grossen
 Fussballvereinen (z. B. Muenchen, Dortmund, Istanbul, Madrid, Neapel). Nutze nur, was der
 STADT gehoert: Wahrzeichen, Mundart, Essen, Geschichte, Landschaft. Niemals Vereinsnamen,
