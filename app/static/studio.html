@@ -170,6 +170,16 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .ergebnis-neu .aktionen { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .ergebnis-fehler { margin: 14px 0 0; border-left-color: var(--red); scroll-margin-top: 20px; }
 @media (max-width: 720px) { .ergebnis-neu { grid-template-columns: 1fr; } }
+details.gruppe { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px;
+  background: var(--panel-2); overflow: hidden; }
+details.gruppe summary { cursor: pointer; padding: 10px 14px; font-weight: 600; font-size: 14px;
+  list-style: none; display: flex; align-items: center; user-select: none; }
+details.gruppe summary::-webkit-details-marker { display: none; }
+details.gruppe summary::before { content: '▸'; display: inline-block; margin-right: 8px;
+  transition: transform .15s ease; color: var(--muted); }
+details.gruppe[open] summary::before { transform: rotate(90deg); }
+details.gruppe summary:hover { background: var(--panel); }
+.gruppe-koerper { padding: 4px 12px 12px; }
 </style>
 </head>
 <body>
@@ -329,6 +339,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
         <button class="btn" id="b-trends">Neue Empfehlungen ausarbeiten</button>
         <button class="btn ghost" id="b-funshirt" title="Kuratierte Fun-Shirt-Sprüche mit kleinem passendem Motiv – kostenlos, es entsteht kein Bild">Fun-Shirt-Sprüche laden (0 $)</button>
         <span class="muted">Dauert etwa 2–4 Minuten · recherchiert die gewählte Kategorie</span>
+      </div>
+      <div class="zeile" style="margin-top:10px">
+        <button class="btn ghost klein" type="button" onclick="alleGruppen(true)">Alle Kategorien aufklappen</button>
+        <button class="btn ghost klein" type="button" onclick="alleGruppen(false)">Alle Kategorien zuklappen</button>
       </div>
       <div id="t-liste"><p class="muted">Noch keine Empfehlungen ausgearbeitet.</p></div>
     </div>
@@ -1564,9 +1578,15 @@ function trendKarte(idee) {
   return karte;
 }
 
+// Welche Gruppen zugeklappt sind - je Kategorie gemerkt, damit ein Kategoriewechsel
+// den Zustand nicht durcheinanderbringt. Neue/unbekannte Gruppen starten aufgeklappt.
+const _zuKlappen = new Map();  // "kategorie||gruppe" -> true, wenn zugeklappt
+
+function gruppenSchluessel(kategorie, gruppe) { return `${kategorie}||${gruppe || ''}`; }
+
 async function ladeTrends() {
   const ziel = $('t-liste');
-  const alle = await hole('/api/v1/studio/radar/ideen?limit=200&status=neu&quelle=trend');
+  const alle = await hole('/api/v1/studio/radar/ideen?limit=500&status=neu&quelle=trend');
   const kategorie = $('t-kategorie').value;
   const daten = kategorie === 'mix'
     ? alle
@@ -1576,7 +1596,42 @@ async function ladeTrends() {
     ziel.append(el('p', 'muted', `Keine offenen Empfehlungen in „${trendKategorien[kategorie]}“ — neue Empfehlungen ausarbeiten.`));
     return;
   }
-  for (const idee of daten) ziel.append(trendKarte(idee));
+  // Reihenfolge bleibt wie geliefert (staerkstes Signal zuerst); Gruppen entstehen
+  // beim ersten Auftreten ihres Namens - das entspricht der Anlegereihenfolge.
+  const gruppen = new Map();  // Gruppenname (bzw. '' ohne Gruppe) -> Ideen[]
+  for (const idee of daten) {
+    const gruppe = (idee.beschreibung || {}).gruppe || '';
+    if (!gruppen.has(gruppe)) gruppen.set(gruppe, []);
+    gruppen.get(gruppe).push(idee);
+  }
+  if (gruppen.size === 1 && gruppen.has('')) {
+    // Keine einzige Idee hat eine Gruppe (z. B. alter Mix) - wie bisher flach zeigen.
+    for (const idee of daten) ziel.append(trendKarte(idee));
+    return;
+  }
+  for (const [gruppe, ideen] of gruppen) {
+    const schluessel = gruppenSchluessel(kategorie, gruppe);
+    const zu = _zuKlappen.get(schluessel) ?? false;
+    const block = el('details');
+    block.className = 'gruppe';
+    block.open = !zu;
+    block.dataset.gruppenschluessel = schluessel;
+    const kopf = el('summary', null, `${gruppe || 'Ohne Gruppe'} (${ideen.length})`);
+    block.append(kopf);
+    const koerper = el('div');
+    koerper.className = 'gruppe-koerper';
+    for (const idee of ideen) koerper.append(trendKarte(idee));
+    block.append(koerper);
+    block.addEventListener('toggle', () => _zuKlappen.set(schluessel, !block.open));
+    ziel.append(block);
+  }
+}
+
+function alleGruppen(auf) {
+  document.querySelectorAll('#t-liste details.gruppe').forEach((d) => {
+    d.open = auf;
+    if (d.dataset.gruppenschluessel) _zuKlappen.set(d.dataset.gruppenschluessel, !auf);
+  });
 }
 
 $('b-trends').onclick = async () => {

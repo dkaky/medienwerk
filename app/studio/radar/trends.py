@@ -84,6 +84,10 @@ class Trend:
     risiko: str = ""
     suchbegriffe: list[str] = field(default_factory=list)
     quellen: list[str] = field(default_factory=list)
+    # Feinere Gruppierung INNERHALB einer Kategorie (z. B. "Familie", "Haustiere"
+    # bei "funshirt") - rein fuers Auf-/Zuklappen im Studio, ohne eigene Bedeutung
+    # fuer Pruefung oder Erzeugung. Leer = keine Untergruppe.
+    gruppe: str = ""
 
 
 def _kategorie_auftrag(kategorie: str, anzahl: int) -> str:
@@ -543,7 +547,7 @@ def speichere(db, trends: list[Trend], *, belege: list[str], angebote: dict[str,
         idee.thema = t.thema[:255]
         idee.stichworte = json.dumps(t.suchbegriffe, ensure_ascii=False)
         idee.beschreibung = json.dumps({
-            "kategorie": t.kategorie, "motiv": t.motiv, "stil": t.stil,
+            "kategorie": t.kategorie, "gruppe": t.gruppe, "motiv": t.motiv, "stil": t.stil,
             "farben": t.farben, "effekte": [],
             "ware_farbe": None, "warum": t.warum, "zeitraum": t.zeitraum,
             "zielgruppe": t.zielgruppe, "kaufmoment": t.kaufmoment,

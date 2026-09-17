@@ -1511,14 +1511,56 @@ _IDEEN: list[tuple[str, ...]] = [
      "Ehrlicher Online-Shopping-Alltag statt Konsumkritik statt eines allgemeinen, austauschbaren Spruchs.",
      ["Onlineshopping Spruch Shirt", "Fun Shirt Onlineshopping", "Lustiges Geschenk Onlineshopping"]),
 ]
+#: Reihenfolge in ``_IDEEN`` als (Anzahl, Gruppenname) - ergibt Untergruppen fuers
+#: Auf-/Zuklappen im Studio, ohne die 204 Eintraege selbst anfassen zu muessen.
+#: Summe der Anzahlen MUSS len(_IDEEN) ergeben, sonst wirft eintraege() einen Fehler.
+_GRUPPEN: tuple[tuple[int, str], ...] = (
+    (32, "Alltag"),
+    (16, "Familie"),
+    (10, "Erweiterte Familie"),
+    (7, "Partnerschaft"),
+    (5, "Baby & Kinder"),
+    (10, "Haustiere"),
+    (10, "Berufe"),
+    (15, "Hobbys"),
+    (9, "Jahreszeiten & Anlässe"),
+    (12, "Sternzeichen"),
+    (10, "Regional & Dialekt"),
+    (8, "Getränke"),
+    (8, "Feiertage & Anlässe"),
+    (6, "Pendler & Verkehr"),
+    (10, "Persönlichkeitstypen"),
+    (5, "Weitere Tiere"),
+    (6, "Studium & Schule"),
+    (5, "Reise & Urlaub"),
+    (6, "Mode & Beauty"),
+    (4, "Musik"),
+    (10, "Alltag (Haushalt)"),
+)
+
+
+def _gruppen_je_index() -> list[str]:
+    zuordnung: list[str] = []
+    for anzahl, name in _GRUPPEN:
+        zuordnung.extend([name] * anzahl)
+    if len(zuordnung) != len(_IDEEN):
+        raise AssertionError(
+            f"_GRUPPEN deckt {len(zuordnung)} Eintraege ab, _IDEEN hat {len(_IDEEN)} - "
+            "beim Erweitern der Kollektion _GRUPPEN mitpflegen."
+        )
+    return zuordnung
+
+
 def eintraege() -> list[trends.Trend]:
+    gruppen = _gruppen_je_index()
     liste = []
-    for thema, motiv, spruch, farben, ziel, kauf, winkel, begriffe in _IDEEN:
+    for (thema, motiv, spruch, farben, ziel, kauf, winkel, begriffe), gruppe in zip(_IDEEN, gruppen):
         liste.append(trends.Trend(
             thema=thema, kategorie=KATEGORIE, warum=_WARUM, zeitraum=_ZEITRAUM,
             zielgruppe=ziel, kaufmoment=kauf, verkaufswinkel=winkel, motiv=motiv,
             stil=_STIL, farben=list(farben), spruch=spruch, produkt=_PRODUKT,
-            druckhinweis=_DRUCK, risiko=_RISIKO, suchbegriffe=list(begriffe), quellen=[]))
+            druckhinweis=_DRUCK, risiko=_RISIKO, suchbegriffe=list(begriffe), quellen=[],
+            gruppe=gruppe))
     return liste
 
 

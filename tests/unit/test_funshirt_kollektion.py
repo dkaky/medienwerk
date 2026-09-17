@@ -1,6 +1,8 @@
 """Fun-Shirt-Sprueche-Kollektion: besteht die echte Qualitaets- und Rechtepruefung."""
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from app.database import SessionLocal
@@ -37,3 +39,19 @@ def test_laden_besteht_die_echte_pruefung_und_verdoppelt_nichts(db):
 def test_funshirt_ist_eigene_kategorie():
     assert "funshirt" in trends.KATEGORIEN
     assert "FUN-SHIRT-SPRUECHE" in trends.anweisung(6, trends.date(2026, 9, 17), "funshirt")
+
+
+def test_jeder_eintrag_hat_eine_gruppe_zum_auf_und_zuklappen():
+    ideen = fk.eintraege()
+    assert all(i.gruppe.strip() for i in ideen), "jede Empfehlung braucht eine Gruppe"
+    gruppen = {i.gruppe for i in ideen}
+    assert len(gruppen) >= 10, "die Kollektion soll in mehrere Untergruppen aufgeteilt sein"
+
+
+def test_gruppe_wird_in_der_beschreibung_gespeichert(db):
+    from app.studio.models import MotivIdee
+
+    fk.lade(db)
+    idee = db.query(MotivIdee).filter(MotivIdee.quelle_plattform == trends.PLATTFORM).first()
+    beschreibung = json.loads(idee.beschreibung)
+    assert beschreibung.get("gruppe"), "gespeicherte Empfehlung braucht eine Gruppe fuer die Oberflaeche"
