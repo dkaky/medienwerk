@@ -147,6 +147,35 @@ async def _trend_radar_job() -> None:
         db.close()
 
 
+async def _marktcheck_job() -> None:
+    """Offene Spruch-/Trendideen nach eBay-Marktsignalen bewerten.
+
+    Rein lesend: aktive Angebote und, sofern eBay die Seite hergibt,
+    verkaufte Treffer. Es entsteht kein Bild und kein Angebot.
+    """
+    s = get_settings()
+    if not s.studio_enabled:
+        return
+    db = SessionLocal()
+    ebay = None
+    try:
+        if s.ebay_client_id and s.ebay_client_secret:
+            from app.integrations.ebay import RealEbayClient
+
+            ebay = RealEbayClient(s)
+        from app.studio.radar import marktcheck
+
+        bericht = await marktcheck.pruefe(db, limit=30, ebay=ebay)
+        if bericht.get("geprueft"):
+            logger.info("scheduler: marktcheck", extra=bericht)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("scheduler: marktcheck failed", extra={"error": str(exc)[:200]})
+    finally:
+        if ebay is not None and getattr(ebay, "_client", None) is not None:
+            await ebay._client.aclose()
+        db.close()
+
+
 # Der Job "haengende Veroeffentlichungen nachholen" ist am 08.09.2026 entfallen.
 # Er lief ueber golive_service, das Lieferantenware auf eBay stellte und mit dem
 # Handelsteil ausgezogen ist. Er kommt zurueck, sobald der Print-on-Demand-Weg
@@ -221,6 +250,8 @@ def start_scheduler() -> AsyncIOScheduler:
                   id="ebay_loeschmeldungen_stuendlich", replace_existing=True)
     sched.add_job(_trend_radar_job, CronTrigger(hour=5, minute=30),
                   id="trend_radar_taeglich", replace_existing=True)
+    sched.add_job(_marktcheck_job, CronTrigger(hour="*/6", minute=45),
+                  id="studio_marktcheck_6h", replace_existing=True)
     # Einmalig 3 Min nach dem Start denselben Lauf anstossen, damit ein frischer
     # Start den Rueckstand nicht erst am naechsten Morgen aufholt (gleiche
     # Funktion, gleicher NULL-Filter -> ohne Rueckstand ein reiner
@@ -228,6 +259,9 @@ def start_scheduler() -> AsyncIOScheduler:
     sched.add_job(_category_backfill_job,
                   DateTrigger(run_date=datetime.now(timezone.utc) + timedelta(minutes=3)),
                   id="category_backfill_startup", replace_existing=True)
+    sched.add_job(_marktcheck_job,
+                  DateTrigger(run_date=datetime.now(timezone.utc) + timedelta(minutes=7)),
+                  id="studio_marktcheck_startup", replace_existing=True)
 
     sched.start()
     _scheduler = sched

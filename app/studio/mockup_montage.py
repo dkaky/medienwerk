@@ -69,6 +69,7 @@ class Feld:
 #: gruenen Flaeche, die Brust beginnt deshalb deutlich tiefer.
 FELDER: dict[str, Feld] = {
     "tshirt": Feld(0.20, 0.62, 0.42),
+    "kids_tshirt": Feld(0.19, 0.58, 0.40),
     "polo": Feld(0.30, 0.46, 0.34),
     "oversize": Feld(0.18, 0.58, 0.42),
     "hoodie": Feld(0.24, 0.50, 0.30),
@@ -76,6 +77,7 @@ FELDER: dict[str, Feld] = {
     # Ruecken: gilt fuer die flache Rueckseite und die Models von hinten. Der
     # Rueckendruck sitzt hoeher und groesser; beim Hoodie liegt die Kapuze oben auf.
     "tshirt-hinten": Feld(0.14, 0.62, 0.46),
+    "kids_tshirt-hinten": Feld(0.13, 0.58, 0.44),
     "polo-hinten": Feld(0.22, 0.55, 0.40),
     "oversize-hinten": Feld(0.13, 0.58, 0.46),
     "hoodie-hinten": Feld(0.34, 0.52, 0.36, band=(0.40, 0.65)),

@@ -154,6 +154,12 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 
 .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px;
          border: 1px solid var(--border); color: var(--muted); }
+.radar-auswahl { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 10px; color: var(--muted); font-size: 13px; cursor: pointer; }
+.radar-auswahl:hover { color: var(--text); border-color: var(--accent); }
+.radar-auswahl input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+.radar-auswahl:has(input:checked) { background: var(--accent); color: var(--accent-ink);
+  border-color: var(--accent); font-weight: 600; }
 
 .hinweis { border-left: 3px solid var(--amber); padding: 10px 14px; background: var(--panel-2);
            border-radius: 0 9px 9px 0; font-size: 13px; margin-bottom: 20px; }
@@ -338,6 +344,8 @@ details.gruppe summary:hover { background: var(--panel); }
         </div>
         <button class="btn" id="b-trends">Neue Empfehlungen ausarbeiten</button>
         <button class="btn ghost" id="b-funshirt" title="Kuratierte Fun-Shirt-Sprüche mit kleinem passendem Motiv – kostenlos, es entsteht kein Bild">Fun-Shirt-Sprüche laden (0 $)</button>
+        <button class="btn ghost" id="b-trends-auswahl" title="Erzeugt nur die angehakten Empfehlungen und prüft danach automatisch eBay">Ausgewählte erzeugen & eBay</button>
+        <button class="btn ghost" id="b-trends-alle" title="Erzeugt alle aktuell sichtbaren offenen Empfehlungen nacheinander">Alle sichtbaren Motive erzeugen</button>
         <span class="muted">Dauert etwa 2–4 Minuten · recherchiert die gewählte Kategorie</span>
       </div>
       <div class="zeile" style="margin-top:10px">
@@ -1552,6 +1560,12 @@ function trendKarte(idee) {
   const teile = [];
   if ((idee.stichworte || []).length) teile.push('Suchbegriffe: ' + idee.stichworte.join(', '));
   if (d.ebay_angebote != null) teile.push(`eBay: ${d.ebay_angebote} Angebote zu „${d.ebay_suchbegriff}“ (Konkurrenz, keine Verkaufszahl)`);
+  if (d.marktcheck) {
+    const mc = d.marktcheck;
+    const score = mc.score == null ? 'unbekannt' : `${mc.score}/100`;
+    teile.push(`Marktcheck: ${mc.bewertung || 'unbekannt'} (${score}) zu „${mc.suchbegriff}“ · ` +
+      `${mc.verkaufte_treffer ?? '?'} verkaufte Treffer · ${mc.aktive_angebote ?? '?'} aktive Angebote`);
+  }
   markt.textContent = teile.join(' · ');
   if (teile.length) details.append(markt);
   const quellen = (d.quellen || []).slice(0, 3);
@@ -1569,6 +1583,12 @@ function trendKarte(idee) {
   karte.append(details);
   const knoepfe = el('div', 'wahl');
   knoepfe.style.marginTop = '10px';
+  const auswahlLabel = el('label', 'radar-auswahl');
+  const auswahl = document.createElement('input');
+  auswahl.type = 'checkbox';
+  auswahl.dataset.radarAuswahl = String(idee.id);
+  auswahlLabel.append(auswahl, el('span', null, 'Für Sammel-Erzeugung auswählen'));
+  knoepfe.append(auswahlLabel);
   for (const [text, tat] of [['Motiv erzeugen', 'erzeugen'], ['Verwerfen', 'verworfen']]) {
     const b = el('button', null, text);
     b.type = 'button'; b.dataset.radar = tat; b.dataset.id = String(idee.id);
@@ -1673,6 +1693,84 @@ async function kollektionLaden(knopfId, pfad, kategorie, name) {
   }
 }
 $('b-funshirt').onclick = () => kollektionLaden('b-funshirt', 'funshirt-kollektion', 'funshirt', 'Fun-Shirt-Sprüche');
+
+async function radarErzeugenUndAutoEbay(knoepfe, sammler, leerText) {
+  if (!knoepfe.length) {
+    melde(leerText, true);
+    return;
+  }
+  // Bewusster Klick vor Geld UND vor live-eBay: erzeugt bis zu knoepfe.length
+  // Bilder (kostenpflichtig, außer beim Platzhalter) und stellt sie danach
+  // automatisch bei eBay ein - beides ist an anderer Stelle im Studio ebenfalls
+  // nur nach einer Bestätigung möglich.
+  const anbieter = $('f-anbieter').value;
+  const schaetzungJeBild = { mock: 0, openai: 0.04, fal: 0.05 }[anbieter] ?? 0.08;
+  const schaetzung = knoepfe.length * schaetzungJeBild;
+  const kostenZeile = schaetzungJeBild > 0
+    ? `Schätzung: ${knoepfe.length} × ${usd(schaetzungJeBild)} ≈ ${usd(schaetzung)}.`
+    : 'Platzhalter (mock): kostenlos.';
+  if (!confirm(
+    `${knoepfe.length} Motiv(e) erzeugen und automatisch bei eBay einstellen?\n\n` +
+    `${kostenZeile}\nJedes Angebot geht sofort LIVE, eBay kann Gebühren berechnen.`
+  )) return;
+  sammler.disabled = true;
+  const alt = sammler.textContent;
+  let fertig = 0;
+  try {
+    for (const knopf of knoepfe) {
+      const id = knopf.dataset.id;
+      knopf.disabled = true;
+      knopf.textContent = `Erzeuge ${fertig + 1}/${knoepfe.length} …`;
+      sammler.textContent = `Erzeuge ${fertig + 1}/${knoepfe.length} …`;
+      const e = await hole(`/api/v1/studio/radar/ideen/${id}/erzeugen`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anbieter: $('f-anbieter').value }),
+      });
+      const ebay = await hole(`/api/v1/studio/designs/${e.design.id}/ebay/auto?bestaetigt=true`, {
+        method: 'POST',
+      });
+      fertig += 1;
+      knopf.textContent = 'Erzeugt';
+      const ebayText = ebay.blockiert
+        ? `eBay wartet: ${ebay.begruendung}`
+        : `eBay: ${ebay.produkte.join(', ')} · ${ebay.abteilung || ebay.zielgruppe}`;
+      melde(`Motiv ${fertig}/${knoepfe.length} erzeugt (${e.anbieter}) · ${usd(e.kosten_usd)} · ${ebayText}`);
+    }
+    melde(`${fertig} Motive erzeugt — Auto-eBay wurde je Motiv geprüft.`);
+    await Promise.all([ladeStand(), ladeMotive(), ladeRadar()]);
+  } catch (err) {
+    zeigeFehler(err);
+    await Promise.all([ladeStand(), ladeMotive(), ladeRadar()]).catch(() => {});
+  } finally {
+    sammler.disabled = false;
+    sammler.textContent = alt;
+  }
+}
+
+$('b-trends-auswahl').onclick = async () => {
+  const ids = new Set(Array.from(
+    document.querySelectorAll('#t-liste [data-radar-auswahl]:checked')
+  ).map((x) => x.dataset.radarAuswahl));
+  const knoepfe = Array.from(
+    document.querySelectorAll('#t-liste [data-radar="erzeugen"]:not(:disabled)')
+  ).filter((b) => ids.has(b.dataset.id));
+  await radarErzeugenUndAutoEbay(
+    knoepfe,
+    $('b-trends-auswahl'),
+    'Bitte erst eine oder mehrere Empfehlungen anhaken.'
+  );
+};
+
+$('b-trends-alle').onclick = async () => {
+  const knoepfe = Array.from(
+    document.querySelectorAll('#t-liste [data-radar="erzeugen"]:not(:disabled)')
+  );
+  await radarErzeugenUndAutoEbay(
+    knoepfe,
+    $('b-trends-alle'),
+    'Keine sichtbaren offenen Empfehlungen zum Erzeugen gefunden.'
+  );
+};
 
 async function ladeRadar() {
   ladeTrends().catch(zeigeFehler);

@@ -659,6 +659,83 @@ async def bei_ebay_einstellen(design_id: int, bestaetigt: bool = Query(False),
     return {"ergebnisse": ergebnisse}
 
 
+@router.post("/designs/{design_id}/ebay/auto", status_code=201)
+async def bei_ebay_auto_einstellen(design_id: int, bestaetigt: bool = Query(False),
+                                   db: Session = Depends(get_db)) -> dict:
+    """Motiv passend einordnen und bei eBay einstellen.
+
+    Die Einordnung ist konservativ: Damen/Herren/Unisex werden nur als
+    eBay-Abteilung gesetzt (gleiches T-Shirt-Produkt), Kinder-Sprueche gehen auf
+    das eigene ``kids_tshirt``-Produkt (eigene Kategorie, Kindergroessen,
+    eigene Mockup-Vorlagen). ``blockiert`` bleibt fuer kuenftige Faelle
+    reserviert, in denen sich noch keine sichere Zielgruppe erkennen laesst.
+    """
+    from app.integrations.ebay import RealEbayClient
+    from app.services import freigabe
+    from app.studio import ebay_weg, zielgruppe
+
+    if not bestaetigt:
+        raise HTTPException(status_code=400, detail="Auto-eBay braucht bestaetigt=true.")
+    design = service.get_design(db, design_id)
+    if design is None:
+        raise HTTPException(status_code=404, detail="Motiv nicht gefunden")
+
+    plan = zielgruppe.plan(design)
+    if plan.blockiert or not plan.produkte:
+        for key in ("tshirt",):
+            p = ebay_weg.PRODUKTE[key]
+            ebay_weg.vermerke(db, design, p, "wartet",
+                              plan.begruendung + " " + " ".join(plan.hinweise))
+        return {
+            "design_id": design_id,
+            "automatisch": False,
+            "blockiert": True,
+            "zielgruppe": plan.zielgruppe,
+            "abteilung": plan.abteilung,
+            "produkte": plan.produkte,
+            "begruendung": plan.begruendung,
+            "hinweise": plan.hinweise,
+            "ergebnisse": [],
+        }
+
+    s = get_settings()
+    bildordner = Path(s.studio_image_dir)
+    bereitschaft = ebay_weg.pruefe(design, s=s, bildordner=bildordner)
+    if not bereitschaft.bereit:
+        raise HTTPException(status_code=422,
+                            detail="Noch nicht bereit: " + "; ".join(bereitschaft.fehlt))
+
+    ebay = RealEbayClient(s)
+    schluessel = ebay_weg.freigabe_schluessel(design_id)
+    freigabe.erteile(schluessel)
+    ergebnisse = []
+    try:
+        with freigabe.beim_veroeffentlichen(schluessel):
+            for key in plan.produkte:
+                try:
+                    ergebnisse.append({"ok": True, **await ebay_weg.veroeffentliche(
+                        db, design, produkt_key=key, ebay=ebay, s=s, bildordner=bildordner,
+                        abteilung=plan.abteilung)})
+                except Exception as exc:  # noqa: BLE001
+                    ergebnisse.append({"ok": False, "produkt": key, "fehler": str(exc)[:400]})
+    finally:
+        freigabe.widerrufe(schluessel)
+        if ebay._client is not None:
+            await ebay._client.aclose()
+
+    return {
+        "design_id": design_id,
+        "automatisch": True,
+        "blockiert": False,
+        "zielgruppe": plan.zielgruppe,
+        "abteilung": plan.abteilung,
+        "produkte": plan.produkte,
+        "begruendung": plan.begruendung,
+        "hinweise": plan.hinweise,
+        "ergebnisse": ergebnisse,
+    }
+
+
 def _ablegen(bild, titel: str):
     """Erzeugtes Motiv auf die Platte legen und den Pfad liefern."""
     import re

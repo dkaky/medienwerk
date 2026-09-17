@@ -9,6 +9,7 @@ tshirt    15687 T-Shirts      14,90 €    Farbe x Groesse (XS-3XL)
 polo      185101 Poloshirts   17,90 €    Farbe x Groesse (XS-3XL)
 oversize  15687 T-Shirts      34,90 €    Farbe x Groesse (S-3XL)
 hoodie    155183 Kapuzenp.    34,90 €    Farbe x Groesse (XS-3XL)
+kids_tshirt 155199 Kinder     14,90 €    Farbe x Groesse (98-164)
 tasse     20695 Tassen        11,90 €    keine (Weiss, Einzelangebot)
 ========  ==================  =========  ==================================
 
@@ -55,6 +56,7 @@ Angebot erkennt der Client und aktualisiert es.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
 from dataclasses import dataclass, field
@@ -122,6 +124,12 @@ PRODUKTE: dict[str, Produkt] = {
         {"Produktart": ["Kapuzenpullover"], "Stil": ["Pullover"],
          "Abteilung": ["Unisex Erwachsene"], "Ärmellänge": ["Langarm"]},
         ("Mit Kapuze", "Langarm"), material="80 % Baumwolle, 20 % recyceltes Polyester"),
+    "kids_tshirt": Produkt(
+        "kids_tshirt", "Kinder T-Shirt", "155199", 14.90, True, "shirt", "Kinder T-Shirt",
+        {"Produktart": ["T-Shirt"], "Abteilung": ["Unisex Kinder"], "Ärmellänge": ["Kurzarm"]},
+        ("Kinder-Shirt", "Kurzarm"),
+        groessen=("98", "104", "110", "116", "122", "128", "134", "140", "146", "152", "158", "164"),
+        material_je_farbe=True),
     "tasse": Produkt(
         "tasse", "Tasse", "20695", 11.90, False, "tasse", "Tasse",
         {"Produktart": ["Kaffeetasse"]},
@@ -207,26 +215,179 @@ def motivname(design: Any) -> str:
     return kern or "Motiv"
 
 
-def titel(design: Any, p: Produkt, name: str | None = None) -> str:
-    """Titel mit dem Verkaufsnamen - gespeicherter KI-Name, sonst bereinigter Titel."""
+def _design_meta(design: Any) -> dict:
+    try:
+        daten = json.loads(getattr(design, "meta_json", None) or "{}")
+    except (TypeError, ValueError):
+        return {}
+    return daten if isinstance(daten, dict) else {}
+
+
+def _design_suchtext(design: Any, name: str | None = None) -> str:
+    meta = _design_meta(design)
+    radar = meta.get("radar") if isinstance(meta.get("radar"), dict) else {}
+    teile = [getattr(design, "title", "") or "", name or ""]
+    for key in ("thema", "prompt"):
+        teile.append(str(radar.get(key) or ""))
+    beschreibung = radar.get("beschreibung")
+    if isinstance(beschreibung, dict):
+        for key in ("spruch", "motiv", "zielgruppe", "kaufmoment", "verkaufswinkel", "produkt"):
+            teile.append(str(beschreibung.get(key) or ""))
+    stichworte = radar.get("stichworte")
+    if isinstance(stichworte, list):
+        teile.extend(str(w) for w in stichworte)
+    return " ".join(teile).lower()
+
+
+def _seo_keywords(design: Any, p: Produkt, name: str, *, abteilung: str | None = None) -> list[str]:
+    text = _design_suchtext(design, name)
+    basis_text = f"{p.titel_wort} {name}".lower()
+    aus: list[str] = []
+
+    def add(*werte: str) -> None:
+        for wert in werte:
+            wert = re.sub(r"\s{2,}", " ", wert).strip(" ,")
+            if not wert:
+                continue
+            klein = wert.lower()
+            if klein in basis_text or klein in {x.lower() for x in aus}:
+                continue
+            aus.append(wert)
+
+    if p.key == "tasse":
+        add("Kaffeetasse", "Geschenk")
+    elif p.key == "kids_tshirt":
+        add("Lustiger Spruch")
+    else:
+        add("Lustiger Spruch")
+        ziel_abteilung = abteilung or (p.merkmale.get("Abteilung") or [""])[0]
+        if ziel_abteilung == "Damen":
+            add("Damen")
+        elif ziel_abteilung == "Herren":
+            add("Herren")
+
+    if re.search(r"\b(mama|mami|mutter|mutti)\b", text):
+        add("Muttertaggeschenk", "Geburtstagsgeschenk", "Mama")
+    if re.search(r"\b(papa|papi|vater|vati)\b", text):
+        add("Vatertaggeschenk", "Geburtstagsgeschenk", "Papa")
+    if re.search(r"\b(oma|grossmutter|großmutter)\b", text):
+        add("Oma", "Geschenk für Oma", "Geburtstagsgeschenk")
+    if re.search(r"\b(opa|grossvater|großvater)\b", text):
+        add("Opa", "Geschenk für Opa", "Geburtstagsgeschenk")
+    if re.search(r"\b(ehemann|mein mann|gatte)\b", text):
+        add("Ehemann", "Geschenk für Frauen", "Jahrestag")
+    if re.search(r"\b(ehefrau|meine frau|gattin)\b", text):
+        add("Ehefrau", "Geschenk für Männer", "Jahrestag")
+    if re.search(r"\b(geburtstag|birthday)\b", text):
+        add("Geburtstagsgeschenk")
+    if re.search(r"\b(vatertag)\b", text):
+        add("Vatertaggeschenk")
+    if re.search(r"\b(muttertag)\b", text):
+        add("Muttertaggeschenk")
+    if re.search(r"\b(weihnacht|xmas|christmas)\b", text):
+        add("Weihnachtsgeschenk")
+    if re.search(r"\b(junggesellenabschied|jga)\b", text):
+        add("JGA")
+    return aus
+
+
+def _titel_kern(design: Any, p: Produkt, name: str, *, abteilung: str | None = None) -> str:
+    """Kurzer Suchkern fuer eBay: relevante Begriffe statt ganzer Sprueche."""
+    text = _design_suchtext(design, name)
+    begriffe: list[str] = []
+
+    def add(wert: str) -> None:
+        if wert.lower() not in {x.lower() for x in begriffe}:
+            begriffe.append(wert)
+
+    for muster, wort in [
+        (r"\b(mama|mami|mutter|mutti)\b", "Mama"),
+        (r"\b(papa|papi|vater|vati)\b", "Papa"),
+        (r"\b(oma|grossmutter|großmutter)\b", "Oma"),
+        (r"\b(opa|grossvater|großvater)\b", "Opa"),
+        (r"\b(ehemann|mein mann|gatte)\b", "Ehemann"),
+        (r"\b(ehefrau|meine frau|gattin)\b", "Ehefrau"),
+    ]:
+        if re.search(muster, text):
+            add(wort)
+
+    ziel_abteilung = abteilung or (p.merkmale.get("Abteilung") or [""])[0]
+    if ziel_abteilung == "Damen":
+        add("Damen")
+    elif ziel_abteilung == "Herren":
+        add("Herren")
+    elif p.key == "kids_tshirt":
+        add("Kinder")
+
+    return " ".join(begriffe[:3]) if begriffe else name
+
+
+def _kurzer_titel(teile: list[str], limit: int = 80) -> str:
+    aus = ""
+    for teil in teile:
+        kandidat = f"{aus} {teil}".strip()
+        if len(kandidat) <= limit:
+            aus = kandidat
+    if aus:
+        return aus
+    return " ".join(teile)[:limit].rsplit(" ", 1)[0]
+
+
+def titel(design: Any, p: Produkt, name: str | None = None, *, abteilung: str | None = None) -> str:
+    """SEO-Titel: Produkt, Motiv/Spruch, Suchbegriffe und Anlass - max. 80 Zeichen."""
     from app.studio import verkaufstext
 
     if not name:
         gespeichert = verkaufstext.gespeichert(design)
         name = gespeichert.name if gespeichert else verkaufstext.bereinigter_name(getattr(design, "title", None))
-    zusatz = "Kaffeetasse Motiv Geschenk" if p.key == "tasse" else "Unisex Motiv"
-    voll = f"{p.titel_wort} {name} {zusatz}"
-    if len(voll) <= 80:
-        return voll
-    return voll[:80].rsplit(" ", 1)[0]
+    name = _PROMPT_REST.sub(" ", name)
+    name = re.sub(r"\s{2,}", " ", name).strip(" -,.") or motivname(design)
+    kern = _titel_kern(design, p, name, abteilung=abteilung)
+    return _kurzer_titel([p.titel_wort, kern, *_seo_keywords(design, p, kern, abteilung=abteilung)])
+
+
+def _beschreibungs_kontext(design: Any, p: Produkt, *, abteilung: str | None = None) -> list[str]:
+    text = _design_suchtext(design)
+    punkte: list[str] = []
+
+    def add(wert: str) -> None:
+        if wert and wert.lower() not in {x.lower() for x in punkte}:
+            punkte.append(wert)
+
+    ziel_abteilung = abteilung or (p.merkmale.get("Abteilung") or [""])[0]
+    if p.key == "kids_tshirt" or ziel_abteilung == "Unisex Kinder":
+        add("Zielgruppe: Kinder")
+    elif ziel_abteilung == "Damen":
+        add("Zielgruppe: Damen")
+    elif ziel_abteilung == "Herren":
+        add("Zielgruppe: Herren")
+    elif p.textil:
+        add("Zielgruppe: Unisex Erwachsene")
+
+    if re.search(r"\b(mama|mami|mutter|mutti)\b", text):
+        add("Anlass: Muttertag, Geburtstag oder Geschenk fuer Mama")
+    if re.search(r"\b(papa|papi|vater|vati)\b", text):
+        add("Anlass: Vatertag, Geburtstag oder Geschenk fuer Papa")
+    if re.search(r"\b(oma|grossmutter|großmutter)\b", text):
+        add("Anlass: Geburtstag oder Geschenk fuer Oma")
+    if re.search(r"\b(opa|grossvater|großvater)\b", text):
+        add("Anlass: Geburtstag oder Geschenk fuer Opa")
+    if re.search(r"\b(ehemann|ehefrau|mein mann|meine frau|gatte|gattin)\b", text):
+        add("Anlass: Jahrestag, Geburtstag oder Partnergeschenk")
+    if re.search(r"\b(weihnacht|xmas|christmas)\b", text):
+        add("Anlass: Weihnachtsgeschenk")
+    if p.textil:
+        add("Motivart: lustiges Spruch-Shirt")
+    return punkte
+
 
 
 def beschreibung(design: Any, p: Produkt, s: Settings, druck: str | None = None,
-                 verkauf: Any = None) -> str:
+                 verkauf: Any = None, abteilung: str | None = None) -> str:
     from app.studio import verkaufstext
 
     verkauf = verkauf or verkaufstext.gespeichert(design) or verkaufstext.standard(design)
-    punkte = list(p.stichpunkte)
+    punkte = _beschreibungs_kontext(design, p, abteilung=abteilung) + list(p.stichpunkte)
     if p.material:
         punkte.insert(0, f"Material: {p.material}")
     if p.material_je_farbe:
@@ -257,8 +418,11 @@ def esc_html(wert: Any) -> str:
     return html.escape(str(wert), quote=False)
 
 
-def basis_merkmale(p: Produkt, s: Settings) -> dict[str, list[str]]:
-    return {"Marke": [s.ebay_marke or "Markenlos"], **{k: list(v) for k, v in p.merkmale.items()}}
+def basis_merkmale(p: Produkt, s: Settings, *, abteilung: str | None = None) -> dict[str, list[str]]:
+    merkmale = {"Marke": [s.ebay_marke or "Markenlos"], **{k: list(v) for k, v in p.merkmale.items()}}
+    if abteilung and p.textil:
+        merkmale["Abteilung"] = [abteilung]
+    return merkmale
 
 
 def marke(s: Settings) -> str:
@@ -515,7 +679,8 @@ def vermerke(db, design: Any, p: Produkt, status: str, notiz: str) -> None:
 # --------------------------------------------------------------------------
 async def veroeffentliche(db, design: Any, *, produkt_key: str, ebay: Any, s: Settings,
                           bildordner: Path, mockups: Any = None,
-                          aktualisieren: bool = False) -> dict[str, Any]:
+                          aktualisieren: bool = False,
+                          abteilung: str | None = None) -> dict[str, Any]:
     """Ein Produkt bei eBay einstellen - oder mit ``aktualisieren`` ein bestehendes Angebot
     mit aktuellen Fotos, Gestaltung, Preis und Text ueberschreiben (gleiche Angebotsnummer).
 
@@ -549,7 +714,7 @@ async def veroeffentliche(db, design: Any, *, produkt_key: str, ebay: Any, s: Se
         adressen = {f: [await ebay.upload_image(x) for x in pfade[:_MAX_BILDER]]
                     for f, pfade in fotos["je_farbe"].items()}
 
-        basis = basis_merkmale(p, s)
+        basis = basis_merkmale(p, s, abteilung=abteilung)
         merkmale = await ebay.build_aspects(p.kategorie_id, basis)
         for achse in ("Größe", "Farbe"):           # tragen die Varianten selbst
             merkmale.pop(achse, None)
@@ -557,8 +722,9 @@ async def veroeffentliche(db, design: Any, *, produkt_key: str, ebay: Any, s: Se
         from app.studio import verkaufstext
 
         vtext = await asyncio.to_thread(verkaufstext.fuer, db, design, s=s, bildordner=bildordner)
-        t = titel(design, p, name=vtext.name)
-        text = beschreibung(design, p, s, druck=seiten.beschreibung if p.textil else None, verkauf=vtext)
+        t = titel(design, p, name=vtext.name, abteilung=abteilung)
+        text = beschreibung(design, p, s, druck=seiten.beschreibung if p.textil else None,
+                            verkauf=vtext, abteilung=abteilung)
 
         if p.textil:
             skus = []

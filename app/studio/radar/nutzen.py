@@ -7,6 +7,7 @@ Kostenbremse. Ein Vorschlag bekommt keine Abkuerzung.
 """
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime
 from pathlib import Path
@@ -34,9 +35,28 @@ def erzeuge_aus_idee(db, idee: MotivIdee, *, anbieter: str, bildordner: Path,
     prompt = idee.eigener_prompt or umwandlung.entwirf_und_merke(db, idee)
     ergebnis = gen.erzeuge(db, prompt=prompt, breite=breite, hoehe=hoehe, anbieter=anbieter)
     pfad = speichere_bild(ergebnis.bild.image, bildordner, idee.thema or "motiv")
+    try:
+        beschreibung = json.loads(idee.beschreibung or "{}")
+    except (TypeError, ValueError):
+        beschreibung = {}
+    try:
+        stichworte = json.loads(idee.stichworte or "[]")
+    except (TypeError, ValueError):
+        stichworte = []
+    meta = {
+        "radar": {
+            "idee_id": idee.id,
+            "quelle": idee.quelle_plattform,
+            "thema": idee.thema,
+            "prompt": prompt,
+            "beschreibung": beschreibung if isinstance(beschreibung, dict) else {},
+            "stichworte": stichworte if isinstance(stichworte, list) else [],
+        }
+    }
     design = service.create_design(db, title=(idee.thema or prompt)[:80],
                                    source=ergebnis.bild.provider,
-                                   image_url=f"/studio/bilder/{pfad.name}")
+                                   image_url=f"/studio/bilder/{pfad.name}",
+                                   meta_json=json.dumps(meta, ensure_ascii=False))
     idee.design_id = design.id
     idee.status = "uebernommen"
     db.commit()

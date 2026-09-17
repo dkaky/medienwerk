@@ -121,6 +121,7 @@ def _motiv(db, tmp_path, titel="Bergpanorama mit Sonnenaufgang, Retro-Linien, fr
 def test_katalog_entspricht_den_vorgaben():
     erwartet = {"tshirt": (14.90, "15687"), "polo": (17.90, "185101"),
                 "oversize": (34.90, "15687"), "hoodie": (34.90, "155183"),
+                "kids_tshirt": (14.90, "155199"),
                 "tasse": (11.90, "20695")}
     assert {k: (p.preis_eur, p.kategorie_id) for k, p in ebay_weg.PRODUKTE.items()} == erwartet
     # Kein pauschales Material-Merkmal: Grau meliert ist keine reine Baumwolle.
@@ -129,11 +130,22 @@ def test_katalog_entspricht_den_vorgaben():
     assert ebay_weg.PRODUKTE["hoodie"].merkmale["Produktart"] == ["Kapuzenpullover"]
 
 
+def test_basis_merkmale_koennen_abteilung_fuer_auto_zielgruppe_ueberschreiben(tmp_path):
+    s = _settings(tmp_path)
+    p = ebay_weg.PRODUKTE["tshirt"]
+
+    assert ebay_weg.basis_merkmale(p, s, abteilung="Damen")["Abteilung"] == ["Damen"]
+    assert ebay_weg.basis_merkmale(p, s, abteilung="Herren")["Abteilung"] == ["Herren"]
+
+
 def test_groessen_je_produkt():
     s = Settings(_env_file=None)
     assert ebay_weg.groessen(ebay_weg.PRODUKTE["oversize"], s) == ["S", "M", "L", "XL", "2XL", "3XL"]
     for key in ("tshirt", "polo", "hoodie"):
         assert ebay_weg.groessen(ebay_weg.PRODUKTE[key], s) == ["XS", "S", "M", "L", "XL", "2XL", "3XL"]
+    assert ebay_weg.groessen(ebay_weg.PRODUKTE["kids_tshirt"], s) == [
+        "98", "104", "110", "116", "122", "128", "134", "140", "146", "152", "158", "164"
+    ]
     assert ebay_weg.groessen(ebay_weg.PRODUKTE["tasse"], s) == []
 
 
@@ -335,6 +347,61 @@ def test_titel_sind_verkaeuflich(db, tmp_path):
         t = ebay_weg.titel(design, p)
         assert len(t) <= 80 and t.startswith(p.titel_wort + " ")
         assert "freigestellt" not in t.lower()
+
+
+def test_titel_nutzt_seo_anlass_und_zielgruppe(db, tmp_path):
+    design = _motiv(db, tmp_path, titel="Mama ist besser als Papa")
+    design.meta_json = json.dumps({
+        "radar": {
+            "thema": "Mama ist besser als Papa",
+            "beschreibung": {
+                "spruch": "Mama ist besser als Papa",
+                "zielgruppe": "Kinder",
+                "kaufmoment": "Muttertag und Vatertag",
+            },
+        }
+    }, ensure_ascii=False)
+    db.commit()
+
+    titel = ebay_weg.titel(design, ebay_weg.PRODUKTE["kids_tshirt"])
+
+    assert len(titel) <= 80
+    assert titel.startswith("Kinder T-Shirt Mama Papa Kinder")
+    assert "besser als" not in titel
+    assert "Kinder" in titel
+    assert "Lustiger Spruch" in titel
+    assert "Muttertaggeschenk" in titel or "Vatertaggeschenk" in titel
+
+
+def test_titel_nutzt_auto_abteilung_fuer_damen_herren(db, tmp_path):
+    design = _motiv(db, tmp_path, titel="Mein Ehemann ist toll")
+
+    titel = ebay_weg.titel(design, ebay_weg.PRODUKTE["tshirt"], abteilung="Damen")
+
+    assert len(titel) <= 80
+    assert "Damen" in titel
+    assert "Ehemann" in titel
+
+
+def test_beschreibung_nennt_wichtige_zielgruppe_und_anlass(db, tmp_path):
+    design = _motiv(db, tmp_path, titel="Mama ist besser als Papa")
+    design.meta_json = json.dumps({
+        "radar": {
+            "beschreibung": {
+                "spruch": "Mama ist besser als Papa",
+                "zielgruppe": "Kinder",
+                "kaufmoment": "Muttertag und Vatertag",
+            },
+        }
+    }, ensure_ascii=False)
+    db.commit()
+
+    text = ebay_weg.beschreibung(design, ebay_weg.PRODUKTE["kids_tshirt"], _settings(tmp_path))
+
+    assert "Zielgruppe: Kinder" in text
+    assert "Anlass: Muttertag" in text
+    assert "Anlass: Vatertag" in text
+    assert "Motivart: lustiges Spruch-Shirt" in text
 
 
 async def test_automatik_haelt_sich_an_den_probebetrieb(db, tmp_path, monkeypatch):
