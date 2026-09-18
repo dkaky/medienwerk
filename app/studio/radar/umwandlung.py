@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from app.studio.generation import motivregeln
 from app.studio.models import MotivIdee
+from app.studio.postprocess.schriftfarbe import SCHRIFTREGEL
 from app.studio.radar import ideen as ideen_ablage
 from app.studio.radar import signale
 
@@ -115,7 +116,7 @@ def entwirf(idee: MotivIdee, *, zusatz: str | None = None,
                 f"keine Nachbildung einer vorhandenen Gestaltung.")
 
     if eigener_spruch and eigener_spruch.strip():
-        text = f'{text} Mit dem Schriftzug "{eigener_spruch.strip()}" im Bild.'
+        text = f'{text} Mit dem Schriftzug "{eigener_spruch.strip()}" im Bild. {SCHRIFTREGEL}'
     if zusatz and zusatz.strip():
         text = f"{text} {zusatz.strip()}"
 

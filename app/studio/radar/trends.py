@@ -42,6 +42,7 @@ from sqlalchemy import select
 
 from app.studio.generation import motivregeln
 from app.studio.models import MotivIdee
+from app.studio.postprocess.schriftfarbe import SCHRIFTREGEL
 
 logger = logging.getLogger("app.studio.radar.trends")
 
@@ -431,7 +432,7 @@ def prompt_aus(t: Trend) -> str:
         teile.append("Farben: " + ", ".join(t.farben))
     text = ". ".join(teile) + "."
     if t.spruch:
-        text += f' Mit dem Schriftzug "{t.spruch}" im Bild.'
+        text += f' Mit dem Schriftzug "{t.spruch}" im Bild. {SCHRIFTREGEL}'
     motivregeln.pruefe_anfrage(text)
     return text
 

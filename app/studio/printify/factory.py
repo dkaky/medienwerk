@@ -43,6 +43,12 @@ def fit_scale(
     return round(best, 4) if best is not None else 1.0
 
 
+def ist_weisse_variante(variante: dict[str, Any]) -> bool:
+    """Printify nennt Varianten "White / M": die Farbe steht vor dem ersten Schraegstrich."""
+    farbe = str(variante.get("title") or "").split("/")[0].strip().lower()
+    return farbe == "white"
+
+
 def build_product_payload(
     *,
     title: str,
@@ -53,6 +59,7 @@ def build_product_payload(
     price_cents: int,
     max_variants: int | None = None,
     image_size: tuple[int, int] | None = None,
+    image_id_dunkel: str | None = None,
 ) -> dict[str, Any]:
     """Erzeugt das JSON fuer POST /shops/{id}/products.json."""
     selected = variants[:max_variants] if max_variants else variants
@@ -62,6 +69,24 @@ def build_product_payload(
 
     scale = fit_scale(selected, product_type.position, image_size)
 
+    def _bereich(ids: list, bild: str) -> dict[str, Any]:
+        return {
+            "variant_ids": ids,
+            "placeholders": [{
+                "position": product_type.position,
+                "images": [{"id": bild, "x": 0.5, "y": 0.5, "scale": scale, "angle": 0}],
+            }],
+        }
+
+    # Schrift ist weiss, auf der weissen Variante schwarz: dann zwei Druckdateien.
+    weiss_ids = [v["id"] for v in selected if ist_weisse_variante(v)] if image_id_dunkel else []
+    if weiss_ids:
+        rest_ids = [i for i in variant_ids if i not in weiss_ids]
+        print_areas = ([_bereich(rest_ids, image_id)] if rest_ids else []) + [
+            _bereich(weiss_ids, image_id_dunkel)]
+    else:
+        print_areas = [_bereich(variant_ids, image_id)]
+
     return {
         "title": title,
         "description": description,
@@ -70,23 +95,5 @@ def build_product_payload(
         "variants": [
             {"id": vid, "price": price_cents, "is_enabled": True} for vid in variant_ids
         ],
-        "print_areas": [
-            {
-                "variant_ids": variant_ids,
-                "placeholders": [
-                    {
-                        "position": product_type.position,
-                        "images": [
-                            {
-                                "id": image_id,
-                                "x": 0.5,
-                                "y": 0.5,
-                                "scale": scale,
-                                "angle": 0,
-                            }
-                        ],
-                    }
-                ],
-            }
-        ],
+        "print_areas": print_areas,
     }

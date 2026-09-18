@@ -34,7 +34,7 @@ logger = logging.getLogger("app.studio.verkaufstext")
 
 KOSTEN_USD = 0.002          # grosszuegig aufgerundet: ein kleines Bild + kurzer Text
 MAX_NAME = 40
-MAX_TEXT = 600
+MAX_TEXT = 700
 
 ANWEISUNG = (
     "Du schreibst Produkttexte fuer einen deutschen eBay-Shop, der eigene Motive auf "
@@ -44,8 +44,13 @@ ANWEISUNG = (
     "das Motiv (z. B. \"Bergpanorama im Retro-Stil\"). Kein Produktwort (T-Shirt, Tasse), "
     "keine Anfuehrungszeichen, keine Marken, Vereine, Personen oder geschuetzten Namen.\n"
     "Regeln fuer beschreibung: 2 bis 3 Saetze auf Deutsch in freundlicher "
-    "Du-Form. Beschreibe, was auf dem Motiv zu sehen ist, welche Stimmung es hat und fuer wen "
-    "oder welchen Anlass es passt. Keine Angaben zu Material, Groesse, Preis, Versand oder "
+    "Du-Form. Beschreibe, was auf dem Motiv zu sehen ist (bei einem Spruch: nenne den "
+    "aufgedruckten Spruch woertlich), welche Stimmung es hat und fuer wen oder welchen "
+    "Anlass es passt. SEO: Baue gezielt die Woerter ein, nach denen Kaeufer bei eBay "
+    "suchen - 'lustiges T-Shirt', 'Fun Shirt', 'Spruch', 'Geschenkidee', dazu den passenden "
+    "Anlass oder die Zielgruppe (z. B. Geburtstagsgeschenk, Geschenk fuer Kollegen, Mama, "
+    "Papa) und das Thema des Spruchs (z. B. Kaffee, Buero, Hund). Fluessige Saetze, keine "
+    "Aufzaehlung von Schlagworten. Keine Angaben zu Material, Groesse, Preis, Versand oder "
     "Waschbarkeit. Keine Superlative wie 'bestes', keine Emojis, keine Marken oder Namen."
 )
 
@@ -88,8 +93,8 @@ def standard(design: Any) -> Verkaufstext:
     name = bereinigter_name(getattr(design, "title", None))
     return Verkaufstext(
         name=name,
-        absatz=(f"Das Motiv „{name}“ wird hochwertig auf die Ware gedruckt – ein Hingucker "
-                f"im Alltag und eine schöne Geschenkidee."),
+        absatz=(f"Das Motiv „{name}“ ist ein lustiges Fun Shirt mit Spruch – ein Hingucker "
+                f"im Alltag und eine schöne Geschenkidee zum Geburtstag."),
         quelle="standard")
 
 

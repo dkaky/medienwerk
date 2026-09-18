@@ -94,6 +94,17 @@ async def erstelle_produkt(
     if not bild_id:
         raise PrintifyFehler(f"Printify lieferte keine Bild-Kennung: {str(hochgeladen)[:200]}")
 
+    # 1b. Fassung mit schwarzer Schrift fuer die weisse Variante
+    from app.studio.postprocess import schriftfarbe
+
+    dunkel_id = None
+    try:
+        dunkel = schriftfarbe.dunkle_fassung(pfad)
+        dunkel_bild = await pc.bild_hochladen(dunkel.name, dunkel.read_bytes())
+        dunkel_id = dunkel_bild.get("id")
+    except Exception as exc:  # noqa: BLE001 - dann bleibt es bei einer Datei fuer alle Farben
+        logger.warning("Schwarze Fassung fuer weisse Variante nicht hochgeladen: %s", str(exc)[:200])
+
     # 2. Varianten holen - sie enthalten die Druckbereiche fuer die Passform
     daten = await pc.varianten(typ.blueprint_id, typ.provider_id)
     varianten = daten.get("variants") or []
@@ -115,6 +126,7 @@ async def erstelle_produkt(
         price_cents=preis,
         max_variants=max_varianten,
         image_size=masse,
+        image_id_dunkel=dunkel_id,
     )
     angelegt = await pc.produkt_anlegen(payload)
     produkt_id = str(angelegt.get("id") or "")

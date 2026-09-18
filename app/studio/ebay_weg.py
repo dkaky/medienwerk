@@ -69,6 +69,7 @@ from sqlalchemy import select
 from app.config import Settings, get_settings
 from app.studio import mockup_plan
 from app.studio.models import PodListing, PodProduct
+from app.studio.postprocess import schriftfarbe
 
 logger = logging.getLogger("app.studio.ebay_weg")
 
@@ -288,6 +289,8 @@ def _seo_keywords(design: Any, p: Produkt, name: str, *, abteilung: str | None =
         add("Weihnachtsgeschenk")
     if re.search(r"\b(junggesellenabschied|jga)\b", text):
         add("JGA")
+    if p.key != "tasse":
+        add("Fun Shirt", "Geschenk")      # Standardbegriffe: fuellen nur den Rest der 80 Zeichen
     return aus
 
 
@@ -381,6 +384,66 @@ def _beschreibungs_kontext(design: Any, p: Produkt, *, abteilung: str | None = N
     return punkte
 
 
+_SEO_KERN: dict[str, tuple[str, str]] = {
+    # produkt -> (Ueberschrift, Fliesstext mit den Begriffen, nach denen Kaeufer suchen)
+    "tshirt": (
+        "Lustiges T-Shirt mit Spruch – Fun Shirt als Geschenkidee",
+        "Dieses lustige T-Shirt mit Spruch ist ein echtes Fun Shirt für Damen und Herren: "
+        "Spruch-Shirt, Geschenk für Freunde, Kollegen und Familie – ob als Geburtstagsgeschenk, "
+        "Weihnachtsgeschenk, Mitbringsel oder einfach so. Rundhals, Kurzarm, Baumwolle, "
+        "bedruckt mit eigenem Motiv, Unisex-Passform in den Größen XS bis 3XL."),
+    "kids_tshirt": (
+        "Lustiges Kinder T-Shirt mit Spruch – Geschenk für Jungen und Mädchen",
+        "Dieses Kinder T-Shirt mit lustigem Spruch ist ein Fun Shirt für Jungen und Mädchen: "
+        "Kindershirt aus Baumwolle, Kurzarm, bedruckt mit eigenem Motiv, in den "
+        "Größen 98 bis 164. Eine schöne Geschenkidee zum Geburtstag, zur Einschulung oder für "
+        "den Alltag im Kindergarten und in der Schule."),
+    "polo": (
+        "Lustiges Poloshirt mit Spruch – Geschenk für Männer und Frauen",
+        "Dieses Poloshirt mit lustigem Spruch ist ein Fun Shirt mit Kragen: Polo-Shirt aus "
+        "Baumwolle, Kurzarm, bedruckt mit eigenem Motiv, Größen XS bis 3XL. Eine Geschenkidee "
+        "zum Geburtstag oder für den Alltag."),
+    "oversize": (
+        "Oversize T-Shirt mit Spruch – lustiges Streetwear Shirt als Geschenk",
+        "Dieses Oversize T-Shirt mit lustigem Spruch ist ein Fun Shirt im lässigen Streetwear-Schnitt: "
+        "Baumwolle in schwerer Qualität, Kurzarm, bedruckt mit eigenem Motiv, Größen S bis 3XL. "
+        "Eine Geschenkidee für Damen und Herren."),
+    "hoodie": (
+        "Lustiger Hoodie mit Spruch – Kapuzenpullover als Geschenkidee",
+        "Dieser Hoodie mit lustigem Spruch ist ein Fun Kapuzenpullover für Damen und Herren: "
+        "Pullover mit Kapuze, Langarm, bedruckt mit eigenem Motiv, Größen XS bis 3XL. Eine "
+        "Geschenkidee zum Geburtstag oder zu Weihnachten."),
+    "tasse": (
+        "Lustige Tasse mit Spruch – Kaffeetasse als Geschenkidee",
+        "Diese lustige Kaffeetasse mit Spruch ist ein Geschenk für Kaffeetrinker und Teetrinker: "
+        "Keramiktasse, bedruckt mit eigenem Motiv. Passend als Geschenkidee "
+        "zum Geburtstag, für Kollegen im Büro oder als Mitbringsel."),
+}
+
+
+def _seo_block(design: Any, p: Produkt, *, abteilung: str | None = None) -> str:
+    """Suchbegriff-Absatz: die Woerter, nach denen Kaeufer tatsaechlich suchen.
+
+    Feste Standardbegriffe je Produkt (lustiges T-Shirt, Fun Shirt, Geschenkidee ...) plus
+    die Suchbegriffe und Anlaesse aus der Empfehlung. Alles in Saetzen, keine Wortlisten.
+    """
+    ueberschrift, text = _SEO_KERN.get(p.key, _SEO_KERN["tshirt"])
+    ziel = abteilung or (p.merkmale.get("Abteilung") or [""])[0]
+    if p.key == "tshirt" and ziel == "Damen":
+        text = text.replace("für Damen und Herren", "für Damen").replace("Unisex-Passform", "Damen-Passform")
+    elif p.key == "tshirt" and ziel == "Herren":
+        text = text.replace("für Damen und Herren", "für Herren").replace("Unisex-Passform", "Herren-Passform")
+    meta = _design_meta(design)
+    radar = meta.get("radar") if isinstance(meta.get("radar"), dict) else {}
+    stichworte = radar.get("stichworte") if isinstance(radar.get("stichworte"), list) else []
+    themen = [str(w).strip() for w in stichworte if str(w).strip()][:3]
+    anlaesse = [w for w in _seo_keywords(design, p, "", abteilung=abteilung)
+                if w.lower() not in {"lustiger spruch", "damen", "herren"}][:4]
+    zusatz = ""
+    if themen or anlaesse:
+        zusatz = " Passt zu: " + ", ".join(dict.fromkeys(themen + anlaesse)) + "."
+    return f"<h3>{esc_html(ueberschrift)}</h3><p>{esc_html(text + zusatz)}</p>"
+
 
 def beschreibung(design: Any, p: Produkt, s: Settings, druck: str | None = None,
                  verkauf: Any = None, abteilung: str | None = None) -> str:
@@ -409,6 +472,7 @@ def beschreibung(design: Any, p: Produkt, s: Settings, druck: str | None = None,
     return (f"<h2>{esc_html(verkauf.name)} – {esc_html(p.label)}</h2>"
             f"<p>{esc_html(verkauf.absatz)}</p>"
             f"<ul>{liste}</ul>"
+            f"{_seo_block(design, p, abteilung=abteilung)}"
             f"<p>Ein Motiv von {esc_html(s.ebay_marke or s.seller_name or 'uns')}.</p>")
 
 
@@ -581,10 +645,26 @@ async def produktfotos(design: Any, p: Produkt, *, s: Settings, bildordner: Path
         ziel = bildordner / MOCKUP_ORDNER / str(design.id)
         vorher = set(ziel.glob("*.jpg")) if ziel.is_dir() else set()
         farbwerte = [(f, mockup_plan.farbe(f).hex if p.textil else "#FFFFFF") for f in farben(p)]
-        fotos = await asyncio.to_thread(
-            mockup_montage.rendere, motiv, hinten=hinten, ganzflaeche=ganzflaeche,
-            produkt=p.key, textil=p.textil, farben=farbwerte,
-            ziel_ordner=ziel, ordner=Path(s.mockup_montage_ordner))
+        # Schrift ist weiss, nur auf weisser Ware schwarz (Vorgabe 18.09.2026).
+        weisse = [fw for fw in farbwerte if fw[1].upper() == "#FFFFFF"]
+        andere = [fw for fw in farbwerte if fw not in weisse]
+
+        def _montiere(m: Path | None, h: Path | None, farbliste: list) -> dict:
+            return mockup_montage.rendere(
+                m, hinten=h, ganzflaeche=ganzflaeche, produkt=p.key, textil=p.textil,
+                farben=farbliste, ziel_ordner=ziel, ordner=Path(s.mockup_montage_ordner))
+
+        def _alle() -> dict:
+            teil: dict = {}
+            if andere:
+                teil.update(_montiere(motiv, hinten, andere))
+            if weisse:
+                teil.update(_montiere(schriftfarbe.dunkle_fassung(motiv) if motiv else None,
+                                      schriftfarbe.dunkle_fassung(hinten) if hinten else None,
+                                      weisse))
+            return {f: teil[f] for f, _ in farbwerte}
+
+        fotos = await asyncio.to_thread(_alle)
         gerendert = len({x for liste in fotos.values() for x in liste} - vorher)
         return {"je_farbe": fotos, "quelle": "montage", "fehlt": [], "gerendert": gerendert}
 

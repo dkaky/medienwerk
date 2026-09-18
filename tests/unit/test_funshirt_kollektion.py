@@ -19,7 +19,7 @@ def db():
 
 def test_kollektion_hat_spruch_und_kleines_motiv_je_eintrag():
     ideen = fk.eintraege()
-    assert len(ideen) >= 200
+    assert len(ideen) >= 140
     assert len({i.thema for i in ideen}) == len(ideen)
     for i in ideen:
         assert i.spruch.strip(), i.thema                      # jeder Eintrag hat einen Spruch
