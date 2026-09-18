@@ -42,6 +42,15 @@ os.environ["DASHBOARD_PASSWORD"] = ""
 # Einstellung des Entwicklers statt das Verhalten des Programms.
 os.environ["STUDIO_ENABLED"] = "false"
 
+# .env komplett aus dem Spiel nehmen, statt Schalter fuer Schalter nachzuziehen:
+# MOCK_EBAY=false steht dort seit dem Probebetrieb fest (echtes Lesen im Alltag),
+# und pydantic-settings liest die Datei VOR den obigen os.environ-Werten in jede
+# neue Settings()-Instanz - auch dort, wo ein Test bewusst mock_ebay=None (also
+# "folgt use_mocks") erwartet. Ohne env_file bleiben nur Code-Defaults + die hier
+# gesetzten Variablen wirksam; das deckt sich mit dem Zweck dieser Datei.
+from app.config import Settings  # noqa: E402
+Settings.model_config["env_file"] = None
+
 import atexit  # noqa: E402
 atexit.register(lambda: shutil.rmtree(_TMP, ignore_errors=True))
 

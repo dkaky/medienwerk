@@ -10,6 +10,8 @@ httpx==0.27.0
 python-multipart==0.0.9
 
 openai>=1.40.0               # Bilderzeugung und optionale Bildanalyse
+anthropic>=0.40.0            # Claude als LLM-Anbieter (app/integrations/llm.py)
+cryptography>=42.0            # eBay-Token-Verschluesselung (app/integrations/ebay.py)
 
 # --- Shop-Scraper (Headless-Browser) ---
 # Die AliExpress-Shop-Seite ist bot-geschuetzt und laesst sich nur mit einem echten Browser

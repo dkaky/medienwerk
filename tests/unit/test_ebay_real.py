@@ -301,16 +301,16 @@ def test_production_mock_guard():
 
     with pytest.raises(RuntimeError):
         _ensure_safe_mock_usage(Settings(app_env="production", use_mocks=True))
-    # Erlaubte Kombinationen werfen nicht. mock_ebay MUSS hier ausdruecklich auf
-    # None: Settings liest sonst die lokale .env mit, und dort steht seit dem
-    # Probebetrieb MOCK_EBAY=true. Der Einzelschalter hat Vorrang vor use_mocks -
-    # die Attrappe waere also an, der Waechter schluege an, und der Test fiele
-    # ueber die Konfiguration des Entwicklers statt ueber das Programm.
+    # Erlaubte Kombinationen werfen nicht. mock_ebay=None ("folgt use_mocks")
+    # ist hier nur zuverlaessig, weil conftest.py der Settings-Klasse die lokale
+    # .env abklemmt (env_file=None) - sonst wuerde je nach Stand des Probebetriebs
+    # dort ein fester MOCK_EBAY-Wert durchschlagen und der Test faende die
+    # Konfiguration des Entwicklers statt das Verhalten des Programms.
     _ensure_safe_mock_usage(Settings(app_env="production", use_mocks=False, mock_ebay=None))
     _ensure_safe_mock_usage(Settings(app_env="development", use_mocks=True))
 
     # Und der Einzelschalter selbst: Attrappe in Produktion bleibt verboten, auch
-    # wenn use_mocks aus ist. Genau diese Lage stellt die .env gerade her.
+    # wenn use_mocks aus ist.
     with pytest.raises(RuntimeError):
         _ensure_safe_mock_usage(Settings(app_env="production", use_mocks=False, mock_ebay=True))
 
