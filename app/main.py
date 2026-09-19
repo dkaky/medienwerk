@@ -252,6 +252,18 @@ def logo_banner():
     return FileResponse(STATIC_DIR / "logo-banner.jpg", media_type="image/jpeg")
 
 
+@app.get("/logo.png", include_in_schema=False)
+def logo_dunkel():
+    """Logo des Betriebs, dunkle Schrift - fuer hellen Grund."""
+    return FileResponse(STATIC_DIR / "logo.png", media_type="image/png")
+
+
+@app.get("/logo-hell.png", include_in_schema=False)
+def logo_hell():
+    """Logo des Betriebs, helle Schrift - fuer dunklen Grund."""
+    return FileResponse(STATIC_DIR / "logo-hell.png", media_type="image/png")
+
+
 @app.get("/api", tags=["System"])
 def api_info():
     return {

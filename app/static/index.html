@@ -106,7 +106,12 @@
     }
 
     .marke { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; }
-    .marke .crest { width: 34px; height: 34px; color: var(--accent); flex-shrink: 0; }
+    /* Das Logo des Betriebs: zwei Fassungen, weil die Schrift dunkel ist. Auf dunklem
+       Grund steht die helle Fassung (Schrift weiss, das rote Quadrat bleibt). */
+    .logo-bild { display: block; width: 100%; max-width: 190px; height: auto; }
+    .logo-hellgrund { display: none; }
+    body.light .logo-dunkelgrund { display: none; }
+    body.light .logo-hellgrund { display: block; }
     .marke b { font-size: 16px; display: block; line-height: 1.2; }
     .marke small { display: block; color: var(--muted); font-size: 10.5px; line-height: 1.35; }
 
@@ -794,19 +799,7 @@
          Bereiche versteckten sich hinter einem Menue "Mehr". -->
     <aside class="sidebar">
       <div class="marke">
-        <!-- Das DH-Monogramm im Kreis - die Marke, die auch auf den Shirts steht
-             (siehe uebernommen/ChatGPT Image Aug 14, 2026...png). Das alte Wappen
-             zeigte Lorbeer, Stern und die Jahreszahl MMXXIV: ein fremdes
-             Gruendungszeichen, nicht das dieses Einzelunternehmens. -->
-        <svg class="crest" viewBox="0 0 100 100" aria-hidden="true">
-          <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="6"/>
-          <path d="M27 32 h16 a13 13 0 0 1 13 13 v10 a13 13 0 0 1 -13 13 h-16 z
-                   M35 40 v20 h7 a6 6 0 0 0 6-6 v-8 a6 6 0 0 0 -6-6 z"
-                fill="currentColor" fill-rule="evenodd"/>
-          <path d="M60 32 h8 v13 h6 v-13 h8 v36 h-8 v-15 h-6 v15 h-8 z" fill="currentColor"/>
-        </svg>
-        <div class="titles">
-          <b>Medienwerk</b>
+        <div class="titles"><img class="logo-bild logo-dunkelgrund" src="/logo-hell.png" alt="Medienwerk"><img class="logo-bild logo-hellgrund" src="/logo.png" alt="Medienwerk">
           <small>Print on Demand · Dashboard</small>
         </div>
       </div>

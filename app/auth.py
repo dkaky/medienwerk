@@ -33,6 +33,8 @@ SESSION_TTL_SECONDS = 30 * 24 * 3600  # 30 Tage angemeldet bleiben
 PUBLIC_PATHS = {
     "/api/v1/version",
     "/logo-banner.jpg",
+    "/logo.png",
+    "/logo-hell.png",
     "/ebay/marketplace-account-deletion",
     "/api/v1/invoices/originals/abruf-signal",
     "/favicon.svg",
