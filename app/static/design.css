@@ -72,7 +72,7 @@ nav.tabs button, nav.tabs a, .nav-item {
   background: transparent; color: var(--muted); font: inherit; text-align: left; cursor: pointer;
 }
 nav.tabs button:hover, nav.tabs a:hover, .nav-item:hover { background: var(--card-2); color: var(--ink); text-decoration: none; }
-nav.tabs button.active, .nav-item.active { color: var(--ink); font-weight: 600; background: var(--card-2); border-left-color: var(--brand); }
+nav.tabs button.active, nav.tabs a.active, .nav-item.active { color: var(--ink); font-weight: 600; background: var(--card-2); border-left-color: var(--brand); }
 .tab-ic { width: 16px; height: 16px; flex: none; }
 .nav-item .ico { width: 16px; text-align: center; }
 .nav-trenner, .nav-sep { height: 1px; background: var(--line); margin: 12px; }
@@ -328,7 +328,7 @@ details.gruppe summary:hover { background: var(--bg-soft); }
   .marke, .brand { padding: 0 0 12px; }
   nav.tabs { flex-direction: row; flex-wrap: wrap; gap: 4px; }
   nav.tabs button, nav.tabs a, .nav-item { width: auto; border-left: 0; border-bottom: 2px solid transparent; border-radius: 6px; padding: 6px 12px; }
-  nav.tabs button.active, .nav-item.active { border-bottom-color: var(--brand); background: transparent; }
+  nav.tabs button.active, nav.tabs a.active, .nav-item.active { border-bottom-color: var(--brand); background: transparent; }
   .nav-trenner, .nav-sep { display: none; }
   .main { padding: 24px 16px 64px; }
   .grid, .grid-3, .anprobe, .ergebnis-neu { grid-template-columns: 1fr; }

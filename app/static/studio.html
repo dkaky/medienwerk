@@ -8,7 +8,7 @@
      /favicon.ico zurueck, und dort lag ein SVG unter falschem Namen. -->
 <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=7" />
 <link rel="icon" type="image/x-icon" href="/favicon.ico?v=7" sizes="any" />
-<link rel="stylesheet" href="/design.css?v=1">
+<link rel="stylesheet" href="/design.css?v=2">
 </head>
 <body>
   <script>
@@ -27,15 +27,22 @@
   </script>
 <div class="app">
   <aside class="sidebar">
-    <div class="brand">
-      <div><img class="logo-bild logo-dunkelgrund" src="/logo-hell.png" alt="Medienwerk"><img class="logo-bild logo-hellgrund" src="/logo.png" alt="Medienwerk"><small>Studio</small></div>
+    <!-- Diese Leiste ist bewusst Zeichen fuer Zeichen dieselbe wie im Dashboard
+         (index.html): gleiche Marke, gleiche Symbole, gleiche Reihenfolge. Wer sie
+         aendert, muss beide Dateien anfassen. -->
+    <div class="marke">
+      <div class="titles"><img class="logo-bild logo-dunkelgrund" src="/logo-hell.png" alt="Medienwerk"><img class="logo-bild logo-hellgrund" src="/logo.png" alt="Medienwerk">
+        <small>Dashboard</small>
+      </div>
     </div>
-    <a class="nav-item" href="/"><span class="ico">&#9641;</span>Heute</a>
-    <a class="nav-item" href="/#products"><span class="ico">&#9638;</span>Angebote</a>
-    <div class="nav-sep"></div>
-    <a class="nav-item" href="/#belege"><span class="ico">&#9783;</span>Buchhaltung</a>
-    <a class="nav-item" href="/#einstellungen"><span class="ico">&#9881;</span>Einstellungen</a>
-    <a class="nav-item active" href="/studio"><span class="ico">&#10022;</span>Studio</a>
+    <nav class="tabs">
+      <a href="/"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M6 21v-6"/><path d="M12 21V8"/><path d="M18 21v-10"/></svg>Heute</a>
+      <a href="/#products"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 11.4 12 20l-8-8 8.6-8.6H20a.6.6 0 0 1 .6.6v7.4Z"/><circle cx="16.3" cy="7.7" r="1.2"/></svg>Angebote</a>
+      <div class="nav-trenner"></div>
+      <a href="/#belege"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2.5-1.6L13 21l-2.5-1.6L8 21l-2-1.6V3Z"/><path d="M9 8h6"/><path d="M9 12h6"/></svg>Buchhaltung</a>
+      <a href="/#einstellungen"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg>Einstellungen</a>
+      <a href="/studio" class="active"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="m8 14 3-4 2.5 3 2-2.5L18 14"/><circle cx="9" cy="8.5" r="1.2"/></svg>Studio</a>
+    </nav>
   </aside>
 
   <main class="main">
