@@ -84,7 +84,7 @@ def test_titel_schoepft_die_80_zeichen_aus():
         titel = ebay_weg.titel(_radar_motiv(thema), ebay_weg.produkt("tshirt"))
         assert 72 <= len(titel) <= 80, titel
         assert titel.startswith("T-Shirt ")
-        assert "Fun Shirt" in titel and "Geschenk" in titel and "Baumwolle" in titel
+        assert "Fun Shirt" in titel and "100% Baumwolle" in titel
 
 
 def test_titel_nennt_das_themenwort_statt_des_internen_namens():
@@ -97,10 +97,15 @@ def test_kurzer_spruch_steht_im_titel():
     assert "Erst Kaffee dann Charakter" in titel
 
 
-def test_titel_sagt_nicht_pauschal_100_prozent_baumwolle():
-    # Grau meliert hat 85 % Baumwolle: die pauschale Angabe waere falsch (und abmahnbar).
+def test_titel_nennt_100_prozent_baumwolle_nur_wenn_es_fuer_alle_farben_stimmt(monkeypatch):
+    # Ohne Grau meliert (85 % Baumwolle) sind alle Farben reine Baumwolle.
     titel = ebay_weg.titel(_radar_motiv("Angeln-Therapie"), ebay_weg.produkt("tshirt"))
-    assert "100%" not in titel
+    assert "100% Baumwolle" in titel and len(titel) <= 80
+    # Kaeme eine Mischfarbe dazu, waere die pauschale Angabe falsch (und abmahnbar).
+    from app.studio import mockup_plan
+    gemischt = mockup_plan.Farbe("Grau meliert", "Sport Grey", "#A4A6A9", "85 % Baumwolle, 15 % Viskose")
+    monkeypatch.setattr(mockup_plan, "FARBEN", (*mockup_plan.FARBEN, gemischt))
+    assert "100%" not in ebay_weg.titel(_radar_motiv("Angeln-Therapie"), ebay_weg.produkt("tshirt"))
     assert ebay_weg._material_kurz(ebay_weg.produkt("hoodie")) is None
     assert ebay_weg._material_kurz(ebay_weg.produkt("polo")) == "100% Baumwolle"
 

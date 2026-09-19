@@ -5,7 +5,7 @@ Entscheidungen des Betreibers (13.09.2026):
 * Rohlinge aus dem eigenen Einkauf:
   B&C #E190 T-Shirt, B&C ID.001 Polo, Build Your Brand Heavy Oversize Tee,
   B&C ID.333 Hoodie.
-* **Sparsamer Fotoplan, rund 42 Bilder je Motiv** (Pro-Tarif: ~300 Bilder im Monat):
+* **Sparsamer Fotoplan, rund 38 Bilder je Motiv** (Pro-Tarif: ~300 Bilder im Monat):
   je Textil ein realistischer Mann, eine realistische Frau und je Farbe ein
   echtes Produktfoto von vorne
   (2 + 8 = 10), mal 4 Textilien, plus 2 Tassenbilder.
@@ -16,8 +16,10 @@ dem Foto eingefaerbt wird. Wer ein Muster in der Hand hat, sollte sie danach
 nachstellen - sonst sieht der Kaeufer ein anderes Rot, als er bekommt.
 
 **Material:** B&C #E190 ist 100 % Baumwolle (ringgesponnen, 185 g/m²), AUSSER Sport Grey (85 % Baumwolle,
-15 % Viskose, laut Haendlerangabe, geprueft 14.09.2026). Deshalb traegt die Farbe ihren Materialhinweis
-selbst, statt dass ein Angebot pauschal "100 % Baumwolle" behauptet.
+15 % Viskose, laut Haendlerangabe, geprueft 14.09.2026). Auf Vorgabe des Betreibers (18.09.2026) ist
+"Grau meliert" aus dem Angebot genommen, damit Titel und Beschreibung "100 % Baumwolle" sagen duerfen.
+Kommt eine Farbe mit anderem Material dazu, tragen Beschreibung und Titel das automatisch nach
+(``ebay_weg._material_kurz``).
 
 Die Zuordnung Produkt -> Ansicht -> Vorlage steht in einer JSON-Datei
 (``MOCKUP_VORLAGEN_DATEI``), weil die Vorlagen im eigenen Dynamic-Mockups-Konto
@@ -53,7 +55,6 @@ class Farbe:
 FARBEN: tuple[Farbe, ...] = (
     Farbe("Weiß", "White", "#FFFFFF", "100 % Baumwolle"),
     Farbe("Schwarz", "Black", "#1B1B1B", "100 % Baumwolle"),
-    Farbe("Grau meliert", "Sport Grey", "#A4A6A9", "85 % Baumwolle, 15 % Viskose"),
     Farbe("Navy", "Navy", "#1F2A44", "100 % Baumwolle"),
     Farbe("Rot", "Red", "#C21E2B", "100 % Baumwolle"),
     Farbe("Royalblau", "Royal Blue", "#1F4E9C", "100 % Baumwolle"),

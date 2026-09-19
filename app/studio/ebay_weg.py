@@ -1,4 +1,4 @@
-"""Vom Motiv zum eBay-Angebot: fuenf Produkte, 8 Farben, echte Produktfotos.
+"""Vom Motiv zum eBay-Angebot: sechs Produkte, 7 Farben, echte Produktfotos.
 
 **Katalog (Preise inkl. Versand, Vorgabe des Betreibers vom 13.09.2026):**
 
@@ -353,13 +353,13 @@ def _material_kurz(p: Produkt) -> str | None:
 #: Suchbegriffe je Produkt in der Reihenfolge ihres Suchwerts. Die Zeichen bis 80
 #: werden damit aufgefuellt; was schon im Titel steht, wird uebersprungen.
 _TITEL_FUELLER: dict[str, tuple[str, ...]] = {
-    "tshirt": ("Fun Shirt", "Geschenk", "{material}", "Herren", "Damen", "Unisex", "Geschenkidee",
+    "tshirt": ("Fun Shirt", "{material}", "Geschenk", "Herren", "Damen", "Unisex", "Geschenkidee",
                "Bedruckt", "Witzig", "Geburtstag", "Sprüche", "Rundhals", "Lustig"),
-    "kids_tshirt": ("Fun Shirt", "Geschenk", "{material}", "Jungen", "Mädchen", "Kindershirt",
+    "kids_tshirt": ("Fun Shirt", "{material}", "Geschenk", "Jungen", "Mädchen", "Kindershirt",
                     "Geschenkidee", "Bedruckt", "Witzig", "Geburtstag", "Sprüche", "Lustig"),
-    "polo": ("Fun Shirt", "Geschenk", "{material}", "Herren", "Damen", "Geschenkidee",
+    "polo": ("Fun Shirt", "{material}", "Geschenk", "Herren", "Damen", "Geschenkidee",
              "Bedruckt", "Witzig", "Geburtstag", "Sprüche", "Lustig"),
-    "oversize": ("Fun Shirt", "Geschenk", "{material}", "Streetwear", "Herren", "Damen", "Unisex",
+    "oversize": ("Fun Shirt", "{material}", "Geschenk", "Streetwear", "Herren", "Damen", "Unisex",
                  "Geschenkidee", "Bedruckt", "Witzig", "Sprüche", "Lustig"),
     "hoodie": ("Fun Shirt", "Geschenk", "Kapuzenpullover", "Herren", "Damen", "Unisex",
                "Pullover", "Geschenkidee", "Bedruckt", "Witzig", "Sprüche", "Lustig"),

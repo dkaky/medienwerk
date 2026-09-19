@@ -1,4 +1,4 @@
-"""Motiv -> eBay-Angebote: 5 Produkte, 8 Farben, echte Fotos - netzwerkfrei.
+"""Motiv -> eBay-Angebote: 6 Produkte, 7 Farben, echte Fotos - netzwerkfrei.
 
 Kern: Je Produkt EIN Angebot (Textil mit Varianten Farbe x Groesse und Bildern je
 Farbe, Tasse einzeln), jede Farbe hat mindestens ein Bild, gerenderte Fotos werden
@@ -124,7 +124,7 @@ def test_katalog_entspricht_den_vorgaben():
                 "kids_tshirt": (14.90, "155199"),
                 "tasse": (11.90, "20695")}
     assert {k: (p.preis_eur, p.kategorie_id) for k, p in ebay_weg.PRODUKTE.items()} == erwartet
-    # Kein pauschales Material-Merkmal: Grau meliert ist keine reine Baumwolle.
+    # Kein pauschales Material-Merkmal: der Hoodie ist keine reine Baumwolle.
     assert all("Material" not in p.merkmale for p in ebay_weg.PRODUKTE.values())
     assert ebay_weg.PRODUKTE["oversize"].merkmale["Passform"] == ["Oversize"]
     assert ebay_weg.PRODUKTE["hoodie"].merkmale["Produktart"] == ["Kapuzenpullover"]
@@ -161,7 +161,7 @@ def test_beschreibung_nennt_material_und_mwst(db, tmp_path):
     s = _settings(tmp_path)
     text = ebay_weg.beschreibung(design, ebay_weg.PRODUKTE["tshirt"], s)
     assert "Material: 100 % Baumwolle" in text
-    assert "Grau meliert: 85 % Baumwolle, 15 % Viskose" in text
+    assert "Grau meliert" not in text and "Viskose" not in text
     for key, material in (("polo", "100 % Baumwolle"), ("oversize", "100 % Baumwolle"),
                           ("hoodie", "80 % Baumwolle, 20 % recyceltes Polyester")):
         assert f"Material: {material}" in ebay_weg.beschreibung(design, ebay_weg.PRODUKTE[key], s)
@@ -196,7 +196,7 @@ async def test_textil_mit_farben_und_groessen(db, tmp_path):
                                        bildordner=tmp_path, mockups=_FakeMockups())
 
     artikel = [a for a in ebay.aufrufe if a[0] == "artikel"]
-    assert len(artikel) == 8 * 2
+    assert len(artikel) == 7 * 2
     erster = artikel[0][2]["aspects"]
     assert erster["Farbe"] == ["Weiß"] and erster["Größe"] == ["S"]
     assert all(len(a[2]["image_urls"]) >= 1 for a in artikel)      # jede Farbe hat ein Bild
@@ -209,7 +209,7 @@ async def test_textil_mit_farben_und_groessen(db, tmp_path):
     assert ebay.aufrufe[-1][0] == "veroeffentlichen_gruppe"
     assert e["automatisch_ergaenzt"] == ["Thema"]
     assert e["bildquelle"] == "mockups"
-    assert db.query(PodListing).one().quantity_available == 8 * 2 * 10
+    assert db.query(PodListing).one().quantity_available == 7 * 2 * 10
 
 
 async def test_tasse_ist_ein_einzelangebot_in_weiss(db, tmp_path):
@@ -235,13 +235,13 @@ async def test_echte_fotos_werden_gerendert_und_nicht_doppelt_bezahlt(db, tmp_pa
     motiv = tmp_path / "berg.png"
 
     erst = await ebay_weg.produktfotos(design, p, s=s, bildordner=tmp_path, motiv=motiv, mockups=dm)
-    assert erst["quelle"] == "mockups" and erst["gerendert"] == 10
-    assert len(dm.renders) == 10                                     # Mann + Frau + 8 Farben
+    assert erst["quelle"] == "mockups" and erst["gerendert"] == 9
+    assert len(dm.renders) == 9                                      # Mann + Frau + 7 Farben
     assert len(erst["je_farbe"]["Schwarz"]) == 3                     # Hauptfarbe: Mann, Frau, vorne
     assert all(len(erst["je_farbe"][f]) == 1 for f in FARBEN if f != "Schwarz")
 
     zweit = await ebay_weg.produktfotos(design, p, s=s, bildordner=tmp_path, motiv=motiv, mockups=dm)
-    assert zweit["gerendert"] == 0 and len(dm.renders) == 10         # aus dem Zwischenspeicher
+    assert zweit["gerendert"] == 0 and len(dm.renders) == 9         # aus dem Zwischenspeicher
 
 
 async def test_textilien_ohne_echte_vorlagen_werden_blockiert(db, tmp_path):
@@ -335,7 +335,7 @@ async def test_eigene_vorlagen_gehen_vor_und_brauchen_keinen_schluessel(db, tmp_
     assert ebay_weg.fotoquelle(p, s) == ("montage", []) and ebay_weg.pruefe_textilfotos(p, s) == []
     design = _motiv(db, tmp_path)
     erst = await ebay_weg.produktfotos(design, p, s=s, bildordner=tmp_path, motiv=tmp_path / "berg.png")
-    assert erst["quelle"] == "montage" and erst["gerendert"] == 8 * 6
+    assert erst["quelle"] == "montage" and erst["gerendert"] == 7 * 6
     assert set(erst["je_farbe"]) == set(FARBEN) and all(len(v) == 6 for v in erst["je_farbe"].values())
     zweit = await ebay_weg.produktfotos(design, p, s=s, bildordner=tmp_path, motiv=tmp_path / "berg.png")
     assert zweit["gerendert"] == 0 and zweit["je_farbe"] == erst["je_farbe"]

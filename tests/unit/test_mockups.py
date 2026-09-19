@@ -26,15 +26,14 @@ def _alle_vorlagen():
 # --------------------------------------------------------------------------
 # Fotoplan
 # --------------------------------------------------------------------------
-def test_acht_farben_und_grau_ist_keine_reine_baumwolle():
-    assert [f.name for f in mp.FARBEN] == ["Weiß", "Schwarz", "Grau meliert", "Navy", "Rot",
+def test_sieben_farben_alle_reine_baumwolle():
+    assert [f.name for f in mp.FARBEN] == ["Weiß", "Schwarz", "Navy", "Rot",
                                           "Royalblau", "Flaschengrün", "Sand"]
-    assert mp.farbe("grau meliert").material == "85 % Baumwolle, 15 % Viskose"
-    assert all(f.material == "100 % Baumwolle" for f in mp.FARBEN if f.hersteller != "Sport Grey")
+    assert all(f.material == "100 % Baumwolle" for f in mp.FARBEN)
 
 
-def test_sparsamer_plan_ergibt_42_bilder():
-    assert mp.bilder_je_motiv() == 42
+def test_sparsamer_plan_ergibt_38_bilder():
+    assert mp.bilder_je_motiv() == 38
     vorlagen = _alle_vorlagen()
     summe = 0
     for key, textil in (("tshirt", True), ("polo", True), ("oversize", True),
@@ -42,14 +41,14 @@ def test_sparsamer_plan_ergibt_42_bilder():
         plan = mp.plane(key, textil=textil, vorlagen=vorlagen, hauptfarbe="Weiß")
         assert plan.fehlt == []
         summe += len(plan.auftraege)
-    assert summe == 42
+    assert summe == 38
 
 
 def test_mann_und_frau_nur_in_der_hauptfarbe():
     plan = mp.plane("hoodie", textil=True, vorlagen=_alle_vorlagen(), hauptfarbe="Schwarz")
     mann = [a for a in plan.auftraege if a.ansicht == "mann"]
     assert len(mann) == 1 and mann[0].farbe.name == "Schwarz"
-    assert len([a for a in plan.auftraege if a.ansicht == "vorne"]) == 8
+    assert len([a for a in plan.auftraege if a.ansicht == "vorne"]) == 7
     assert plan.auftraege[0].label == "hoodie-mann-Black"
 
 
