@@ -208,7 +208,8 @@ def test_kopf_und_inhalt_sind_gleich_breit(seite):
     verschieden breit sein - deshalb prueft dieser Test den Aufbau und nicht
     mehr einzelne Pixelwerte.
     """
-    html = (STATIC / seite).read_text(encoding="utf-8")
+    # Das Stylesheet ist seit 19.09.2026 eine gemeinsame Datei (design.css).
+    html = (STATIC / seite).read_text(encoding="utf-8") + (STATIC / "design.css").read_text(encoding="utf-8")
 
     assert re.search(r"\.app\s*\{[^}]*grid-template-columns", html), (
         f"{seite}: kein Rasterlayout mit Leiste - der Aufbau fehlt")
@@ -230,11 +231,13 @@ def test_kopf_und_inhalt_sind_gleich_breit(seite):
 
 @pytest.mark.parametrize("seite", SEITEN)
 def test_css_klammern_sind_ausgeglichen(seite):
-    """Eine offene Klammer im <style> verschluckt alle folgenden Regeln lautlos."""
+    """Eine offene Klammer im Stylesheet verschluckt alle folgenden Regeln lautlos."""
     html = (STATIC / seite).read_text(encoding="utf-8")
-    css = re.search(r"<style[^>]*>(.*?)</style>", html, re.S)
-    assert css, f"{seite}: kein <style>"
-    assert css.group(1).count("{") == css.group(1).count("}")
+    assert 'href="/design.css' in html, f"{seite}: bindet das gemeinsame Stylesheet nicht ein"
+    quellen = [(STATIC / "design.css").read_text(encoding="utf-8")]
+    quellen += re.findall(r"<style[^>]*>(.*?)</style>", html, re.S)
+    for css in quellen:
+        assert css.count("{") == css.count("}")
 
 
 @pytest.mark.parametrize("seite", SEITEN)

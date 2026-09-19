@@ -141,12 +141,12 @@ def test_keine_fremdspur_auf_der_anmeldeseite(spur, warum):
 def test_marke_steht_da():
     """Positivprobe: es reicht nicht, das Fremde zu entfernen.
 
-    Zwei Namen, zwei Rollen: "Druckhelden" ist die Marke im eBay-Shop, sie steht
-    im Dashboard an den Verkaufsstellen. "Medienwerk" ist der Betrieb - er traegt
-    die Anmeldeseite, denn die ist intern und gehoert keiner Verkaufsmarke.
+    "Medienwerk" ist der Betrieb und steht mit seinem eigenen Logo in Dashboard und
+    Anmeldeseite. "Druckhelden" ist die Verkaufsmarke bei eBay und gehoert nicht in
+    die Oberflaeche.
     """
-    assert "Druckhelden" in INDEX
-    assert "Medienwerk" in AUTH
+    assert 'alt="Medienwerk"' in INDEX and "/logo.png" in INDEX
+    assert 'alt="Medienwerk"' in AUTH and "/logo.png" in AUTH
 
 
 # --------------------------------------------------------------- Hell / Dunkel

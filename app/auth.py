@@ -34,6 +34,7 @@ PUBLIC_PATHS = {
     "/api/v1/version",
     "/logo-banner.jpg",
     "/logo.png",
+    "/design.css",
     "/logo-hell.png",
     "/ebay/marketplace-account-deletion",
     "/api/v1/invoices/originals/abruf-signal",
@@ -184,92 +185,38 @@ _LOGIN_HTML = """<!doctype html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Anmelden · Medienwerk</title>
-  <!-- Fehlte bisher. Die Anmeldeseite ist das Erste, was man sieht -
-       und die Seite, die man sich als Lesezeichen anlegt. -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=7">
   <link rel="icon" type="image/x-icon" href="/favicon.ico?v=7" sizes="any">
+  <link rel="stylesheet" href="/design.css?v=1">
   <style>
-    :root{
-      /* Dieselbe Palette wie das Dashboard: kuehles Anthrazit, Cyan als
-         Markenfarbe. Vorher stand hier Flaschengruen mit Messing - die
-         eine fremde Bildwelt. Die Anmeldeseite ist das Erste, was man sieht;
-         sie darf nicht nach einem anderen Betrieb aussehen als der Rest.
-         --gold heisst weiter so, traegt aber das Cyan: der Name steckt in
-         einem Dutzend Regeln hier drunter. */
-      --bg:#12161d; --edge:#333c49; --hair:#2a323d;
-      --ink:#e6e9ef; --muted:#8b93a3; --gold:#19a7bd; --gold-soft:#3dc4d8;
-      --serif:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-      --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-    }
-    *{ box-sizing:border-box; margin:0; }
-    html,body{ height:100%; }
-    body{ font-family:var(--sans); color:var(--ink); background:var(--bg); }
-    .scene{ position:fixed; inset:0; display:grid; place-items:center; overflow:hidden; padding:24px; }
-    /* Ruhiger Verlauf mit einem Anklang des Marken-Rots statt des frueheren Fotos
-       (logo-banner.jpg zeigt startende Militaerraketen). Ein Verlauf laedt zudem
-       ohne zusaetzliche Anfrage - die Anmeldeseite steht sofort. */
-    .scene .bg{ position:absolute; inset:0;
-      background:
-        radial-gradient(90% 70% at 22% 18%, rgba(25,167,189,.18) 0%, transparent 58%),
-        radial-gradient(80% 65% at 82% 88%, rgba(25,167,189,.10) 0%, transparent 60%),
-        linear-gradient(160deg, #1c232d 0%, #171c24 46%, #12161d 100%); }
-    .scene .veil{ position:absolute; inset:0;
-      background:
-        radial-gradient(130% 95% at 50% 26%, rgba(23,28,36,.15) 0%, rgba(18,22,29,.70) 62%, rgba(15,18,24,.92) 100%),
-        linear-gradient(180deg, rgba(18,22,29,.52) 0%, rgba(18,22,29,.32) 45%, rgba(18,22,29,.78) 100%); }
-    .scene .grain{ position:absolute; inset:0; opacity:.5; background:linear-gradient(180deg, transparent, rgba(0,0,0,.25)); }
-    .gate{ position:relative; z-index:2; width:min(94vw, 400px);
-      background:linear-gradient(180deg, rgba(31,37,48,.92) 0%, rgba(23,28,36,.94) 100%);
-      border:1px solid var(--edge); border-radius:18px;
-      box-shadow:0 40px 90px -40px rgba(0,0,0,.9), inset 0 1px 0 rgba(25,167,189,.12);
-      padding:34px 34px 26px; text-align:center; backdrop-filter:blur(3px); }
-    .gate .frame{ position:absolute; inset:9px; border:1px solid var(--gold-soft); opacity:.32; border-radius:12px; pointer-events:none; }
-    .crest{ width:66px; height:66px; color:var(--gold); margin:0 auto 14px; display:block; filter:drop-shadow(0 3px 8px rgba(0,0,0,.5)); }
-    .kicker{ font-size:10.5px; letter-spacing:3px; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px; }
-    h1{ font-family:var(--serif); font-weight:600; font-size:30px; letter-spacing:.4px; color:var(--ink); line-height:1.05; }
-    .motto{ font-family:var(--serif); font-style:italic; font-size:16.5px; color:var(--gold-soft); margin-top:16px; line-height:1.35; }
-    .motto-sub{ font-size:11.5px; color:var(--muted); margin-top:5px; letter-spacing:.3px; font-style:italic; }
-    .rule{ display:flex; align-items:center; gap:12px; margin:22px 2px 20px; color:var(--gold-soft); }
-    .rule::before,.rule::after{ content:""; height:1px; flex:1; background:linear-gradient(90deg,transparent,var(--hair),transparent); }
-    .rule .star{ font-size:11px; opacity:.8; }
-    input[type=password]{ width:100%; padding:13px 14px; border-radius:11px; font:inherit; font-size:15px;
-      background:rgba(15,18,24,.6); border:1px solid var(--edge); color:var(--ink); outline:none; letter-spacing:2px; }
-    input[type=password]::placeholder{ letter-spacing:normal; color:var(--muted); }
-    input[type=password]:focus{ border-color:var(--gold-soft); box-shadow:0 0 0 3px rgba(25,167,189,.18); }
-    button{ width:100%; margin-top:16px; padding:13px; border:0; border-radius:11px; cursor:pointer;
-      background:linear-gradient(135deg, var(--gold), var(--gold-soft)); color:#04171b;
-      font:inherit; font-size:14px; font-weight:700; letter-spacing:1px; text-transform:uppercase;
-      transition:filter .12s, transform .05s; }
-    button:hover{ filter:brightness(1.06); } button:active{ transform:translateY(1px); }
-    .foot{ margin-top:20px; font-size:11px; color:var(--muted); letter-spacing:.4px; }
-    .foot .em{ color:var(--gold-soft); }
-    .err{ background:rgba(255,92,108,.12); border:1px solid rgba(255,92,108,.4); color:#ff9aa4;
-      padding:10px 12px; border-radius:10px; font-size:12.5px; margin-bottom:14px; text-align:left; }
-    @media(max-width:420px){ h1{ font-size:25px; } .gate{ padding:28px 24px 22px; } }
+    .anmeldung { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    .anmeldung .karte-login { width: min(100%, 360px); padding: 32px; background: var(--card);
+      border: 1px solid var(--line); border-radius: var(--radius); }
+    .anmeldung .logo-bild { margin: 0 auto 8px; max-width: 200px; }
+    .anmeldung p.unter { text-align: center; color: var(--muted); margin-bottom: 24px; }
+    .anmeldung .btn { width: 100%; margin-top: 12px; padding: 9px 14px; }
+    .anmeldung .fehler { margin-bottom: 16px; padding: 10px 12px; border-left: 3px solid var(--bad);
+      background: var(--bg-soft); color: var(--bad); border-radius: 0 6px 6px 0; }
   </style>
 </head>
 <body>
-  <div class="scene">
-    <div class="bg"></div>
-    <div class="veil"></div>
-    <div class="grain"></div>
-    <div class="gate">
-      <div class="frame"></div>
-      <svg class="crest" viewBox="0 0 100 100" aria-hidden="true">
-        <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="6"/>
-        <path d="M27 68V36h9v4c5-7 15-7 20 0 8-9 20-5 20 7v21H66V49c0-9-10-9-10 0v19H46V49c0-9-9-9-9 0v19z" fill="currentColor"/>
-      </svg>
-      <div class="kicker">Medienwerk</div>
-      <h1>Medienwerk</h1>
-      <div class="motto">Print on Demand</div>
-      <div class="motto-sub">Eigene Entwürfe und Grafiken an einem Ort</div>
-      <div class="rule"><span class="star">✦</span></div>
+  <script>
+    (function () {
+      var w = null;
+      try { w = localStorage.getItem("podshop-farbschema"); } catch (e) {}
+      if (w !== "dunkel") document.body.classList.add("light");
+    })();
+  </script>
+  <div class="anmeldung">
+    <div class="karte-login">
+      <img class="logo-bild logo-dunkelgrund" src="/logo-hell.png" alt="Medienwerk">
+      <img class="logo-bild logo-hellgrund" src="/logo.png" alt="Medienwerk">
+      <p class="unter">Interner Zugang</p>
       <!--ERROR-->
       <form method="post" action="/login">
         <input type="password" name="password" placeholder="Passwort" autofocus autocomplete="current-password">
-        <button type="submit">Anmelden</button>
+        <button class="btn primary" type="submit">Anmelden</button>
       </form>
-      <div class="foot">Interner Zugang &mdash; <span class="em">Medienwerk</span></div>
     </div>
   </div>
 </body>
@@ -277,5 +224,5 @@ _LOGIN_HTML = """<!doctype html>
 
 
 def _render_login(error: str | None = None) -> str:
-    error_html = f'<p class="err">{error}</p>' if error else ""
+    error_html = f'<p class="fehler">{error}</p>' if error else ""
     return _LOGIN_HTML.replace("<!--ERROR-->", error_html)

@@ -6,775 +6,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=6" />
   <link rel="icon" type="image/x-icon" href="/favicon.ico?v=6" sizes="any" />
   <title>Dashboard · Medienwerk</title>
-  <style>
-    :root {
-      /* Dunkel: kuehles Anthrazit + Cyan.
-         Vorher stand hier Flaschengruen und Messing, dazu Wappen,
-         Siegel und Motto. Das war eine fremde Markenwelt; die Embleme sind
-         laengst raus, die Farben waren geblieben. Der Grundton kommt jetzt aus dem Studio (#0f1115), die
-         Akzentfarbe ist Cyan - eine der vier Druckfarben und damit die einzige,
-         die zu einem Laden namens Druckhelden ueberhaupt etwas sagt.
-
-         Die VARIABLENNAMEN bleiben, auch --gold: es steckt in rund vierzig
-         Regeln, und ein Umbenennen waere viel Risiko fuer null Gewinn. --gold
-         traegt jetzt den warmen Gegenpol zum kalten Cyan. */
-      /* Angehoben auf Rueckmeldung "ein Ticken zu dunkel": der Grund ist jetzt
-         doppelt so hell wie vorher (#0f1115). Weiter ging nicht - bei #1e242e
-         fallen "gedaempft" und der Fehlerton unter die Lesbarkeitsschwelle von
-         4.5:1. So bleiben alle Textfarben bei mindestens 4.98. */
-      --bg: #171c24; --bg-soft: #1b212a; --card: #1f2530; --card-2: #28303c;
-      --line: #333c49; --line-soft: #2a323d; --ink: #e6e9ef; --muted: #8b93a3;
-      --accent: #19a7bd; --accent-2: #f2a63b; --accent-ink: #04171b;
-      --ok: #35c07a; --warn: #f2a63b; --bad: #ff5c6c; --info: #5ba7d8; --purple: #9b8cf0;
-      --gold: #f2a63b; --gold-soft: #c9862a;
-      --duo-hi: #19a7bd; --duo-lo: #0f1115; --duo-strength: .85;
-      --radius: 13px; --shadow: 0 24px 54px -30px rgba(0,0,0,.7);
-      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      /* Bewusst KEINE Serifenschrift mehr. Die Variable bleibt, weil sie an sechs
-         Stellen steht (.big-num, .motto, .val) - sie traegt jetzt dieselbe
-         Systemschrift. So verschwindet der Old-Money-Anstrich, ohne dass ich
-         sechs Regeln einzeln anfassen und dabei eine uebersehen muss. */
-      --serif: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      --mono: "SF Mono", "Cascadia Code", Consolas, "Liberation Mono", monospace;
-    }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; height: 100%; }
-    body {
-      background:
-        radial-gradient(1100px 560px at 92% -12%, #1e2b38 0%, transparent 58%),
-        radial-gradient(900px 520px at -6% -4%, #1b2029 0%, var(--bg) 52%) fixed;
-      color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.5;
-    }
-    /* ---- Light-Mode (per Button umschaltbar, in localStorage gemerkt) ---- */
-    body.light {
-      /* Hell: kuehles Papiergrau statt Elfenbein. Das Studio kennt nur Dunkel -
-         dieses Schema ist deshalb neu gemischt, nicht kopiert. Es haelt sich an
-         dieselbe Logik: neutraler Grund, Cyan als Akzent, ein warmer Gegenpol.
-         Das Cyan ist hier dunkler (#0e7f92), weil #19a7bd auf Weiss zu blass
-         waere - dieselbe Farbe braucht auf hellem Grund mehr Tiefe. */
-      --bg: #f4f6f8; --bg-soft: #fafbfc; --card: #ffffff; --card-2: #eef1f5;
-      --line: #dde3ea; --line-soft: #e9edf2; --ink: #1a1f26; --muted: #66707d;
-      --accent: #0e7f92; --accent-2: #b5711a; --accent-ink: #ffffff;
-      /* Warn- und Gutton sind gegenueber dem dunklen Schema abgedunkelt: auf
-         Weiss erreichten #b5711a und #1f8a52 nur 3.9 bzw. 4.4 zu 1 - zu wenig
-         fuer normalen Text (noetig sind 4.5). Jetzt 4.9. Dieselbe Farbe braucht
-         auf hellem Grund mehr Tiefe, sonst ist sie huebsch und unlesbar. */
-      --ok: #1d814d; --warn: #9f6316; --bad: #c0392b; --info: #2b6f9c; --purple: #6b52c9;
-      --gold: #9f6316; --gold-soft: #c07d1f;
-      --duo-hi: #e8eef2; --duo-lo: #2a3138; --duo-strength: .68;
-      --shadow: 0 18px 44px -30px rgba(26,31,38,.35);
-      background:
-        radial-gradient(1100px 520px at 88% -8%, #e9eef3 0%, transparent 60%),
-        radial-gradient(900px 500px at 0% 0%, #eef2f6 0%, var(--bg) 55%) fixed;
-    }
-    body.light .card { background: #ffffff; box-shadow: 0 14px 34px -28px rgba(26,31,38,.45); }
-    body.light .btn:hover { background: #eaeef3; }
-    body.light .pill { background: var(--card-2); }
-    body.light .kpi { background: #ffffff; }
-    a { color: var(--accent); text-decoration: none; }
-    /* ===== Aufbau: feste Leiste links, Inhalt rechts =====
-       Uebernommen aus dem Studio auf Wunsch vom 03.09.2026 ("das design des
-       studios auf das main dashboard uebertragen"). Beide Seiten teilen ohnehin
-       dieselbe Farbwelt - die Reiterzeile oben war der letzte Unterschied.
-
-       Warum eine Leiste besser passt: Aus fuenf Reitern plus einem Menue "Mehr"
-       waren neun Bereiche geworden, von denen vier hinter einem Klapp-Menue
-       lagen. Senkrecht ist Platz fuer alle, ohne Versteck.
-
-       BREITEN-FEHLER, gleicher Anlass ("die Hero section und der teil drunter
-       sind nicht auf einander abgestimmt"): Vorher lief der Inhalt auf breiten
-       Schirmen bis min(1800px, 95vw), der Kopfbereich blieb aber auf 1280px
-       gedeckelt - Kopf und Inhalt standen sichtbar verschieden breit. Der Deckel
-       hatte einmal einen Grund: das 208 Pixel hohe Kopfbanner war ein Foto
-       fester Aufloesung. Dieses Banner ist laengst entfernt, der Deckel blieb
-       als Ueberrest stehen. Jetzt gibt es nur noch EINEN Container - Kopfzeile,
-       Kacheln und Tabellen sitzen zwangslaeufig auf derselben Kante. */
-    .app { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
-    .sidebar {
-      background: var(--card); border-right: 1px solid var(--line);
-      padding: 18px 13px 24px; display: flex; flex-direction: column; gap: 3px;
-      position: sticky; top: 0; height: 100vh; overflow-y: auto;
-    }
-    /* min-width:0 ist Pflicht, nicht Kosmetik: ohne das sprengt die erste breite
-       Tabelle die Rasterspalte und die ganze Seite scrollt waagerecht. */
-    .main { padding: 22px 26px 70px; min-width: 0; }
-    @media (max-width: 860px) {
-      .app { grid-template-columns: 1fr; }
-      .sidebar { position: static; height: auto; flex-direction: row;
-                 flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); }
-      .main { padding: 16px 14px 60px; }
-    }
-
-    .marke { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; }
-    /* Das Logo des Betriebs: zwei Fassungen, weil die Schrift dunkel ist. Auf dunklem
-       Grund steht die helle Fassung (Schrift weiss, das rote Quadrat bleibt). */
-    .logo-bild { display: block; width: 100%; max-width: 190px; height: auto; }
-    .logo-hellgrund { display: none; }
-    body.light .logo-dunkelgrund { display: none; }
-    body.light .logo-hellgrund { display: block; }
-    .marke b { font-size: 16px; display: block; line-height: 1.2; }
-    .marke small { display: block; color: var(--muted); font-size: 10.5px; line-height: 1.35; }
-
-    /* Die Reiter-Knoepfe behalten Kennung und data-view - showView und der
-       Klick-Delegat greifen unveraendert weiter. Nur das Aussehen wechselt. */
-    nav.tabs { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; border: 0; }
-    nav.tabs button, nav.tabs a {
-      display: flex; align-items: center; gap: 11px; width: 100%;
-      padding: 9px 11px; border-radius: 9px; background: transparent;
-      border: 1px solid transparent; cursor: pointer; color: var(--muted);
-      font: inherit; font-size: 13.5px; text-align: left; text-decoration: none;
-    }
-    nav.tabs button:hover, nav.tabs a:hover { background: var(--card-2); color: var(--ink); }
-    nav.tabs button.active { background: var(--card-2); color: var(--ink);
-      border-color: var(--line); font-weight: 600; }
-    nav.tabs .tab-ic { width: 17px; height: 17px; flex-shrink: 0; }
-    .nav-trenner { height: 1px; background: var(--line); margin: 11px 6px 5px; }
-    .nav-titel { font-size: 10px; text-transform: uppercase; letter-spacing: .07em;
-      color: var(--muted); padding: 4px 11px 3px; }
-    @media (max-width: 860px) {
-      nav.tabs { flex-direction: row; flex-wrap: wrap; gap: 4px; }
-      nav.tabs button, nav.tabs a { width: auto; }
-      .nav-trenner, .nav-titel { display: none; }
-    }
-
-    /* ===== Kopfbereich: Hero-Foto (getönt/Duoton) + Wappen + Titel + Statusleiste ===== */
-    header.top {
-      display: block; padding: 0; margin-bottom: 20px; overflow: hidden;
-      background: var(--card);
-      border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
-    }
-    .hero { position: relative; height: 208px; isolation: isolate; overflow: hidden; background: var(--duo-hi); }
-    .hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
-      object-position: center 60%; filter: grayscale(.82) contrast(1.0) brightness(1.09); mix-blend-mode: multiply; }
-    .hero-duo { position: absolute; inset: 0; background: var(--duo-lo); mix-blend-mode: lighten; opacity: var(--duo-strength); }
-    .hero-veil { position: absolute; inset: 0;
-      background: linear-gradient(180deg, rgba(10,20,14,0) 30%, rgba(9,18,13,.5) 68%, rgba(8,16,12,.9) 100%); }
-    .hero-frame { position: absolute; inset: 11px; border: 1px solid var(--gold-soft); opacity: .55; pointer-events: none; }
-    .hero-frame::before, .hero-frame::after { content: ""; position: absolute; width: 14px; height: 14px; border: 1px solid var(--gold-soft); }
-    .hero-frame::before { left: -1px; top: -1px; border-right: 0; border-bottom: 0; }
-    .hero-frame::after { right: -1px; bottom: -1px; border-left: 0; border-top: 0; }
-    .seal { position: absolute; top: 16px; right: 18px; width: 58px; height: 58px; opacity: .92;
-      color: var(--gold-soft); filter: drop-shadow(0 2px 6px rgba(0,0,0,.5)); z-index: 2; }
-    .hero-plaque { position: absolute; left: 24px; bottom: 15px; right: 24px; z-index: 2; }
-    .hero-plaque .motto { font-family: var(--serif); font-style: italic; font-size: 15px; letter-spacing: .4px; color: var(--gold-soft); }
-    .brandbar { display: flex; align-items: center; gap: 18px; padding: 17px 22px; }
-    /* Das Monogramm traegt die Markenfarbe (Cyan), nicht den warmen Gegenpol.
-       --gold heisst nur noch so - es ist der Warnton geworden. */
-    .crest { width: 58px; height: 58px; flex: none; color: var(--accent); }
-    .titles { flex: 1; min-width: 0; }
-    .titles .kicker { display: block; font-size: 10.5px; letter-spacing: 2.6px; text-transform: uppercase; color: var(--gold); font-weight: 700; margin-bottom: 5px; }
-    .titles h1 { font-family: var(--serif); font-weight: 600; font-size: 27px; letter-spacing: .3px; margin: 0; color: var(--ink); line-height: 1.05; }
-    .titles .ministry { color: var(--muted); font-size: 12px; margin-top: 4px; font-style: italic; line-height: 1.45; }
-    .topbar { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; padding: 11px 22px; border-top: 1px solid var(--line-soft); background: var(--bg-soft); }
-    .topbar .spacer { flex: 1; }
-    /* Handy-Anpassungen des Kopfbereichs stehen gesammelt im Smartphone-Block
-       ganz am Ende des Stylesheets (Suchwort "SMARTPHONE"). */
-    .top .spacer { flex: 1; }
-    .pill {
-      display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600;
-      padding: 6px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--card-2);
-      color: var(--muted); white-space: nowrap;
-    }
-    /* Probebetrieb: eBay liest echt, veroeffentlicht aber nicht. Der Zustand
-       verdient eine eigene Farbe - er ist weder harmlos wie "Mock" noch
-       vollstaendig wie "Live". */
-    .pill.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: color-mix(in srgb, var(--warn) 14%, transparent); }
-    .pill.engine { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-    .dot.ok { background: var(--ok); box-shadow: 0 0 0 3px rgba(52,211,153,.18); }
-    .dot.bad { background: var(--bad); box-shadow: 0 0 0 3px rgba(248,113,113,.18); }
-    .btn {
-      appearance: none; cursor: pointer; font: inherit; font-weight: 600;
-      border-radius: 10px; border: 1px solid var(--line); background: var(--card-2); color: var(--ink);
-      padding: 9px 14px; transition: transform .05s ease, background .15s ease, border-color .15s;
-    }
-    .btn:hover { background: color-mix(in srgb, var(--accent) 14%, var(--card-2)); }
-    .btn:active { transform: translateY(1px); }
-    .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
-    .btn.primary:hover { filter: brightness(1.08); }
-    .btn.ghost { background: transparent; }
-    .btn.sm { padding: 6px 10px; font-size: 12.5px; border-radius: 8px; }
-    .btn:disabled { opacity: .55; cursor: not-allowed; }
-
-    /* Tabs */
-    nav.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
-    nav.tabs button {
-      appearance: none; cursor: pointer; font: inherit; font-weight: 600; font-size: 13.5px;
-      color: var(--muted); background: transparent; border: 1px solid transparent;
-      padding: 9px 15px; border-radius: 10px; transition: all .15s;
-    }
-    nav.tabs button:hover { color: var(--ink); background: var(--card); }
-    nav.tabs button.active { color: var(--ink); background: var(--card); border-color: var(--line); box-shadow: 0 2px 0 var(--gold) inset, var(--shadow); }
-    nav.tabs button { display: inline-flex; align-items: center; }
-    nav.tabs button[hidden] { display: none !important; }
-    nav.tabs button .tab-ic { width: 15px; height: 15px; margin-right: 8px; opacity: .7; flex: none; }
-    nav.tabs button.active .tab-ic { stroke: var(--gold); opacity: 1; }
-
-    /* "Mehr" - alles, was seltener als woechentlich gebraucht wird.
-       Der Ausklapper steht bewusst INNERHALB von nav.tabs: showView markiert den
-       aktiven Reiter ueber querySelectorAll("nav.tabs button"), und der Klick
-       haengt als Delegat an #tabs. Ausserhalb bekaeme er weder das eine noch das
-       andere. */
-    /* In der Leiste gibt es kein Klapp-Menue mehr: senkrecht ist Platz fuer alle
-       neun Bereiche. Die Gruppe bleibt als Element bestehen und wird nur
-       aufgeloest - so laeuft das vorhandene JavaScript (mehrUm/mehrZu) weiter,
-       ohne dass es dafuer umgebaut werden muesste. Denselben Griff nutzte die
-       Datei bisher schon fuer schmale Schirme. */
-    .tabs-mehr, .tabs-mehr > .mehr-liste { display: contents; }
-    .tabs-mehr > .mehr-knopf { display: none; }
-    /* Der ganze Ausklapper darunter ist entfallen: absolute Positionierung,
-       Schatten, der Zustand "offen" und die Sonderfarbe fuer "der aktive Reiter
-       steckt im Menue". In einer senkrechten Leiste ist all das gegenstandslos -
-       alle neun Bereiche sind gleichzeitig sichtbar, und die Eintraege tragen
-       dieselbe Optik wie die uebrigen (Regeln unter `nav.tabs`).
-       Die ELEMENTE bleiben im Dokument, damit mehrUm/mehrZu nicht ins Leere
-       greifen; sie sind nur nicht mehr sichtbar. */
-
-    .view { display: none; }
-    .view.active { display: block; animation: fade .2s ease; }
-    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-    .subtabs { display: flex; gap: 6px; margin-bottom: 14px; }
-    .subtabs button {
-      appearance: none; cursor: pointer; font: inherit; font-weight: 600; font-size: 12.5px;
-      color: var(--muted); background: transparent; border: 1px solid transparent;
-      padding: 7px 14px; border-radius: 9px; transition: all .15s;
-    }
-    .subtabs button:hover { color: var(--ink); background: var(--card); }
-    .subtabs button.active { color: var(--accent-ink); background: var(--accent); border-color: transparent; }
-    .subview { display: none; }
-    .subview.active { display: block; animation: fade .2s ease; }
-
-    /* KPI */
-    .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 13px; margin-bottom: 18px; }
-    .kpi {
-      background: linear-gradient(180deg, var(--card) 0%, var(--bg-soft) 120%);
-      border: 1px solid var(--line); border-radius: var(--radius); padding: 15px 16px; box-shadow: var(--shadow);
-      position: relative; overflow: hidden;
-    }
-    .kpi::before { content:""; position:absolute; left:0; top:16px; bottom:16px; width:3px;
-      border-radius:3px; background: linear-gradient(180deg, var(--gold), transparent); }
-    .kpi .label { color: var(--muted); font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
-    .kpi .val { font-family: var(--serif); font-size: 28px; font-weight: 600; margin-top: 8px; font-variant-numeric: tabular-nums; letter-spacing: .3px; }
-    .kpi .val.accent { color: var(--accent); } .kpi .val.ok { color: var(--ok); }
-    .kpi .val.warn { color: var(--warn); } .kpi .val.bad { color: var(--bad); }
-    .kpi .sub { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
-
-    /* Cards / grid */
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
-    .card {
-      background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-      box-shadow: var(--shadow); margin-bottom: 16px; overflow: hidden;
-    }
-    .card > h2 {
-      font-family: var(--serif); font-weight: 600; color: var(--ink);
-      font-size: 15px; margin: 0; padding: 14px 18px; border-bottom: 1px solid var(--line);
-      display: flex; align-items: center; gap: 10px; letter-spacing: .2px;
-    }
-    .card .tag { font-size: 10.5px; font-weight: 700; color: var(--gold); background: color-mix(in srgb, var(--gold) 12%, transparent);
-      border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent); padding: 2px 8px; border-radius: 999px; }
-    .card .body { padding: 15px 17px; }
-    .card .body.tight { padding: 0; }
-
-    /* Forms */
-    label.field { display: block; margin-bottom: 11px; }
-    label.field span { display: block; color: var(--muted); font-size: 12px; font-weight: 600; margin-bottom: 5px; }
-    input[type=text], input[type=number], input[type=date], select, textarea {
-      width: 100%; padding: 10px 12px; background: var(--bg-soft); color: var(--ink);
-      border: 1px solid var(--line); border-radius: 10px; font: inherit;
-    }
-    textarea { resize: vertical; line-height: 1.4; }
-    .lbl { display:block; color: var(--muted); font-size: 12px; font-weight: 600; margin: 12px 0 5px; }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(20,184,166,.15); }
-    .row { display: flex; gap: 11px; } .row > * { flex: 1; }
-    .check { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; margin-bottom: 11px; }
-
-    /* Toggle switch */
-    .switch { position: relative; display: inline-block; width: 38px; height: 21px; cursor: pointer; }
-    .switch input { display: none; }
-    .switch .track { position: absolute; inset: 0; background: var(--line); border-radius: 999px; transition: .2s; }
-    .switch .thumb { position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; background: #fff; border-radius: 50%; transition: .2s; }
-    .switch input:checked + .track { background: var(--accent); }
-    .switch input:checked + .track .thumb { transform: translateX(17px); }
-
-    /* Table */
-    .table-scroll { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { text-align: left; padding: 9px 13px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
-    th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; position: sticky; top: 0; background: var(--card); z-index: 1; }
-    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-    tr:hover td { background: rgba(255,255,255,.02); }
-    .title-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
-
-    /* --- Preis-Check: Kopfzeile sticky beim Scrollen + Spaltenbreiten manuell anpassbar --- */
-    /* Die Karte clippt sonst (overflow:hidden) und killt position:sticky – für DIESE Karte
-       aufheben; die abgerundeten Ecken übernimmt der innere Scroll-Container. */
-    .card-flush { overflow: visible; }
-    .card-flush > h2 { border-top-left-radius: var(--radius); border-top-right-radius: var(--radius); }
-    .pc-scroll { overflow: auto; max-height: calc(100vh - 240px);
-      border-radius: 0 0 var(--radius) var(--radius); }
-    .pc-table { table-layout: fixed; }                                  /* per-<th>-Breiten exakt einhalten */
-    .pc-table th, .pc-table td { overflow: hidden; text-overflow: ellipsis; }
-    .pc-table th { position: sticky; top: 0; z-index: 3; }              /* über den eingeschobenen Detailzeilen */
-    .pc-th { position: relative; }                                      /* Anker für den Ziehgriff */
-    .pc-grip { position: absolute; top: 0; right: 0; width: 7px; height: 100%; cursor: col-resize;
-      user-select: none; touch-action: none; z-index: 4; }
-    .pc-grip:hover, .pc-grip.pc-drag { background: var(--accent); opacity: .55; }
-    .pc-table.pc-resizing { cursor: col-resize; user-select: none; }
-    .pc-table td.pc-artikel { max-width: none; white-space: normal; }   /* Artikel bricht in seiner Spalte um */
-    /* Aktion: Knöpfe brechen INNERHALB der Spalte um (statt nach rechts zu verschwinden). */
-    .pc-table td.pc-act { white-space: normal; overflow: visible; }
-    .pc-table td.pc-act .btn { margin: 0 4px 4px 0; }
-    /* Orders-Tabelle: Spaltenbreiten manuell ziehen (nutzt dieselben .pc-grip-Griffe). */
-    .ord-th { position: relative; }
-    /* Kopfzeile klebt beim Scrollen oben (wie im Listing-Cockpit). Bei Orders/Belege setzt der
-       Resizer die th auf 'relative' – das hier gewinnt per höherer Spezifität; der Ziehgriff
-       ankert weiterhin an der th. Produkte/Ideen sind schon über das globale th sticky. */
-    .ord-table th, .bel-table th { position: sticky; top: 0; z-index: 3; }
-    /* Scroll-Box mit fester Höhe für alle langen Tabellen: die Tabelle scrollt in sich,
-       die Kopfzeile bleibt oben. (Orders, eBay-Produkte, Belege, Produkt-Ideen.) */
-    /* 15.08. (Nutzerwunsch): Tabellen scrollen wieder MIT DER SEITE (Balken ganz
-       rechts am Fenster). Der Innen-Kasten (max-height + overflow) verschob den
-       Scrollbalken an den Kartenrand mitten im Bildschirm. Trade-off: die
-       Sticky-Kopfzeilen dieser Tabellen wirken ohne Innen-Kasten nicht mehr. */
-    .stick-scroll { overflow-x: auto; max-height: none;
-      border-radius: 0 0 var(--radius) var(--radius); }
-    .ord-table.ord-fixed { table-layout: fixed; }
-    .ord-table.ord-fixed th, .ord-table.ord-fixed td { overflow: hidden; }
-    .ord-table.ord-resizing { cursor: col-resize; user-select: none; }
-    /* Belegablage-Tabelle: gleiche Zieh-Mechanik wie Orders (.pc-grip-Griffe). */
-    .bel-th { position: relative; }
-    .bel-table.bel-fixed { table-layout: fixed; }
-    .bel-table.bel-fixed th, .bel-table.bel-fixed td { overflow: hidden; text-overflow: ellipsis; }
-    .bel-table.bel-resizing { cursor: col-resize; user-select: none; }
-    /* Aktionsspalte klebt rechts: die Tabelle ist breiter als der sichtbare Bereich
-       (Produktnamen sind lang), sonst liegen Beleg-/Rechnungs-/Löschen-Knopf
-       ausserhalb und man muss erst seitwaerts scrollen, um sie zu finden. */
-    .bel-table th:last-child, .bel-table td:last-child {
-      position: sticky; right: 0; z-index: 2; background: var(--card);
-      box-shadow: -8px 0 8px -8px rgba(0,0,0,.35);
-    }
-    .bel-table thead th:last-child { z-index: 3; }
-
-    .badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1px solid transparent; display: inline-block; }
-    .badge.ok, .badge.healthy, .badge.active, .badge.success, .badge.delivered, .badge.shipped { color: var(--ok); background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.3); }
-    .badge.needs_review, .badge.price_changed, .badge.pending, .badge.draft, .badge.in_progress { color: var(--warn); background: rgba(251,191,36,.12); border-color: rgba(251,191,36,.3); }
-    .badge.ordered { color: var(--purple); background: color-mix(in srgb, var(--purple) 15%, transparent); border-color: color-mix(in srgb, var(--purple) 38%, transparent); }
-    .badge.in_escalation, .badge.out_of_stock, .badge.failed, .badge.manual_intervention_required, .badge.needs_manual_review { color: var(--bad); background: rgba(248,113,113,.12); border-color: rgba(248,113,113,.3); }
-    .badge.muted, .badge.ended, .badge.cancelled, .badge.refunded { color: var(--muted); background: rgba(138,160,182,.1); border-color: rgba(138,160,182,.25); }
-    tr.grp-head td { background: color-mix(in srgb, var(--gold) 9%, transparent); border-top: 2px solid var(--line); font-size: 12.5px; }
-    tr.grp-pos td:first-child { border-left: 3px solid color-mix(in srgb, var(--gold) 45%, transparent); }
-    tr.sale-void td { opacity: .55; }
-    .pos { color: var(--ok); } .neg { color: var(--bad); }
-    tr.pc-red td { background: rgba(248,113,113,.10); }
-    tr.pc-red td:first-child { border-left: 3px solid var(--bad); }
-    .pc-badge { color: var(--bad); font-weight: 700; font-size: 11px; letter-spacing: .3px; }
-    /* 2-Linsen-Ansicht: Linse 1 Lieferfähigkeit + Linse 2 Preis & Marge */
-    .pc-table td.pc-liefer, .pc-table td.pc-preis { white-space: normal; overflow: visible; }
-    .pc-pill { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:650; padding:2px 8px; border-radius:999px; border:1px solid transparent; }
-    .pc-pill.ok { color:var(--ok); background:rgba(52,211,153,.12); border-color:rgba(52,211,153,.3); }
-    .pc-pill.warn { color:var(--warn); background:rgba(251,191,36,.12); border-color:rgba(251,191,36,.3); }
-    .pc-pill.bad { color:var(--bad); background:rgba(248,113,113,.13); border-color:rgba(248,113,113,.3); }
-    .pc-pill.grey { color:var(--muted); background:rgba(138,160,182,.14); border-color:rgba(138,160,182,.3); }
-    .pc-liefer-sub, .pc-pm-sub { font-size:10.5px; color:var(--muted); margin-top:4px; line-height:1.5; }
-    .pc-price { font-size:15px; font-weight:750; }
-    .pc-mtag { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:1px 7px; border-radius:6px; margin-top:3px; }
-    .pc-mtag.ok { color:var(--ok); background:rgba(52,211,153,.12); }
-    .pc-mtag.warn { color:var(--warn); background:rgba(251,191,36,.12); }
-    .pc-mtag.bad { color:var(--bad); background:rgba(248,113,113,.13); }
-    .pc-drift { display:inline-block; font-size:10.5px; font-weight:700; color:var(--warn); background:rgba(251,191,36,.12); border:1px solid rgba(251,191,36,.35); padding:2px 7px; border-radius:6px; margin-top:4px; cursor:help; }
-    .pc-drift .muted { font-weight:600; }
-    tr.pc-detail td { background: var(--bg-soft); white-space: normal; }
-    .src-line { display: flex; gap: 10px; align-items: center; padding: 5px 0; font-size: 12.5px; flex-wrap: wrap; }
-    .src-line .tag { font-size: 10.5px; }
-
-    .result { margin-top: 12px; background: var(--bg-soft); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 13px; }
-    .result .warns { color: var(--warn); margin-top: 8px; font-size: 12.5px; }
-    pre.desc { white-space: pre-wrap; word-break: break-word; max-height: 240px; overflow: auto;
-      background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
-      margin: 6px 0 0; font-family: var(--font); font-size: 13px; line-height: 1.55; }
-    .kv { display: flex; gap: 8px; margin: 3px 0; } .kv b { color: var(--muted); font-weight: 600; min-width: 120px; }
-    code { font-family: var(--mono); font-size: 12.5px; background: rgba(255,255,255,.06); padding: 1px 6px; border-radius: 6px; }
-    .muted { color: var(--muted); } .empty { color: var(--muted); padding: 22px; text-align: center; font-size: 13.5px; }
-    .big-num { font-family: var(--serif); font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .3px; }
-
-    /* Chart */
-    .chart-wrap { padding: 8px 6px 0; }
-    .chart-legend { display: flex; gap: 16px; padding: 4px 14px 12px; font-size: 12px; color: var(--muted); }
-    .chart-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
-
-    /* Activity */
-    .feed { max-height: 360px; overflow-y: auto; }
-    .feed .row-i { padding: 9px 15px; border-bottom: 1px solid var(--line-soft); display: flex; gap: 11px; align-items: center; font-size: 12.5px; }
-    .feed .row-i .ic { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; font-size: 12px; flex-shrink: 0; }
-    .feed .t { color: var(--muted); font-family: var(--mono); font-size: 11px; }
-
-    /* Toast */
-    #toasts { position: fixed; right: 18px; bottom: 18px; display: flex; flex-direction: column; gap: 10px; z-index: 50; }
-    .toast { background: var(--card-2); border: 1px solid var(--line); border-left: 3px solid var(--accent);
-      border-radius: 10px; padding: 11px 14px; box-shadow: var(--shadow); max-width: 360px; font-size: 13.5px; animation: slide .2s ease; }
-    .toast.err { border-left-color: var(--bad); }
-    @keyframes slide { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
-
-    /* Modal (Listing-Detail) */
-    #modal { position: fixed; inset: 0; background: rgba(3,8,14,.7); display: none; align-items: flex-start; justify-content: center; z-index: 60; padding: 40px 16px; }
-    #modal.open { display: flex; }
-    .modal-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); max-width: 860px; width: 100%; max-height: 86vh; overflow: auto; }
-    .modal-card > h2 { position: sticky; top: 0; z-index: 2; background: var(--card); }
-    /* Produkt-Detail bekommt mehr Platz; kleine Dialoge (Eigenbestand etc.) bleiben schmal */
-    .modal-card.wide { max-width: min(1240px, 94vw); max-height: 92vh; }
-    .modal-card.wide .mimg { max-height: 520px; }
-    .modal-x { margin-left: auto; cursor: pointer; color: var(--muted); font-size: 20px; line-height: 1; padding: 0 4px; }
-    .modal-x:hover { color: var(--ink); }
-    .mimg { width: 100%; max-height: 340px; object-fit: contain; background: var(--bg-soft); border-radius: 10px; border: 1px solid var(--line); }
-    .gallery { display: flex; gap: 8px; overflow-x: auto; margin-top: 10px; padding-bottom: 4px; }
-    .gallery img { height: 66px; width: 66px; border-radius: 8px; border: 1px solid var(--line); object-fit: cover; cursor: pointer; flex-shrink: 0; }
-    .gallery img:hover { border-color: var(--accent); }
-
-    /* Bild-Hover-Zoom: schwebende Vorschau (funktioniert überall, auch in overflow:hidden-Tabellen). */
-    #imgZoom { position: fixed; z-index: 9999; pointer-events: none; display: none;
-      padding: 4px; background: var(--card); border: 1px solid var(--line);
-      border-radius: 12px; box-shadow: 0 12px 44px rgba(0,0,0,.5); }
-    #imgZoom img { display: block; max-width: 320px; max-height: 320px; border-radius: 8px; object-fit: contain; }
-
-    /* Monochrome Inline-Icons (ersetzen frühere Emojis) + farbige Status-Punkte */
-    .ic { width: 15px; height: 15px; vertical-align: -2px; flex: none; }
-    .cdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; vertical-align: middle; }
-
-    /* Kachelzeilen mit weniger als 5 Kacheln (z. B. Orders: 4) sollen die volle Breite
-       füllen statt eine Lücke rechts zu lassen. */
-    .kpis.cols-4 { grid-template-columns: repeat(4, 1fr); }
-
-    /* Trend-Box: zugeklappt eine einzige Zeile, per Klick aufklappbar (natives <details>).
-       Aufgeklappt zwei Spalten — column-count verteilt gleichmaessig, break-inside haelt
-       Begriff und Begruendung zusammen. */
-    .trend-acc > summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap;
-                           align-items: center; gap: 8px; }
-    .trend-acc > summary::-webkit-details-marker { display: none; }
-    .trend-acc > summary:hover b { text-decoration: underline; }
-    .trend-hint { font-size: 11px; margin-left: auto; }
-    .trend-list { margin: 7px 0 0; padding-left: 18px; font-size: 12.5px; line-height: 1.55;
-                  column-count: 2; column-gap: 28px; }
-    .trend-list li { margin-bottom: 5px; break-inside: avoid; -webkit-column-break-inside: avoid; }
-
-    /* Growth Command Center: entscheidungsorientiert, ohne neue visuelle Parallelwelt. */
-    .growth-head { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin:2px 0 18px; }
-    .growth-head h1 { font-family:var(--serif); font-size:25px; line-height:1.2; margin:0 0 5px; letter-spacing:-.01em; }
-    .growth-head p { max-width:70ch; color:var(--muted); margin:0; font-size:13px; }
-    .growth-trust { text-align:right; color:var(--muted); font-size:11.5px; white-space:nowrap; }
-    .growth-kpis { grid-template-columns:repeat(4, 1fr); }
-    .growth-kpis .kpi::before { width:2px; background:var(--gold); opacity:.75; }
-    .growth-kpis .val { font-family:var(--font); font-size:24px; font-weight:700; letter-spacing:-.02em; }
-    .growth-cover { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:10.5px; margin-top:5px; }
-    .growth-cover .cdot { width:6px; height:6px; }
-    .growth-layout { display:grid; grid-template-columns:minmax(0, 1.65fr) minmax(280px, .85fr); gap:16px; }
-    .growth-section-note { color:var(--muted); font-family:var(--font); font-size:11px; font-weight:500; margin-left:auto; }
-    .growth-empty { padding:30px 22px; text-align:left; }
-    .growth-empty strong { display:block; color:var(--ink); font-size:14px; margin-bottom:5px; }
-    .growth-empty p { color:var(--muted); max-width:62ch; margin:0; font-size:12.5px; }
-    .growth-decision { padding:16px 18px; border-bottom:1px solid var(--line-soft); }
-    .growth-decision:last-child { border-bottom:0; }
-    .growth-decision-top { display:flex; align-items:flex-start; gap:12px; }
-    .growth-decision-main { min-width:0; flex:1; }
-    .growth-decision h3 { font-size:14px; line-height:1.35; margin:0 0 4px; }
-    .growth-decision p { color:var(--muted); font-size:12.5px; line-height:1.55; margin:0; }
-    .growth-badges { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
-    .growth-badge { border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:10.5px; padding:3px 8px; }
-    .growth-badge.good { color:var(--ok); border-color:color-mix(in srgb, var(--ok) 38%, var(--line)); }
-    .growth-badge.warn { color:var(--warn); border-color:color-mix(in srgb, var(--warn) 38%, var(--line)); }
-    .growth-actions { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
-    .growth-actions .reject { color:var(--bad); }
-    .growth-stages { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); }
-    .growth-stage { padding:15px 13px; border-right:1px solid var(--line-soft); }
-    .growth-stage:last-child { border-right:0; }
-    .growth-stage b { display:block; font-size:20px; font-variant-numeric:tabular-nums; }
-    .growth-stage span { display:block; color:var(--muted); font-size:10.5px; line-height:1.3; margin-top:3px; }
-    .growth-experiments { display:grid; grid-template-columns:repeat(4, 1fr); }
-    .growth-exp-stat { padding:14px 12px; text-align:center; border-right:1px solid var(--line-soft); }
-    .growth-exp-stat:last-child { border-right:0; }
-    .growth-exp-stat b { display:block; font-size:18px; }
-    .growth-exp-stat span { color:var(--muted); font-size:10.5px; }
-    .growth-learning { padding:13px 18px; border-bottom:1px solid var(--line-soft); font-size:12.5px; }
-    .growth-learning:last-child { border-bottom:0; }
-    .growth-learning small { display:block; color:var(--muted); margin-top:4px; }
-    .growth-loading { min-height:96px; padding:22px 18px; }
-    .growth-skeleton { height:11px; margin:8px 0; border-radius:6px; background:color-mix(in srgb, var(--line) 70%, transparent); animation:g-pulse 1.25s ease-in-out infinite alternate; }
-    .growth-skeleton:nth-child(2) { width:72%; }
-    @keyframes g-pulse { to { opacity:.38; } }
-
-    @media (max-width: 980px) {
-      .kpis, .kpis.cols-4 { grid-template-columns: repeat(2, 1fr); }
-      .growth-kpis { grid-template-columns:repeat(2, 1fr); }
-      .growth-layout { grid-template-columns:1fr; }
-      .trend-list { column-count: 1; }
-      .grid, .grid-3 { grid-template-columns: 1fr; }
-      /* Schmaler Screen: feste Spalten würden zerquetscht -> Auto-Layout + Horizontal-Scroll
-         zurück, Ziehgriffe aus (Drag ist eine Desktop-Geste), Kopfzeile bleibt sticky (70vh). */
-      .pc-table { table-layout: auto; }
-      .pc-scroll { max-height: 70vh; }
-      .pc-grip { display: none; }
-    }
-
-    /* =====================================================================
-       SMARTPHONE (max-width: 720px)
-       ---------------------------------------------------------------------
-       Gilt AUSSCHLIESSLICH auf schmalen Bildschirmen. Am Laptop/Desktop wird
-       dieser Block nie gelesen — das Design dort bleibt unveraendert.
-       Aendert nur Optik/Abstaende, keine Funktionen, keine ids, kein JS.
-       Der zweite Teil der Bedingung faengt das quer gehaltene Handy ab:
-       schmaler als 950px UND niedriger als 500px. Ein iPhone quer ist
-       812x375 und faellt darunter — ein Laptop (900px hoch) und ein Monitor
-       niemals. Damit bleibt der Desktop in jeder Fensterbreite unberuehrt.
-       ===================================================================== */
-    @media (max-width: 720px), (max-width: 950px) and (max-height: 500px) {
-      .growth-head { flex-direction:column; }
-      .growth-trust { text-align:left; white-space:normal; }
-      .growth-stages { grid-template-columns:repeat(2, 1fr); }
-      .growth-stage { border-bottom:1px solid var(--line-soft); }
-      .growth-stage:last-child { grid-column:1 / -1; border-bottom:0; }
-      .growth-experiments { grid-template-columns:repeat(2, 1fr); }
-      .growth-exp-stat:nth-child(-n+2) { border-bottom:1px solid var(--line-soft); }
-
-      /* --- Aussenabstaende: mehr Platz fuer den Inhalt --- */
-      .wrap { padding: 13px 12px 60px; }
-      header.top { margin-bottom: 14px; }
-
-      /* --- Kopfbereich schrumpfen: er frass bisher 2/3 des Bildschirms,
-             bevor die erste Zahl kam. --- */
-      .hero { height: 118px; }
-      .hero-frame { inset: 8px; }
-      .seal { width: 40px; height: 40px; top: 12px; right: 12px; }
-      .hero-plaque { left: 16px; right: 16px; bottom: 11px; }
-      .hero-plaque .motto { font-size: 12.5px; }
-      .brandbar { gap: 12px; padding: 13px 15px; }
-      .crest { width: 42px; height: 42px; }
-      .titles h1 { font-size: 20px; }
-      /* Die lange Ministeriums-Zeile bleibt erhalten, belegt aber hoechstens
-         zwei Zeilen (Rest wird mit … abgeschnitten). */
-      .titles .ministry { font-size: 11px; line-height: 1.4; margin-top: 3px;
-        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-      .topbar { gap: 7px; padding: 9px 12px; }
-      .pill { font-size: 11.5px; padding: 5px 9px; }
-      /* Der Platzhalter schiebt am Desktop die Knoepfe nach rechts. Auf dem
-         Handy erzwingt er stattdessen einen Umbruch: erst die Status-Pillen,
-         dann die Knoepfe in eigener Zeile — statt eines zerrissenen Rasters. */
-      .topbar .spacer { flex: 0 0 100%; height: 0; }
-
-      /* --- Tabs: eine seitlich wischbare Zeile statt vier Zeilen Bloecke.
-             Die Leiste laeuft bis an beide Bildschirmraender. --- */
-      nav.tabs {
-        flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain;
-        -webkit-overflow-scrolling: touch; scrollbar-width: none;
-        margin: 0 -12px 14px; padding: 2px 12px 4px;
-        scroll-snap-type: x proximity;
-      }
-      nav.tabs::-webkit-scrollbar { display: none; }
-      nav.tabs button { flex: none; white-space: nowrap; scroll-snap-align: start; padding: 10px 13px; }
-      /* Auf dem Telefon KEIN Ausklapper: nav.tabs scrollt hier waagerecht, und
-         ein absolut gesetztes Menue wuerde von genau diesem overflow abgeschnitten.
-         "display: contents" loest den Behaelter auf - die Eintraege laufen als
-         ganz normale Reiter mit, der Knopf "Mehr" verschwindet. */
-      .tabs-mehr, .tabs-mehr > .mehr-liste { display: contents; }
-      .tabs-mehr > .mehr-knopf { display: none; }
-      .tabs-mehr .mehr-liste button { width: auto; }
-      .tabs-mehr .mehr-liste a { display: none; }
-      /* Unterreiter (z. B. im Listing-Cockpit) genauso */
-      .subtabs { overflow-x: auto; overscroll-behavior-x: contain;
-        -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 3px; }
-      .subtabs::-webkit-scrollbar { display: none; }
-      .subtabs button { flex: none; white-space: nowrap; }
-
-      /* --- Eingabefelder: unter 16px zoomt iOS Safari beim Antippen
-             automatisch in die Seite hinein. Das war das "Springen".
-             Viele Felder (Filter, Suche, Preis-Eingaben) tragen ihre
-             Schriftgroesse als style="" direkt am Element — das schlaegt
-             normales CSS. Am Desktop bleiben diese 12px erhalten (kompakte
-             Filterzeilen), hier muessen sie per !important weichen. --- */
-      input:not([type=checkbox]):not([type=radio]):not([type=file]),
-      select, textarea { font-size: 16px !important; }
-      input[type=text], input[type=number], input[type=date], input[type=password],
-      input[type=search], input[type=email], select, textarea { padding: 11px 12px; }
-      /* Schmale Zahlenfelder (inline z. B. width:78px) brauchen bei groesserer
-         Schrift etwas mehr Platz, sonst ist der Betrag nicht mehr lesbar.
-         min-width gewinnt gegen ein inline gesetztes width. */
-      input[type=number] { min-width: 94px; }
-
-      /* --- Touch-Ziele: Finger brauchen ~44px, Mauszeiger nicht. --- */
-      .btn { min-height: 44px; padding: 11px 15px; }
-      .btn.sm { min-height: 38px; padding: 9px 12px; }
-      .switch { width: 46px; height: 26px; }
-      .switch .thumb { width: 22px; height: 22px; }
-      .switch input:checked + .track .thumb { transform: translateX(20px); }
-
-      /* --- Kartenkoepfe duerfen umbrechen, statt Titel zu 1-Wort-Spalten
-             zu quetschen ("DHL-/Zustellung/automatisch/erkennen"). --- */
-      .card > h2 { flex-wrap: wrap; gap: 8px; padding: 13px 14px; font-size: 14.5px; }
-      .card > h2 .btn { margin-left: 0; }
-      .card .body { padding: 13px 14px; }
-
-      /* --- Kennzahlen: zwei Kacheln pro Zeile, Betrag bricht nicht mehr
-             zwischen Zahl und Euro-Zeichen um. --- */
-      .kpi { padding: 13px 13px; }
-      .kpi .label { font-size: 10.5px; letter-spacing: .3px; }
-      .kpi .val { font-size: 22px; margin-top: 6px; white-space: nowrap; }
-      .kpi .sub { font-size: 10.5px; }
-      .kpis, .kpis.cols-4 { gap: 10px; }
-      .big-num { font-size: 24px; }
-
-      /* --- Formularzeilen untereinander statt nebeneinander --- */
-      .row { flex-wrap: wrap; gap: 9px; }
-      .row > * { flex: 1 1 100%; }
-
-      /* --- Tabellen bleiben Tabellen (seitlich wischbar), aber:
-             kompaktere Zellen, und das Wischen loest nicht mehr
-             versehentlich die Zurueck-Geste des Browsers aus. --- */
-      .table-scroll, .pc-scroll, .stick-scroll {
-        overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
-      }
-      th, td { padding: 8px 10px; }
-      th { font-size: 10.5px; }
-      table { font-size: 12.5px; }
-      .title-cell { max-width: 190px; }
-
-      /* --- Hoehen in dvh: 100vh rechnet auf dem Handy die ein- und
-             ausfahrende Adressleiste falsch mit. --- */
-      .pc-scroll { max-height: 68dvh; }
-      .stick-scroll { max-height: none; }
-      .feed { max-height: 60dvh; }
-
-      /* --- Beleg fotografieren & hochladen ---
-             Das Dateifeld war 22px hoch — mit dem Finger kaum zu treffen.
-             (Die 44px-Regel oben schliesst Dateifelder bewusst aus, deshalb
-             hier eigens.) Zusammen mit accept="image/*" bietet iOS beim
-             Antippen direkt Kamera, Mediathek und Dateien an. */
-      input[type=file] {
-        width: 100%; min-height: 46px; padding: 12px 13px;
-        background: var(--bg-soft); border: 1px dashed var(--line);
-        border-radius: 10px; font-size: 14px;
-      }
-      input[type=file]::file-selector-button {
-        min-height: 34px; padding: 7px 12px; margin-right: 10px;
-        border: 1px solid var(--line); border-radius: 8px;
-        background: var(--card-2); color: var(--ink); font: inherit; font-weight: 600;
-      }
-
-      /* --- Kennzahl-/Filterkacheln: manche Ansichten setzen ihre Spaltenzahl
-             direkt am Element (style="grid-template-columns:repeat(5,1fr)").
-             Das schlaegt normales CSS — auf dem Handy wurden daraus fuenf
-             62px-Streifen mit abgeschnittener Beschriftung ("PROBLEI",
-             "ZUORDN OFFEN"), obwohl es anklickbare Filter sind. */
-      .kpis, .kpis.cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
-
-      /* --- Dialoge: fast bildschirmfuellend statt schmaler Streifen --- */
-      #modal { padding: 10px 8px; }
-      /* Schliesskreuz war 23x24px — zu klein zum Treffen. */
-      .modal-x { min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; margin-left: auto; }
-      /* Der Modal-Kopf ist ein Block — dadurch schiebt ein langer Titel das
-         Kreuz vor sich her, statt es rechts stehen zu lassen ("…Profi✕").
-         Als Flex-Zeile bleibt das Kreuz rechts und der Titel bricht um. */
-      .modal-card > h2 { display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 10px; }
-      .modal-card > h2 > span:first-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-      /* Produktbild nahm 44 % des Bildschirms — die Knoepfe darunter waren
-         erst nach Scrollen erreichbar. */
-      .mimg { max-height: 32dvh; }
-      .modal-card.wide .mimg { max-height: 36dvh; }
-      .modal-card, .modal-card.wide { max-width: 100%; max-height: 94dvh; }
-
-      /* --- Meldungen ueber die volle Breite, damit der Text nicht
-             in einen 3-Wort-Streifen gequetscht wird. --- */
-      #toasts { left: 10px; right: 10px; bottom: 10px; }
-      .toast { max-width: none; }
-
-      /* --- Schwebende Bildvorschau ist eine Maus-Geste: auf Touch nutzlos --- */
-      #imgZoom { display: none !important; }
-
-      /* --- Kleinkram --- */
-      .kv { flex-wrap: wrap; }
-      .kv b { min-width: 100px; }
-      .chart-legend { flex-wrap: wrap; gap: 10px; }
-      .gallery { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
-
-      /* ===================================================================
-         ORDERS ALS KARTEN (nur Handy)
-         Die Tabelle hat 11 Spalten und war 789px breit — der Bestell-Knopf
-         lag 440px ausserhalb des Sichtfensters. Auf dem Handy wird deshalb
-         jede Bestellung zu einer gestapelten Karte: die Beschriftung kommt
-         aus data-l am <td>, der Inhalt bleibt unveraendert.
-         Am Desktop greift nichts davon — dort bleibt es die Tabelle.
-         =================================================================== */
-      #view-orders .ord-table,
-      #view-orders .ord-table tbody,
-      #view-orders .ord-table tr,
-      #view-orders .ord-table td { display: block; width: auto; }
-      #view-orders .ord-table thead { display: none; }          /* Kopfzeile: Labels stehen jetzt in den Zeilen */
-      #view-orders .table-scroll { overflow-x: visible; }        /* kein Seitwaerts-Wischen mehr noetig */
-
-      #view-orders .ord-table tr {
-        background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-        margin: 0 0 10px; padding: 11px 13px; box-shadow: var(--shadow);
-      }
-      #view-orders .ord-table td {
-        border: 0; padding: 5px 0; white-space: normal; overflow: visible;
-        display: flex; gap: 10px; align-items: baseline;
-      }
-      /* Zahlenspalten sind in der Tabelle rechtsbuendig — in der Karte wuerde
-         das die Beschriftungen unterschiedlich weit einruecken. */
-      #view-orders .ord-table td.num { text-align: left; }
-      /* Beschriftung links, Wert rechts — wie eine Datenzeile im Formular */
-      #view-orders .ord-table td[data-l]::before {
-        content: attr(data-l); flex: 0 0 82px; color: var(--muted);
-        font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
-        line-height: 1.7;
-      }
-      /* Leere Werte muss man nicht zeigen — spart Zeilen auf kleinem Schirm */
-      #view-orders .ord-table td:empty { display: none; }
-      /* Bild-Zelle (ohne data-l) oben quer, Artikel als Ueberschrift */
-      #view-orders .ord-table td:not([data-l]) { display: block; padding-bottom: 8px; }
-      #view-orders .ord-table td:not([data-l]) img { width: 54px; height: 54px; border-radius: 9px; }
-      #view-orders .ord-table td[data-l="Artikel"] { display: block; padding-bottom: 8px; }
-      #view-orders .ord-table td[data-l="Artikel"]::before { display: none; }
-      #view-orders .ord-table td[data-l="Artikel"] a { font-weight: 700; font-size: 14px; line-height: 1.35; }
-      /* Die Aktions-Zelle ist der Grund fuer den ganzen Umbau: ganz unten,
-         volle Breite, Knoepfe fingergerecht nebeneinander. */
-      #view-orders .ord-table td[data-l="Aktion"] {
-        display: block; margin-top: 9px; padding-top: 10px; border-top: 1px solid var(--line-soft);
-      }
-      #view-orders .ord-table td[data-l="Aktion"]::before { display: none; }
-      #view-orders .ord-table td[data-l="Aktion"] .btn { min-height: 42px; margin: 0 6px 6px 0; }
-      /* Gruppenkopf (mehrere Artikel in EINER eBay-Bestellung) bleibt eine
-         durchgehende Ueberschrift ueber den zugehoerigen Karten. */
-      #view-orders .ord-table tr.grp-head { padding: 9px 12px; margin-bottom: 6px; box-shadow: none; }
-      #view-orders .ord-table tr.grp-head td { display: block; font-size: 12px; }
-      #view-orders .ord-table tr.grp-head td::before { display: none; }
-      #view-orders .ord-table tr.grp-pos { margin-left: 10px; }
-      #view-orders .ord-table td.empty { display: block; }
-      #view-orders .ord-table td.empty::before { display: none; }
-      /* Status-Auswahl in der Karte nicht ueber die ganze Breite ziehen */
-      #view-orders .ord-table td[data-l="Status"] select { width: auto; max-width: 150px; }
-    }
-    /* Aufgabenband der Startseite. Kacheln sind Knoepfe, keine Anzeigen:
-       jede fuehrt genau dorthin, wo die Arbeit erledigt wird. Deshalb Cursor,
-       Rahmenwechsel beim Ueberfahren und ein sichtbarer Fokusring - das Band
-       muss auch mit der Tastatur bedienbar sein. */
-    .heute-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
-    .heute-kachel {
-      display: flex; align-items: center; gap: 12px; text-align: left;
-      padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px;
-      background: var(--card); cursor: pointer; font: inherit; color: inherit;
-      transition: border-color .12s, transform .12s;
-    }
-    .heute-kachel:hover { border-color: var(--accent); transform: translateY(-1px); }
-    .heute-kachel:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .heute-kachel .zahl { font-size: 26px; font-weight: 700; line-height: 1; min-width: 34px; }
-    .heute-kachel .text { display: flex; flex-direction: column; gap: 2px; }
-    .heute-kachel .was { font-size: 13px; font-weight: 600; }
-    .heute-kachel .wie { font-size: 11px; color: var(--muted); }
-    .heute-kachel.dringend .zahl { color: var(--bad); }
-    .heute-kachel.warten .zahl { color: var(--warn); }
-    .heute-kachel.ruhig .zahl { color: var(--accent); }
-    .heute-frei { display: flex; align-items: center; gap: 10px; padding: 10px 2px;
-                  color: var(--muted); font-size: 13px; }
-  </style>
+  <link rel="stylesheet" href="/design.css?v=1">
 </head>
 <body>
   <script>
@@ -786,10 +18,7 @@
     (function () {
       var w = null;
       try { w = localStorage.getItem("podshop-farbschema"); } catch (e) {}
-      if (!w) {
-        w = (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)
-          ? "dunkel" : "hell";
-      }
+      if (!w) w = "hell";      // Standard ist hell; Dunkel nur auf eigenen Wunsch
       if (w !== "dunkel") document.body.classList.add("light");
     })();
   </script>
@@ -800,7 +29,7 @@
     <aside class="sidebar">
       <div class="marke">
         <div class="titles"><img class="logo-bild logo-dunkelgrund" src="/logo-hell.png" alt="Medienwerk"><img class="logo-bild logo-hellgrund" src="/logo.png" alt="Medienwerk">
-          <small>Print on Demand · Dashboard</small>
+          <small>Dashboard</small>
         </div>
       </div>
       <nav class="tabs" id="tabs">
@@ -809,7 +38,7 @@
            Alles Seltenere steht unter "Mehr", aber im selben nav.tabs, damit
            showView und der Klick-Delegat es weiter erfassen. -->
       <button data-view="overview" class="active"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M6 21v-6"/><path d="M12 21V8"/><path d="M18 21v-10"/></svg>Heute</button>
-      <button data-view="products"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 11.4 12 20l-8-8 8.6-8.6H20a.6.6 0 0 1 .6.6v7.4Z"/><circle cx="16.3" cy="7.7" r="1.2"/></svg>Meine Listings</button>
+      <button data-view="products"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 11.4 12 20l-8-8 8.6-8.6H20a.6.6 0 0 1 .6.6v7.4Z"/><circle cx="16.3" cy="7.7" r="1.2"/></svg>Angebote</button>
 
       <div class="nav-trenner"></div>
       <div class="nav-titel">Mehr</div>
@@ -822,7 +51,7 @@
         <div class="mehr-liste" id="mehrListe" role="menu">
           <button data-view="belege" role="menuitem"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2.5-1.6L13 21l-2.5-1.6L8 21l-2-1.6V3Z"/><path d="M9 8h6"/><path d="M9 12h6"/></svg>Buchhaltung</button>
           <button data-view="einstellungen" role="menuitem"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg>Einstellungen</button>
-          <a href="/studio" id="studioLink" hidden role="menuitem"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="m8 14 3-4 2.5 3 2-2.5L18 14"/><circle cx="9" cy="8.5" r="1.2"/></svg>Studio (Motive)</a>
+          <a href="/studio" id="studioLink" hidden role="menuitem"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="m8 14 3-4 2.5 3 2-2.5L18 14"/><circle cx="9" cy="8.5" r="1.2"/></svg>Studio</a>
         </div>
       </div>
       </nav>
@@ -832,66 +61,37 @@
       <div class="topbar">
         <span class="pill" id="mockPill" title="Betriebsmodus">…</span>
         <span class="pill" id="healthPill"><span class="dot" id="healthDot"></span><span id="healthText">verbinde…</span></span>
-        <span class="pill" id="buildPill" title="Laufender Code-Stand (Git-Commit + letzter Neustart/Deploy)" style="cursor:help">⚙ …</span>
         <span class="spacer"></span>
         <button class="btn sm ghost" id="farbschemaKnopf" type="button" onclick="farbschemaUm()" title="Zwischen hellem und dunklem Design wechseln"><svg class="ic" id="farbschemaIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.6 6.6 0 0 0 21 12.8Z"/></svg> <span id="farbschemaText">Dunkel</span></button>
-        <a class="btn sm ghost" href="/docs" target="_blank" rel="noopener">API</a>
         <a class="btn sm ghost" href="/logout" title="Abmelden">Abmelden</a>
       </div>
 
 
-    <!-- ============ ÜBERSICHT ============ -->
+    <!-- ============ HEUTE ============ -->
     <section class="view active" id="view-overview">
-      <!-- Aufgabenband: was HEUTE zu tun ist. Steht vor den Kennzahlen, weil der
-           Jahresumsatz keine Handlung ausloest und die drei wartenden Entwuerfe
-           schon. Jede Kachel springt in den zustaendigen Bereich, vorgefiltert.
+      <div class="page-head"><h1>Heute</h1><p>Was jetzt Aufmerksamkeit braucht und wie der Laden steht.</p></div>
 
-           Kacheln mit 0 werden AUSGEBLENDET. Eine Startseite, die jeden Morgen
-           fuenf Nullen zeigt, lehrt einen, sie zu uebersehen - dann faellt auch
-           die Sieben nicht mehr auf. Ist nichts zu tun, steht hier ein Satz.
-
-           Alle Zahlen kommen aus /api/v1/dashboard/summary. Verlust und duenne
-           Marge stehen bewusst NICHT hier: die haengen am reprice-Bericht, der
-           veralten kann, und zwei Stellen mit verschiedenen Zaehlweisen fuer
-           dasselbe Wort sind schlimmer als eine Kachel weniger. -->
-      <section class="card" id="heuteKarte" style="margin-bottom:14px">
-        <h2>Heute
-          <span class="spacer" style="flex:1"></span>
-        </h2>
-        <div class="body tight">
-          <div id="heuteAufgaben" class="heute-grid"><div class="empty">lade…</div></div>
-        </div>
+      <section class="card">
+        <h2>Zu erledigen</h2>
+        <div id="heuteAufgaben" class="heute-grid"><div class="empty">lade…</div></div>
       </section>
 
       <div class="kpis">
-        <div class="kpi" title="Nur echte Verkäufe – Stornos/Erstattungen sind NICHT enthalten"><div class="label">Umsatz seit Jahresbeginn</div><div class="val accent" id="k_rev">–</div><div class="sub" id="k_rev_sub">gesamt</div></div>
-        <div class="kpi" id="k_profit_card"><div class="label">Bruttogewinn</div><div class="val ok" id="k_profit">–</div></div>
-        <div class="kpi" title="Aktive eBay-Listings (Entwürfe und beendete zählen nicht mit)"><div class="label">Aktive Listings</div><div class="val" id="k_active">–</div></div>
+        <div class="kpi"><div class="label">Aktive Angebote</div><div class="val" id="k_active">–</div></div>
+        <div class="kpi"><div class="label">Offene Bestellungen</div><div class="val" id="k_open">–</div></div>
+        <div class="kpi"><div class="label">Umsatz</div><div class="val" id="k_rev">–</div></div>
       </div>
 
-      <div class="grid-3">
-        <section class="card">
-          <h2>Umsatz &amp; Profit
-            <span class="spacer" style="flex:1"></span>
-            <select id="profitDays" style="width:auto;padding:5px 8px;font-size:12px" onchange="loadProfit()">
-              <option value="7">7 Tage</option><option value="30" selected>30 Tage</option><option value="90">90 Tage</option>
-            </select>
-          </h2>
-          <div class="body tight">
-            <div class="chart-wrap" id="profitChart"><div class="empty">lade Chart…</div></div>
-            <div class="chart-legend">
-              <span><i style="background:var(--accent)"></i>Umsatz</span>
-              <span><i style="background:var(--gold)"></i>Profit</span>
-              <span class="spacer" style="flex:1"></span>
-              <span id="profitTotals"></span>
-            </div>
-          </div>
-        </section>
-
-      </div>
+      <section class="card">
+        <h2>Letzte Bestellungen</h2>
+        <div class="body tight"><div class="table-scroll">
+          <table>
+            <thead><tr><th>Kanal</th><th>Referenz</th><th>Status</th><th class="num">Umsatz</th></tr></thead>
+            <tbody id="heuteBestellungen"><tr><td colspan="4" class="empty">lade…</td></tr></tbody>
+          </table>
+        </div></div>
+      </section>
     </section>
-
-
 
 
     <!-- ============ NEUES LISTING ============ -->
@@ -907,37 +107,33 @@
 
     <!-- ============ EBAY-PRODUKTE ============ -->
     <section class="view" id="view-products">
-      <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
-        <div class="kpi" onclick="filterProducts('active')" style="cursor:pointer" title="Filter: aktiv"><div class="label">Aktiv</div><div class="val ok" id="p_active">–</div></div>
-        <div class="kpi" onclick="filterProducts('draft')" style="cursor:pointer" title="Filter: Entwürfe"><div class="label">Entwürfe</div><div class="val warn" id="p_draft">–</div></div>
-        <div class="kpi" onclick="filterProducts('ended')" style="cursor:pointer" title="Filter: beendet"><div class="label">Beendet</div><div class="val" id="p_ended">–</div></div>
+      <div class="page-head"><h1>Meine Angebote</h1><p>Alle Angebote, die du bei eBay eingestellt hast.</p></div>
+      <div class="kpis">
+        <div class="kpi" onclick="filterProducts('active')" style="cursor:pointer" title="Nur aktive zeigen"><div class="label">Aktiv</div><div class="val ok" id="p_active">–</div></div>
+        <div class="kpi" onclick="filterProducts('draft')" style="cursor:pointer" title="Nur Entwürfe zeigen"><div class="label">Entwürfe</div><div class="val warn" id="p_draft">–</div></div>
+        <div class="kpi" onclick="filterProducts('ended')" style="cursor:pointer" title="Nur beendete zeigen"><div class="label">Beendet</div><div class="val" id="p_ended">–</div></div>
       </div>
       <section class="card">
-        <h2>Meine eBay-Produkte
-          <span class="spacer" style="flex:1"></span>
-          <button class="btn sm primary" onclick="loadProducts()" title="Liste neu laden">⟳ Aktualisieren</button>
-          <input type="text" id="prodSearch" placeholder="Suche Titel / SKU / Item-Nr. / #ID" style="width:220px;padding:5px 9px;font-size:12px;margin-left:8px" oninput="renderProducts()">
-          <select id="prodFilter" style="width:auto;padding:5px 8px;font-size:12px;margin-left:8px" onchange="loadProducts()">
+        <h2>
+          <input type="text" id="prodSearch" placeholder="Suchen …" style="width:220px" oninput="renderProducts()">
+          <select id="prodFilter" style="width:auto" onchange="loadProducts()">
             <option value="all">alle</option><option value="active">aktiv</option>
             <option value="draft">Entwürfe</option><option value="ended">beendet</option>
           </select>
+          <span class="spacer"></span>
+          <button class="btn sm" onclick="loadProducts()" title="Liste neu laden">Aktualisieren</button>
         </h2>
-        <!-- Sichtbarer Hinweis, wenn die Startseite mit dem Fehler-Filter
-             hierher gesprungen ist. Ohne ihn sieht der Betreiber eine kurze
-             Liste und haelt sie fuer den ganzen Bestand. -->
-        <div id="prodFehlerHinweis" style="display:none;padding:8px 14px;border-bottom:1px solid var(--line);font-size:12px">
+        <div id="prodFehlerHinweis" style="display:none;padding:12px 20px;border-bottom:1px solid var(--line)">
           <span class="neg">Nur Entwürfe mit Upload-Fehler.</span>
           <button class="btn sm ghost" style="margin-left:8px" onclick="zeigeNurFehler(false)">alle anzeigen</button>
         </div>
         <div class="body tight"><div class="table-scroll stick-scroll">
           <table>
             <thead><tr>
-              <th>Produkt</th><th>Status</th>
-              <th class="num">Preis</th><th class="num">Profit</th><th class="num" title="Gewinn ÷ Verkaufspreis">Marge</th><th class="num">Bestand</th>
-              <th class="num" title="Verkäufe gesamt (Lebenszeit)">Verkäufe</th>
-              <th class="num" title="Aufrufe letzte 30 Tage">Aufrufe 30T</th><th></th>
+              <th>Angebot</th><th>Status</th><th class="num">Preis</th><th class="num">Bestand</th>
+              <th class="num" title="Verkäufe gesamt">Verkäufe</th><th></th>
             </tr></thead>
-            <tbody id="productsBody"><tr><td colspan="9" class="empty">lade Produkte…</td></tr></tbody>
+            <tbody id="productsBody"><tr><td colspan="6" class="empty">lade …</td></tr></tbody>
           </table>
         </div></div>
       </section>
@@ -946,8 +142,9 @@
 
     <!-- ============ BELEGE & KÄUFE ============ -->
     <section class="view" id="view-belege">
+      <div class="page-head"><h1>Buchhaltung</h1><p>Belege, Kontobewegungen und der Export für den Steuerberater.</p></div>
       <div class="subtabs" id="belSubtabs">
-        <button data-bsub="belegablage" class="active">Belegablage</button>
+        <button data-bsub="belegablage" class="active">Belege</button>
         <button data-bsub="konto">Konto</button>
         <button data-bsub="finanzbericht">eBay-Finanzbericht</button>
       </div>
@@ -955,24 +152,22 @@
       <!-- Sub: Belegablage = AUSGABEN (Wareneinkauf + Sonstige) -->
       <div class="subview active" id="bsub-belegablage">
         <!-- Die Kacheln sind zugleich der Filter: Klick zeigt nur diese Belege. -->
-        <div class="kpis" style="grid-template-columns:repeat(5,1fr)">
+        <div class="kpis">
           <div class="kpi" id="kpi_alle" style="cursor:pointer" onclick="belFilter('all')" title="Alle Belege anzeigen"><div class="label">Alle Belege</div><div class="val" id="b_alle">–</div><div class="sub">Filter zurücksetzen</div></div>
           <div class="kpi" id="kpi_problem" style="cursor:pointer" onclick="belFilter('problem')" title="Belege, aus denen sich keine Rechnung erzeugen liess — Grund steht in der Zeile"><div class="label">Problemfälle</div><div class="val" id="b_problem" style="color:var(--bad)">–</div><div class="sub">Rechnung nicht möglich</div></div>
-          <div class="kpi" id="kpi_ae" style="cursor:pointer" onclick="belFilter('aliexpress_purchase')" title="Nur Wareneinkäufe anzeigen"><div class="label">Kaufbelege (Wareneinkauf)</div><div class="val accent" id="b_purch">–</div><div class="sub" id="b_purch_sum">–</div></div>
-          <div class="kpi" id="kpi_ohne" style="cursor:pointer" onclick="belFilter('ohne_beleg')" title="Nur Käufe anzeigen, zu denen der Beleg fehlt"><div class="label">Käufe ohne Beleg</div><div class="val warn" id="b_miss_p">–</div><div class="sub">Kaufbeleg fehlt</div></div>
+          <div class="kpi" id="kpi_ae" hidden style="cursor:pointer" onclick="belFilter('aliexpress_purchase')" title="Nur Wareneinkäufe anzeigen"><div class="label">Kaufbelege (Wareneinkauf)</div><div class="val accent" id="b_purch">–</div><div class="sub" id="b_purch_sum">–</div></div>
+          <div class="kpi" id="kpi_ohne" hidden style="cursor:pointer" onclick="belFilter('ohne_beleg')" title="Nur Käufe anzeigen, zu denen der Beleg fehlt"><div class="label">Käufe ohne Beleg</div><div class="val warn" id="b_miss_p">–</div><div class="sub">Kaufbeleg fehlt</div></div>
           <div class="kpi" id="kpi_sonst" style="cursor:pointer" onclick="belFilter('betriebsausgabe')" title="Nur sonstige Betriebsausgaben anzeigen"><div class="label">Sonstige Ausgaben</div><div class="val" id="b_other">–</div><div class="sub" id="b_other_sum">–</div></div>
         </div>
         <section class="card">
           <h2>Belegablage <span class="tag">Ausgaben</span>
             <span class="spacer" style="flex:1"></span>
             <a class="btn sm primary" href="/api/v1/invoices/tax-export" title="Komplettes Jahres-Paket für den Steuerberater als ZIP: alle Original-Belege (sauber benannt) + Index-Tabelle + Summen-Seite">Steuerberater-Export (ZIP)</a>
-            <button class="btn sm" onclick="openExpenseModal()" style="margin-left:8px" title="Sonstige Betriebsausgabe erfassen (AutoDS-Abo, KI/API, Server-Hosting, Temu, Versand-/Retourenlabel, Domain, …) – optional mit Beleg">Ausgabe erfassen</button>
-            <button class="btn sm ghost" onclick="belResetCols()" style="margin-left:8px" title="Spaltenbreiten auf Standard zurücksetzen (Breiten ziehst du an den Spalten-Trennlinien der Kopfzeile)">↔ Spalten</button>
+            <button class="btn sm" onclick="openExpenseModal()" style="margin-left:8px" title="Betriebsausgabe erfassen (KI/API, Hosting, Versand, Domain, …) – optional mit Beleg">Ausgabe erfassen</button>
+            <button class="btn sm ghost" onclick="belResetCols()" title="Spaltenbreiten auf Standard zurücksetzen (Breiten ziehst du an den Trennlinien der Kopfzeile)">Spalten zurücksetzen</button>
             <select id="belegFilter" style="width:auto;padding:5px 8px;font-size:12px;margin-left:8px" onchange="loadBelege()">
               <option value="all">alle Ausgaben</option>
               <option value="problem">Problemfälle</option>
-              <option value="aliexpress_purchase">Wareneinkauf</option>
-              <option value="ohne_beleg">Käufe ohne Beleg</option>
               <option value="betriebsausgabe">Sonstige Ausgabe</option>
             </select>
           </h2>
@@ -992,9 +187,9 @@
       <!-- Kontoansicht: jede Bewegung auf dem Geschaeftskonto mit Beleg + Kategorie.
            Ein Buchhaltungsprogramm denkt vom KONTO her – jeder Euro muss erklaert sein. -->
       <div class="subview" id="bsub-konto">
-        <div class="kpis" style="grid-template-columns:repeat(5,1fr)">
+        <div class="kpis">
           <div class="kpi" id="kk_offen" style="cursor:pointer" onclick="kontoFilter('ohne_beleg')" title="Abbuchungen ohne Beleg – hier liegt die Arbeit"><div class="label">Ohne Beleg</div><div class="val" id="k_offen" style="color:var(--bad)">–</div><div class="sub" id="k_offen_sum">–</div></div>
-          <div class="kpi" id="kk_zuord" style="cursor:pointer" onclick="kontoFilter('zuordnung_offen')" title="Wareneinkäufe: die Rechnung liegt vor, nur welche Bestellung zu welcher Abbuchung gehört, ist offen"><div class="label">Zuordnung offen</div><div class="val" id="k_zuord" style="color:var(--info)">–</div><div class="sub" id="k_zuord_sum">–</div></div>
+          <div class="kpi" id="kk_zuord" hidden style="cursor:pointer" onclick="kontoFilter('zuordnung_offen')" title="Wareneinkäufe: die Rechnung liegt vor, nur welche Bestellung zu welcher Abbuchung gehört, ist offen"><div class="label">Zuordnung offen</div><div class="val" id="k_zuord" style="color:var(--info)">–</div><div class="sub" id="k_zuord_sum">–</div></div>
           <div class="kpi" id="kk_kat" style="cursor:pointer" onclick="kontoFilter('ohne_kategorie')" title="Buchungen ohne Kategorie – der Steuerberater braucht sie"><div class="label">Ohne Kategorie</div><div class="val warn" id="k_kat">–</div><div class="sub" id="k_kat_sum">–</div></div>
           <div class="kpi" id="kk_ok" style="cursor:pointer" onclick="kontoFilter('erledigt')" title="Beleg und Kategorie vorhanden"><div class="label">Erledigt</div><div class="val" id="k_ok">–</div><div class="sub">Beleg + Kategorie</div></div>
           <div class="kpi" id="kk_alle" style="cursor:pointer" onclick="kontoFilter('alle')" title="Alle Kontobewegungen"><div class="label">Alle Buchungen</div><div class="val" id="k_alle">–</div><div class="sub">Filter zurücksetzen</div></div>
@@ -1003,8 +198,8 @@
           <h2>Konto <span class="tag">Kontist</span>
             <span class="spacer" style="flex:1"></span>
             <span class="muted" style="font-size:11.5px" id="kontoHinweis"></span>
+            <button class="btn sm ghost" onclick="kontoResetCols()" title="Spaltenbreiten auf Standard zurücksetzen (Breiten ziehst du an den Trennlinien der Kopfzeile)">Spalten zurücksetzen</button>
             <button class="btn sm primary" id="kontoSyncBtn" onclick="kontoAktualisieren()" style="margin-left:8px" title="Neue Kontobuchungen sofort holen — sonst passiert das nur nachts um 3:15">Aktualisieren</button>
-            <button class="btn sm ghost" onclick="kontoResetCols()" style="margin-left:8px" title="Spaltenbreiten auf Standard zurücksetzen (Breiten ziehst du an den Trennlinien der Kopfzeile)">↔ Spalten</button>
           </h2>
           <div class="table-scroll stick-scroll"><table class="bel-table">
             <thead><tr>
@@ -1033,6 +228,7 @@
          ist, laesst sich hier feststellen - ob er funktioniert, nicht. Ein
          abgelaufener Token sieht von hier aus wie ein gueltiger. -->
     <section class="view" id="view-einstellungen">
+      <div class="page-head"><h1>Einstellungen</h1><p>Welche Verbindungen eingerichtet sind.</p></div>
       <section class="card">
         <h2>Zugänge
           <span class="spacer" style="flex:1"></span>
@@ -1044,27 +240,6 @@
         </div>
       </section>
 
-      <section class="card" id="dhlKeyCard" style="margin-top:6px">
-        <h2>DHL-Zustellung automatisch erkennen
-          <span class="muted" id="dhlKeyStatus" style="font-size:11.5px;margin-left:10px">…</span>
-          <span class="spacer" style="flex:1"></span>
-          <button class="btn sm ghost" id="dhlKeyTestBtn" onclick="testDhlKey(this)" title="Testet, ob die DHL-API mit dem gespeicherten Key antwortet">Testen</button>
-          <button class="btn sm ghost" id="dhlKeyEditBtn" onclick="toggleDhlKeyForm()" style="display:none" title="DHL-API-Key austauschen (z. B. neu generiert)">ändern</button>
-        </h2>
-        <div class="body tight" id="dhlKeyBody">
-          <p class="muted" style="font-size:12px;margin:0 0 8px">
-            Setzt DHL-Pakete (Sendungsnr. 003…) automatisch auf „zugestellt", sobald DHL das meldet.
-            Läuft danach von selbst im Sync. Dazu einmal deinen kostenlosen Key von
-            <a href="https://developer.dhl.com" target="_blank" rel="noopener">developer.dhl.com</a>
-            („Shipment Tracking – Unified") hier einfügen — er wird sicher am Server gespeichert.
-          </p>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <input type="password" id="dhlKeyInput" placeholder="DHL-API-Key einfügen" autocomplete="off"
-                   style="width:300px;padding:6px 9px;font-size:12px">
-            <button class="btn sm primary" onclick="saveDhlKey(this)">Speichern</button>
-          </div>
-        </div>
-      </section>
     </section>
 
   </div>
@@ -1580,7 +755,7 @@
       try {
         const h = await api("GET", "/health");
         $("healthDot").className = "dot " + (h.status === "ok" ? "ok" : "bad");
-        $("healthText").textContent = h.status === "ok" ? `Online · ${h.uptime_hours.toFixed(1)} h` : "Beeinträchtigt";
+        $("healthText").textContent = h.status === "ok" ? "Online" : "Beeinträchtigt";
         // EFFEKTIVER Betriebsmodus: entscheidend ist, ob eBay real läuft (echte Verkäufe/Preise).
         // Früher zeigte der Pill fälschlich „Mock", weil der Basis-Schalter use_mocks=True ist –
         // die geldrelevanten eBay-Operationen laufen aber IMMER echt (RealEbayClient). Jetzt echt.
@@ -1661,129 +836,64 @@
       try {
         const d = await api("GET", "/api/v1/settings/zugaenge");
         $("zugaengeKopf").innerHTML = d.probebetrieb
-          ? `<div style="padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-bottom:12px">
-               <b class="warn">Probebetrieb</b>
-               <div class="muted" style="font-size:11.5px;margin-top:3px">
+          ? `<div class="hinweis">
+               <b>Probebetrieb</b>
+               <div class="muted">
                  Attrappen aktiv: ${esc(d.attrappen.join(", "))}. Veröffentlichen ist gesperrt.
                  Zum Scharfschalten <code>MOCK_EBAY=false</code> in der .env setzen und den Server neu starten.
                </div></div>`
           : "";
-        liste.innerHTML = d.zugaenge.map(z => {
+        liste.innerHTML = d.zugaenge.filter(z => z.schluessel !== "dhl").map(z => {
           const fehlt = (z.fehlend || []).length;
-          const zeichen = z.attrappe ? "◐" : (z.eingerichtet && !fehlt ? "●" : (z.noetig ? "○" : "·"));
-          const farbe = z.attrappe ? "var(--warn)"
-                      : (z.eingerichtet && !fehlt ? "var(--ok)"
-                      : (z.noetig ? "var(--bad)" : "var(--muted)"));
+          const ok = z.eingerichtet && !fehlt;
+          const ton = z.attrappe ? "warn" : (ok ? "ok" : (z.noetig ? "bad" : ""));
           const angaben = Object.entries(z.angaben || {})
             .filter(([, v]) => v).map(([k, v]) => `${esc(k)}: ${esc(v)}`).join(" · ");
-          return `<div style="display:flex;gap:12px;padding:11px 2px;border-bottom:1px solid var(--line-soft)">
-            <span style="font-size:20px;line-height:1.1;color:${farbe}">${zeichen}</span>
-            <div style="flex:1;min-width:0">
-              <div><b>${esc(z.name)}</b>${z.noetig ? "" : ' <span class="muted" style="font-size:10.5px">freiwillig</span>'}</div>
-              <div class="muted" style="font-size:11.5px">${esc(z.wofuer)}</div>
-              ${angaben ? `<div class="muted" style="font-size:11px;margin-top:2px">${angaben}</div>` : ""}
-              ${fehlt ? `<div class="${z.noetig ? "neg" : "muted"}" style="font-size:11.5px;margin-top:3px">fehlt: ${esc(z.fehlend.join(", "))}</div>` : ""}
-              ${(z.hinweise || []).map(h => `<div class="muted" style="font-size:11px;margin-top:2px">${esc(h)}</div>`).join("")}
-            </div>
+          const zeilen = [
+            z.wofuer, angaben,
+            fehlt ? `<span class="${z.noetig ? "neg" : ""}">fehlt: ${esc(z.fehlend.join(", "))}</span>` : "",
+            ...(z.hinweise || []),
+          ].filter(Boolean).map(t => `<div class="muted">${t}</div>`).join("");
+          return `<div class="zugang">
+            <span class="dot ${ton}"></span>
+            <div><b>${esc(z.name)}</b>${z.noetig ? "" : ' <span class="muted">· freiwillig</span>'}${zeilen}</div>
           </div>`;
-        }).join("") + `<div class="muted" style="font-size:11px;margin-top:10px">${esc(d.hinweis)}</div>`;
-        // Der DHL-Schluessel steht als eigene Karte darunter - dort laesst er sich
-        // auch setzen, nicht nur ansehen.
-        if (typeof loadDhlKeyStatus === "function") loadDhlKeyStatus();
+        }).join("") + `<p class="muted" style="margin-top:16px">${esc(d.hinweis)}</p>`;
       } catch (e) {
         liste.innerHTML = `<div class="empty">Zugänge nicht abrufbar.</div>`;
       }
     }
 
+    const STATUS_TEXT = { active: "aktiv", draft: "Entwurf", ended: "beendet", fehler: "Fehler",
+      new: "neu", needs_review: "prüfen", shipped: "versandt", delivered: "zugestellt",
+      cancelled: "storniert", refunded: "erstattet", pending: "offen", failed: "fehlgeschlagen" };
+    const statusText = (s) => STATUS_TEXT[s] || s;
+
     async function loadOverview() {
       try {
-        const s = await api("GET", "/api/v1/dashboard/summary");
-        $("k_rev").textContent = eur(s.sales.revenue_ytd_eur ?? s.sales.revenue_eur);
-        // Umsatz = OHNE Stornos/Erstattungen (Nutzerwunsch: keine Storno-Zeile unter der Kachel).
-        $("k_rev_sub").textContent = s.sales.count + " Verkäufe · ⌀ " + eur(s.sales.avg_order_eur);
-        $("k_profit").textContent = eur(s.sales.profit_eur);
-        // NUR belegter Gewinn (echter Einkauf + echte Gebühr) – keine Schätzungen.
-        // Die Herleitung steht bewusst nur noch im Tooltip, nicht mehr als Zeile unter der Zahl.
-        const sa2 = s.sales;
-        $("k_profit_card").title =
-          `Bruttogewinn = Umsatz − eBay-Gebühren − Wareneinkauf (nur tatsächliche Zahlen).\n\n`
-          + `• Umsatz: ${eur(s.sales.revenue_eur)}\n`
-          + `• eBay-Gebühren (echt, inkl. Anzeigengebühr): −${eur(sa2.fees_eur||0)} (${num(sa2.fees_real_count||0)} Verkäufe)\n`
-          + `• Wareneinkauf (erfasst): −${eur(sa2.ae_spend_eur||0)} (${num(sa2.ae_purchases_count||0)} Käufe)`;
-        $("k_active").textContent = s.listings.active;
-        zeichneHeute(s);
-      } catch (e) {}
-      loadProfit();
-    }
-    async function loadProfit() {
-      const days = $("profitDays").value;
-      try {
-        const d = await api("GET", "/api/v1/dashboard/profit?days=" + days);
-        $("profitChart").innerHTML = renderChart(d.series);
-        wireChartHover(d.series);
-        $("profitTotals").innerHTML = `Σ Umsatz <b style="color:var(--ink)">${eur(d.totals.revenue_eur)}</b> · Profit <b style="color:var(--gold)">${eur(d.totals.profit_eur)}</b>`;
-      } catch (e) {}
-    }
-    function renderChart(series) {
-      const W = 720, H = 220, P = 28;
-      if (!series || !series.length) return `<div class="empty">keine Daten</div>`;
-      const maxV = Math.max(1, ...series.map(s => Math.max(s.revenue_eur, s.profit_eur)));
-      const n = series.length, bw = (W - 2*P) / n;
-      const y = (v) => H - P - (v / maxV) * (H - 2*P);
-      const x = (i) => P + i * bw + bw/2;
-      const line = (key, color) => {
-        const pts = series.map((s,i) => `${x(i).toFixed(1)},${y(s[key]).toFixed(1)}`).join(" ");
-        const area = `${P},${H-P} ${pts} ${W-P},${H-P}`;
-        return `<polygon points="${area}" fill="${color}" opacity="0.08"/>
-                <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>`;
-      };
-      const grid = [0.25,0.5,0.75,1].map(f => {
-        const yy = (H-P) - f*(H-2*P);
-        return `<line x1="${P}" y1="${yy}" x2="${W-P}" y2="${yy}" stroke="var(--line-soft)" stroke-dasharray="3 4"/>
-                <text x="6" y="${yy+3}" fill="var(--muted)" font-size="9">€${(maxV*f).toFixed(0)}</text>`;
-      }).join("");
-      const labels = series.map((s,i) => (n<=14 || i%Math.ceil(n/10)===0)
-        ? `<text x="${x(i)}" y="${H-8}" fill="var(--muted)" font-size="9" text-anchor="middle">${s.date.slice(5)}</text>` : "").join("");
-      return `<div style="position:relative">
-        <svg id="profitSvg" viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block">
-        ${grid}${line("revenue_eur","var(--accent)")}${line("profit_eur","var(--gold)")}${labels}
-        <g id="chHover" style="display:none;pointer-events:none">
-          <line id="chGuide" y1="${P}" y2="${H-P}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3"/>
-          <circle id="chDotRev" r="4" fill="var(--accent)" stroke="var(--card)" stroke-width="1.5"/>
-          <circle id="chDotPro" r="4" fill="var(--gold)" stroke="var(--card)" stroke-width="1.5"/>
-        </g></svg>
-        <div id="chTip" style="position:absolute;display:none;pointer-events:none;transform:translate(-50%,-118%);background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:6px 9px;font-size:11px;line-height:1.5;white-space:nowrap;box-shadow:0 6px 18px rgba(0,0,0,.22);z-index:5"></div>
-      </div>`;
-    }
-    // Tageswerte erscheinen NUR beim Ueberfahren mit der Maus (Nutzerwunsch) – der Chart
-    // selbst bleibt unbeschriftet. Bewusst ohne Klick-/Tap-Zustand: es bleibt nichts haengen.
-    function wireChartHover(series) {
-      const svg = $("profitSvg"), tip = $("chTip"), grp = $("chHover");
-      if (!svg || !tip || !grp || !series || !series.length) return;
-      const W = 720, H = 220, P = 28, n = series.length, bw = (W - 2*P) / n;
-      const maxV = Math.max(1, ...series.map(s => Math.max(s.revenue_eur, s.profit_eur)));
-      const yv = (v) => H - P - (v / maxV) * (H - 2*P);
-      const xv = (i) => P + i * bw + bw/2;
-      svg.addEventListener("mousemove", (ev) => {
-        const r = svg.getBoundingClientRect();
-        if (!r.width) return;
-        // Mausposition -> SVG-Koordinate -> naechster Datenpunkt (der Chart skaliert mit).
-        let i = Math.round(((ev.clientX - r.left) / r.width * W - P - bw/2) / bw);
-        i = Math.max(0, Math.min(n - 1, i));
-        const s = series[i], sx = xv(i);
-        grp.style.display = "";
-        $("chGuide").setAttribute("x1", sx); $("chGuide").setAttribute("x2", sx);
-        $("chDotRev").setAttribute("cx", sx); $("chDotRev").setAttribute("cy", yv(s.revenue_eur));
-        $("chDotPro").setAttribute("cx", sx); $("chDotPro").setAttribute("cy", yv(s.profit_eur));
-        tip.innerHTML = `<b>${s.date.slice(8,10)}.${s.date.slice(5,7)}.</b>`
-          + `<div style="margin-top:3px"><span style="color:var(--accent)">●</span> Umsatz <b>${eur(s.revenue_eur)}</b></div>`
-          + `<div><span style="color:var(--gold)">●</span> Profit <b>${eur(s.profit_eur)}</b></div>`;
-        tip.style.display = "";
-        // am Rand nicht aus dem Kasten laufen lassen
-        tip.style.left = Math.max(48, Math.min(r.width - 48, sx / W * r.width)) + "px";
-        tip.style.top = (Math.min(yv(s.revenue_eur), yv(s.profit_eur)) / H * r.height) + "px";
-      });
-      svg.addEventListener("mouseleave", () => { grp.style.display = "none"; tip.style.display = "none"; });
+        const [dash, produkte, angebote] = await Promise.all([
+          api("GET", "/api/v1/pod/dashboard"),
+          api("GET", "/api/v1/pod/products"),
+          api("GET", "/api/v1/pod/listings"),
+        ]);
+        const k = dash.kpis || {};
+        $("k_active").textContent = num(k.active_listings);
+        $("k_open").textContent = num(k.open_orders);
+        $("k_rev").textContent = eur(k.revenue_eur);
+        zeichneHeute({ listings: {
+          publish_errors: (produkte || []).filter(p => p.status === "fehler").length,
+          drafts: (angebote || []).filter(l => l.status === "draft").length,
+          total: (angebote || []).length,
+        } });
+        const bestellungen = dash.orders || [];
+        $("heuteBestellungen").innerHTML = bestellungen.length
+          ? bestellungen.map(o => `<tr><td>${esc(o.channel)}</td><td>${esc(o.external_id)}</td>
+              <td><span class="badge ${esc(o.status)}">${esc(statusText(o.status))}</span></td>
+              <td class="num">${eur(o.sale_total_eur)}</td></tr>`).join("")
+          : `<tr><td colspan="4" class="empty">Noch keine Bestellungen.</td></tr>`;
+      } catch (e) {
+        $("heuteAufgaben").innerHTML = `<div class="empty">Daten nicht abrufbar.</div>`;
+      }
     }
 
 // -------- eBay-Produkte --------
@@ -1805,13 +915,14 @@
     let prodPoll = null;
     let _prodRows = [];
     async function loadPodProductsFallback(status) {
-      const [dash, produkte] = await Promise.all([
+      const [dash, produkte, angebote] = await Promise.all([
         api("GET", "/api/v1/pod/dashboard"),
         api("GET", "/api/v1/pod/products"),
+        api("GET", "/api/v1/pod/listings"),
       ]);
       const byId = {};
       (produkte || []).forEach(p => { byId[p.id] = p; });
-      let rows = (dash.listings || []).map(l => {
+      let rows = (angebote || []).map(l => {
         const p = byId[l.product_id] || {};
         return {
           pod: true,
@@ -1893,7 +1004,7 @@
         const leer = q ? `kein Treffer für „${esc(q)}"`
                        : (_nurFehler ? "kein Entwurf mit Upload-Fehler — nichts zu tun"
                                      : "keine Produkte");
-        body.innerHTML = `<tr><td colspan="9" class="empty">${leer}</td></tr>`; return;
+        body.innerHTML = `<tr><td colspan="6" class="empty">${leer}</td></tr>`; return;
       }
       body.innerHTML = rows.map(p => {
         const multi = (p.variant_count || 0) > 1;
@@ -1909,13 +1020,10 @@
           : ((p.price_eur&&p.profit_eur!=null)?pct(p.profit_eur/p.price_eur):'<span class="muted">–</span>');
         return `<tr>
           <td class="title-cell" title="${esc(p.title)}">${p.image ? `<img src="${esc(p.image)}" style="width:26px;height:26px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:7px" onerror="this.style.display='none'">` : ""}${esc(p.title)}</td>
-          <td><span class="badge ${esc(p.listing_status)}">${esc(p.listing_status)}</span>${p.pod?'<br><span class="muted" style="font-size:10.5px">Studio/POD</span>':''}${p.publish_queued?'<br><span class="pos" style="font-size:10.5px">⏫ lädt hoch…</span>':''}${(!p.publish_queued&&p.publish_error)?`<br><span class="neg" style="font-size:10.5px" title="${esc(p.publish_error)}">Upload-Fehler</span>`:''}</td>
+          <td><span class="badge ${esc(p.listing_status)}">${esc(statusText(p.listing_status))}</span>${p.publish_queued?'<br><span class="pos" style="font-size:10.5px">⏫ lädt hoch…</span>':''}${(!p.publish_queued&&p.publish_error)?`<br><span class="neg" style="font-size:10.5px" title="${esc(p.publish_error)}">Upload-Fehler</span>`:''}</td>
           <td class="num">${priceCell}</td>
-          <td class="num">${profitCell}</td>
-          <td class="num">${marginCell}</td>
           <td class="num">${p.quantity ?? '–'}</td>
           <td class="num ${p.sales_total===0?'muted':''}">${p.sales_total ?? '–'}</td>
-          <td class="num ${p.views_30d===0?'muted':''}">${p.views_30d ?? '–'}</td>
           <td style="white-space:nowrap">${p.pod_url ? `<a class="btn sm" href="${esc(p.pod_url)}" target="_blank" rel="noopener">eBay</a>` : ""}</td>
         </tr>`; }).join("");
     }
@@ -1994,51 +1102,6 @@
     function closeModal() {
       $("modal").classList.remove("open");
       const mc = document.querySelector("#modal .modal-card"); if (mc) mc.classList.remove("wide");
-    }
-    async function loadDhlKeyStatus() {
-      const el = $("dhlKeyStatus"), body = $("dhlKeyBody"), edit = $("dhlKeyEditBtn");
-      if (!el) return;
-      try {
-        const r = await api("GET", "/api/v1/settings/dhl-key");
-        el.textContent = r.configured
-          ? `✓ verbunden (${r.masked}${r.from_env ? " · per Server" : ""})`
-          : "— noch nicht verbunden (DHL-Zustellung inaktiv)";
-        el.style.color = r.configured ? "var(--ok)" : "";
-        // Ist ein Key verbunden, das Eingabe-Kästchen einklappen (nur „✓ verbunden" + „ändern").
-        if (body) body.style.display = r.configured ? "none" : "";
-        if (edit) edit.style.display = r.configured ? "" : "none";
-      } catch (e) { el.textContent = ""; }
-    }
-    function toggleDhlKeyForm() {
-      const body = $("dhlKeyBody"); if (body) body.style.display = body.style.display === "none" ? "" : "none";
-    }
-    async function testDhlKey(btn) {
-      if (btn) { btn.disabled = true; btn.textContent = "teste…"; }
-      try {
-        const r = await api("GET", "/api/v1/settings/dhl-key/test");
-        toast((r && r.ok ? "DHL ✓ " : "DHL ✗ ") + (r && r.reason ? r.reason : "unbekannt"), !(r && r.ok));
-      } catch (e) {
-        toast("DHL-Test fehlgeschlagen: " + (e && e.message ? e.message : e), true);
-      } finally {
-        if (btn) { btn.disabled = false; btn.textContent = "Testen"; }
-      }
-    }
-    async function saveDhlKey(btn) {
-      const inp = $("dhlKeyInput"), key = (inp && inp.value || "").trim();
-      if (!key) { toast("Bitte den DHL-API-Key einfügen.", true); return; }
-      if (btn) { btn.disabled = true; btn.textContent = "speichere…"; }
-      try {
-        const r = await api("POST", "/api/v1/settings/dhl-key", { key });
-        if (r && r.configured) {
-          toast(r.from_env
-            ? "Gespeichert — aber am Server ist bereits ein DHL-Key gesetzt, der Vorrang hat."
-            : `DHL verbunden ✓ (${r.masked}) — Zustellungen werden ab dem nächsten Sync automatisch erkannt.`,
-            !!r.from_env);
-          if (inp) inp.value = "";
-          await loadDhlKeyStatus();
-        }
-      } catch (e) { /* api() hat getoastet */ }
-      finally { if (btn) { btn.disabled = false; btn.textContent = "Speichern"; } }
     }
     document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
 

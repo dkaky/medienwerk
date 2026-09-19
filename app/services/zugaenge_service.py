@@ -107,16 +107,21 @@ def uebersicht(db: Any = None) -> dict:
     })
 
     # ------------------------------------------------------------- Bilder-KI
-    bild_fehlt = _fehlend(s, {"fal_api_key": "Fal-Schlüssel"})
+    bild_fehlt = _fehlend(s, {"openai_api_key": "OpenAI-Schlüssel"})
+    budget = s.studio_daily_budget_usd
+    if budget < 0:
+        budget_text = "Tagesbudget: unbegrenzt."
+    elif budget == 0:
+        budget_text = "Tagesbudget 0 — es wird nichts erzeugt."
+    else:
+        budget_text = f"Tagesbudget {budget:.2f} USD."
     zugaenge.append({
         "schluessel": "bilder", "name": "Bilderzeugung",
         "wofuer": "Eigene Motive erzeugen (Studio)",
         "eingerichtet": not bild_fehlt,
         "fehlend": bild_fehlt,
         "attrappe": False,
-        "hinweise": ([f"Tagesbudget {s.studio_daily_budget_usd:.2f} USD — "
-                      "ohne Budget wird nichts erzeugt."]
-                     if s.studio_enabled else ["Studio ist ausgeschaltet."]),
+        "hinweise": ([budget_text] if s.studio_enabled else ["Studio ist ausgeschaltet."]),
         "angaben": {},
         "noetig": False,
     })

@@ -252,6 +252,13 @@ def logo_banner():
     return FileResponse(STATIC_DIR / "logo-banner.jpg", media_type="image/jpeg")
 
 
+@app.get("/design.css", include_in_schema=False)
+def design_css():
+    """Gemeinsames Stylesheet von Dashboard und Studio."""
+    return FileResponse(STATIC_DIR / "design.css", media_type="text/css",
+                        headers={"Cache-Control": "no-cache"})
+
+
 @app.get("/logo.png", include_in_schema=False)
 def logo_dunkel():
     """Logo des Betriebs, dunkle Schrift - fuer hellen Grund."""

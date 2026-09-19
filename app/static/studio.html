@@ -8,204 +8,7 @@
      /favicon.ico zurueck, und dort lag ein SVG unter falschem Namen. -->
 <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=7" />
 <link rel="icon" type="image/x-icon" href="/favicon.ico?v=7" sizes="any" />
-<style>
-/* Dieselbe Farbwelt wie das Dashboard: kuehles Anthrazit, Cyan als Marke.
-   Vorher stand hier ein Violett (#6c5ce7) - eine schnelle Wahl aus einem
-   Entwurf, kein Markenbild. Zwei Seiten desselben Werkzeugs duerfen nicht
-   aussehen wie zwei Programme.
-
-   Die VARIABLENNAMEN bleiben (--panel statt --card, --text statt --ink): sie
-   stecken in jeder Regel dieser Datei, und Umbenennen waere Risiko ohne Gewinn.
-
-   NEU ist das helle Schema. Es fehlte hier - wer im Dashboard auf Hell stellte
-   und dann ins Studio ging, bekam einen Bruch. Die Wahl wird unter demselben
-   Schluessel gemerkt, den das Dashboard nutzt. */
-:root {
-  --bg: #171c24; --panel: #1f2530; --panel-2: #28303c; --border: #333c49;
-  --text: #e6e9ef; --muted: #8b93a3; --accent: #19a7bd; --accent-2: #3dc4d8;
-  --accent-ink: #04171b; --bild-grund: #12161d;
-  --green: #35c07a; --red: #ff5c6c; --amber: #f2a63b;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-}
-/* Hell: kuehles Papiergrau. Cyan und die Zustandsfarben sind dunkler als im
-   dunklen Schema - dieselbe Farbe braucht auf hellem Grund mehr Tiefe, sonst
-   ist sie huebsch und unlesbar. Alle Werte halten mindestens 4.5:1. */
-body.light {
-  --bg: #f4f6f8; --panel: #ffffff; --panel-2: #eef1f5; --border: #dde3ea;
-  --text: #1a1f26; --muted: #66707d; --accent: #0e7f92; --accent-2: #0b6475;
-  --accent-ink: #ffffff; --bild-grund: #eef1f5;
-  --green: #1d814d; --red: #c0392b; --amber: #9f6316;
-}
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); }
-a { color: inherit; }
-.app { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
-
-.sidebar { background: var(--panel); border-right: 1px solid var(--border); padding: 20px 14px;
-           display: flex; flex-direction: column; gap: 4px; }
-/* Das Logo des Betriebs: zwei Fassungen, weil die Schrift dunkel ist. Auf dunklem
-   Grund steht die helle Fassung (Schrift weiss, das rote Quadrat bleibt). */
-.logo-bild { display: block; width: 100%; max-width: 190px; height: auto; }
-.logo-hellgrund { display: none; }
-body.light .logo-dunkelgrund { display: none; }
-body.light .logo-hellgrund { display: block; }
-.brand { display: flex; align-items: center; gap: 10px; padding: 6px 10px 18px; }
-.brand .logo { width: 34px; height: 34px; border-radius: 9px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  display: grid; place-items: center; font-weight: 800; font-size: 18px; }
-.brand b { font-size: 17px; } .brand small { display: block; color: var(--muted); font-size: 11px; }
-.nav-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 9px;
-  cursor: pointer; color: var(--muted); font-size: 14px; border: 1px solid transparent;
-  text-decoration: none; }
-.nav-item:hover { background: var(--panel-2); color: var(--text); }
-.nav-item.active { background: var(--panel-2); color: var(--text); border-color: var(--border); }
-.nav-item .ico { width: 18px; text-align: center; }
-.nav-sep { height: 1px; background: var(--border); margin: 12px 6px; }
-
-.main { padding: 26px 30px; overflow-y: auto; max-height: 100vh; }
-.page-head { margin-bottom: 22px; }
-.page-head h1 { font-size: 22px; margin: 0; }
-.page-head p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
-
-.grid-kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
-.kpi { background: var(--panel); border: 1px solid var(--border); border-radius: 13px; padding: 16px 18px; }
-.kpi .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
-.kpi .value { font-size: 27px; font-weight: 700; margin-top: 6px; }
-
-.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 13px;
-         padding: 18px 20px; margin-bottom: 20px; }
-.panel h3 { margin: 0 0 4px; font-size: 15px; }
-.muted { color: var(--muted); font-size: 13px; }
-
-input, select, textarea { background: var(--panel-2); border: 1px solid var(--border);
-  color: var(--text); border-radius: 9px; padding: 9px 11px; font-size: 14px; font-family: inherit; }
-input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
-.btn { background: var(--accent); color: var(--accent-ink); border: none; border-radius: 9px;
-  padding: 9px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
-.btn:hover { background: var(--accent-2); }
-.btn:disabled { opacity: .5; cursor: not-allowed; }
-.btn.klein { padding: 5px 9px; font-size: 12px; }
-.klein { font-size: 11.5px; }
-.produktweg { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; width: 100%; }
-.btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
-
-.zeile { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-top: 12px; }
-.feld { display: flex; flex-direction: column; gap: 5px; }
-.feld label { font-size: 12px; color: var(--muted); }
-
-/* --- Preise ---------------------------------------------------------------
-   Ein Feld je Produktart, ganz oben im Studio. Speichern wirkt sofort auf alle
-   Angebote, die ab jetzt eingestellt werden - nichts geht dabei live. */
-.preise { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin-top: 12px; }
-.preis-karte { background: var(--panel-2); border: 1px solid var(--border); border-radius: 11px;
-  padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-.preis-karte .name { font-weight: 600; font-size: 14px; }
-.preis-karte .eingabe { display: flex; align-items: center; gap: 6px; }
-.preis-karte input { width: 100%; min-width: 0; text-align: right; font-size: 16px; }
-.preis-karte .std { font-size: 11px; color: var(--muted); }
-.preis-karte.eigen { border-color: var(--accent); }
-.preis-karte .aktionen { display: flex; gap: 6px; }
-
-/* --- Anprobe -------------------------------------------------------------
-   Zweck: sehen, wie ein Motiv auf der Ware wirkt, BEVOR daraus ein Produkt
-   wird. Die Kleidungsstuecke sind gezeichnet (SVG), keine Fotos - dadurch
-   haengt nichts an fremden Bilddateien, und die Druckflaeche sitzt an
-   nachpruefbaren Verhaeltnissen statt nach Augenmass.
-   Die Farbe der Ware ist der eigentliche Punkt: ein dunkles Motiv auf
-   schwarzem Shirt verschwindet, und genau das soll hier auffallen. */
-.anprobe { display: grid; grid-template-columns: minmax(280px, 560px) 1fr; gap: 20px; align-items: start; }
-@media (max-width: 720px) { .anprobe { grid-template-columns: 1fr; } }
-.buehne { background: var(--bild-grund); border: 1px solid var(--border); border-radius: 11px;
-  padding: 14px; display: grid; place-items: center; }
-.wahl { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-.wahl button { background: transparent; border: 1px solid var(--border); color: var(--muted);
-  border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; font-family: inherit; }
-.wahl button:hover { color: var(--text); border-color: var(--accent); }
-.wahl button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink);
-  border-color: var(--accent); font-weight: 600; }
-.farben { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-.farbe { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; padding: 0;
-  border: 2px solid var(--border); transition: transform .12s ease; }
-.farbe:hover { transform: scale(1.1); }
-.farbe[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
-.galerie { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
-.galerie figure { margin: 0; }
-.galerie figure.gross { grid-column: 1 / -1; }
-.galerie h5 { grid-column: 1 / -1; margin: 10px 0 0; font-size: 12px; color: var(--muted);
-  text-transform: uppercase; letter-spacing: .06em; }
-.druckflaeche { position: relative; width: 100%; max-width: 360px; aspect-ratio: 3 / 4; margin: 6px 0;
-  border: 2px dashed var(--border); border-radius: 8px; overflow: hidden; touch-action: none;
-  background: repeating-conic-gradient(rgba(127,127,127,.12) 0 25%, transparent 0 50%) 0 0 / 18px 18px; }
-.druckflaeche.tasse { aspect-ratio: 1 / 1; }
-.druckflaeche.mit-ware { background-size: 100% 100%; background-repeat: no-repeat; }
-.druckflaeche img.ebene { position: absolute; cursor: grab; user-select: none; -webkit-user-drag: none;
-  outline: 1px dashed transparent; outline-offset: 1px; }
-.druckflaeche img.ebene.aktiv { outline-color: var(--accent); }
-.druckflaeche .leerhinweis { position: absolute; inset: 0; display: grid; place-items: center; margin: 0;
-  text-align: center; padding: 10px; }
-.ed-zeile { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 6px 0; }
-.ed-zeile input { flex: 1; }
-#ed-neu { width: 100%; margin: 4px 0 12px; }
-.galerie img { width: 100%; display: block; border-radius: 9px; background: #ececec; }
-.galerie figcaption { font-size: 11px; color: var(--muted); margin-top: 4px;
-  text-transform: uppercase; letter-spacing: .05em; }
-.feldname { font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
-  color: var(--muted); margin-bottom: 6px; }
-.karten { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
-.karte { background: var(--panel-2); border: 1px solid var(--border); border-radius: 11px; overflow: hidden; }
-/* Schachbrett statt Themenfarbe. Ein Druckmotiv ist ein PNG mit DURCHSICHTIGEM
-   Hintergrund und meist schwarzen Linien. Auf dem dunklen Grund der Oberflaeche
-   (--bild-grund ist #12161d) war davon nichts zu sehen - schwarz auf schwarz,
-   die halbe Sammlung wirkte leer. Das Schachbrett ist bewusst themenunabhaengig:
-   es muss zeigen, WO ein Bild durchsichtig ist, und das kann keine Themenfarbe. */
-.schachbrett {
-  background-color: #ffffff;
-  background-image:
-    linear-gradient(45deg, #ccd1d9 25%, transparent 25%, transparent 75%, #ccd1d9 75%),
-    linear-gradient(45deg, #ccd1d9 25%, transparent 25%, transparent 75%, #ccd1d9 75%);
-  background-size: 16px 16px;
-  background-position: 0 0, 8px 8px;
-}
-.karte img { width: 100%; aspect-ratio: 2/3; object-fit: contain; display: block; }
-.platzhalter { display: block; margin-top: 6px; font-size: 11px; color: var(--amber); }
-.karte .info { padding: 10px 12px; }
-.karte .titel { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
-
-.badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px;
-         border: 1px solid var(--border); color: var(--muted); }
-.radar-auswahl { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border);
-  border-radius: 8px; padding: 6px 10px; color: var(--muted); font-size: 13px; cursor: pointer; }
-.radar-auswahl:hover { color: var(--text); border-color: var(--accent); }
-.radar-auswahl input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
-.radar-auswahl:has(input:checked) { background: var(--accent); color: var(--accent-ink);
-  border-color: var(--accent); font-weight: 600; }
-
-.hinweis { border-left: 3px solid var(--amber); padding: 10px 14px; background: var(--panel-2);
-           border-radius: 0 9px 9px 0; font-size: 13px; margin-bottom: 20px; }
-.toast { position: fixed; bottom: 22px; right: 22px; background: var(--panel);
-  border: 1px solid var(--border); border-radius: 11px; padding: 12px 16px; font-size: 14px;
-  box-shadow: 0 8px 28px rgba(0,0,0,.5); }
-.toast.err { border-color: var(--red); }
-.ergebnis-neu { display: grid; grid-template-columns: minmax(220px, 360px) 1fr; gap: 18px;
-  align-items: center; margin-top: 16px; padding: 14px; border: 2px solid var(--accent);
-  border-radius: 12px; background: var(--panel-2); scroll-margin-top: 20px; }
-.ergebnis-neu[hidden], .ergebnis-fehler[hidden] { display: none; }
-.ergebnis-neu img { width: 100%; max-height: 420px; object-fit: contain; border-radius: 9px; }
-.ergebnis-neu h4 { margin: 8px 0 6px; font-size: 18px; }
-.ergebnis-neu .aktionen { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-.ergebnis-fehler { margin: 14px 0 0; border-left-color: var(--red); scroll-margin-top: 20px; }
-@media (max-width: 720px) { .ergebnis-neu { grid-template-columns: 1fr; } }
-details.gruppe { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px;
-  background: var(--panel-2); overflow: hidden; }
-details.gruppe summary { cursor: pointer; padding: 10px 14px; font-weight: 600; font-size: 14px;
-  list-style: none; display: flex; align-items: center; user-select: none; }
-details.gruppe summary::-webkit-details-marker { display: none; }
-details.gruppe summary::before { content: '▸'; display: inline-block; margin-right: 8px;
-  transition: transform .15s ease; color: var(--muted); }
-details.gruppe[open] summary::before { transform: rotate(90deg); }
-details.gruppe summary:hover { background: var(--panel); }
-.gruppe-koerper { padding: 4px 12px 12px; }
-</style>
+<link rel="stylesheet" href="/design.css?v=1">
 </head>
 <body>
   <script>
@@ -218,28 +21,27 @@ details.gruppe summary:hover { background: var(--panel); }
     (function () {
       var w = null;
       try { w = localStorage.getItem("podshop-farbschema"); } catch (e) {}
-      if (!w) {
-        w = (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)
-          ? "dunkel" : "hell";
-      }
+      if (!w) w = "hell";      // Standard ist hell; Dunkel nur auf eigenen Wunsch
       if (w !== "dunkel") document.body.classList.add("light");
     })();
   </script>
 <div class="app">
   <aside class="sidebar">
     <div class="brand">
-      <div><img class="logo-bild logo-dunkelgrund" src="/logo-hell.png" alt="Medienwerk"><img class="logo-bild logo-hellgrund" src="/logo.png" alt="Medienwerk"><small>Design-Studio</small></div>
+      <div><img class="logo-bild logo-dunkelgrund" src="/logo-hell.png" alt="Medienwerk"><img class="logo-bild logo-hellgrund" src="/logo.png" alt="Medienwerk"><small>Studio</small></div>
     </div>
-    <a class="nav-item" href="/dashboard"><span class="ico">&#9641;</span>Dashboard</a>
-    <a class="nav-item" href="/#products"><span class="ico">&#9638;</span>Meine Listings</a>
+    <a class="nav-item" href="/"><span class="ico">&#9641;</span>Heute</a>
+    <a class="nav-item" href="/#products"><span class="ico">&#9638;</span>Angebote</a>
+    <div class="nav-sep"></div>
     <a class="nav-item" href="/#belege"><span class="ico">&#9783;</span>Buchhaltung</a>
+    <a class="nav-item" href="/#einstellungen"><span class="ico">&#9881;</span>Einstellungen</a>
     <a class="nav-item active" href="/studio"><span class="ico">&#10022;</span>Studio</a>
   </aside>
 
   <main class="main">
     <div class="page-head">
       <h1>Studio</h1>
-      <p>Eigene Motive erzeugen. Der Markenfilter prüft vorher, die Kostenbremse begrenzt den Tag.</p>
+      <p>Motive erzeugen, prüfen und bei eBay einstellen. Der Markenfilter prüft vorher, die Kostenbremse begrenzt den Tag.</p>
     </div>
 
     <div id="hinweis" class="hinweis" hidden></div>
@@ -251,7 +53,15 @@ details.gruppe summary:hover { background: var(--panel); }
       <div class="kpi"><div class="label">Tagesbudget</div><div class="value" id="k-budget">–</div></div>
     </div>
 
-    <div class="panel" id="preise-panel">
+    <div class="studio-reiter" id="studio-reiter" role="tablist">
+      <button type="button" data-reiter="motive">Motive</button>
+      <button type="button" data-reiter="empfehlungen">Empfehlungen</button>
+      <button type="button" data-reiter="preise">Preise</button>
+      <button type="button" data-reiter="radar">Radar</button>
+      <button type="button" data-reiter="vorlagen">Vorlagen</button>
+    </div>
+
+    <div class="panel" id="preise-panel" data-reiter="preise">
       <h3>Preise</h3>
       <p class="muted">Verkaufspreis je Produktart, jederzeit änderbar &ndash; inklusive 19&nbsp;% MwSt. und Versand.
         Ein neuer Preis gilt für alle Angebote, die du ab jetzt einstellst. Bereits aktive eBay-Angebote ändern sich
@@ -259,7 +69,7 @@ details.gruppe summary:hover { background: var(--panel); }
       <div class="preise" id="preise"></div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-reiter="motive">
       <h3>Neues Motiv</h3>
       <p class="muted">Ein Spruch wird <b>ins Bild gezeichnet</b>, nicht darübergelegt.
         Das Überlagern wurde abgeschafft — ein Text unter dem Motiv sah nach Aufkleber aus.</p>
@@ -339,7 +149,7 @@ details.gruppe summary:hover { background: var(--panel); }
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-reiter="motive">
       <h3>Motiv hochladen</h3>
       <p class="muted">PNG, JPG, WEBP oder PDF. PDFs werden als Original gespeichert und mit einer Vorschau in die Motivliste gelegt.</p>
       <div class="zeile">
@@ -355,12 +165,10 @@ details.gruppe summary:hover { background: var(--panel); }
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-reiter="empfehlungen">
       <h3>Design-Empfehlungen</h3>
-      <p class="muted">Sechs kurze, recherchierte Ideen mit realistischem, reduziertem Bildaufbau.
-        Beim Fußball entstehen sehr reduzierte, eigene Motive – ohne Vereine, Ligen, Wappen oder
-        Vereinssprüche, die sind markenrechtlich geschützt. <b>Ein Bild entsteht erst</b>
-        mit „Motiv erzeugen“.</p>
+      <p class="muted">Fertige Ideen für neue Motive, nach Themen sortiert. Marken, Vereine und
+        Zitate sind ausgeschlossen. <b>Ein Bild entsteht erst</b> mit „Motiv erzeugen“ und kostet dann Geld.</p>
       <div class="zeile">
         <div class="feld">
           <label for="t-kategorie">Kategorie</label>
@@ -381,7 +189,7 @@ details.gruppe summary:hover { background: var(--panel); }
       <div id="t-liste"><p class="muted">Noch keine Empfehlungen ausgearbeitet.</p></div>
     </div>
 
-    <div class="panel" id="anprobe-panel" hidden>
+    <div class="panel" id="anprobe-panel" data-reiter="motive" hidden>
       <h3>Motiv bearbeiten <span class="muted" id="anprobe-titel"></span></h3>
       <p class="muted">Die Produktfotos, wie sie bei eBay erscheinen – in dieser Reihenfolge:
         <b>1</b> die Ware allein, <b>2</b> am Mann, <b>3</b> an der Frau – danach dieselben drei von hinten.
@@ -411,13 +219,13 @@ details.gruppe summary:hover { background: var(--panel); }
           </p>
         </div>
       </div>
-      <div class="panel" style="margin-top:14px;background:rgba(0,0,0,.12)">
+      <div class="panel" style="margin:16px 0 0;background:var(--bg-soft)">
         <h4 style="margin:0 0 8px">eBay-Vorschau</h4>
         <div id="anprobe-ebay"><p class="muted">Wähle ein Motiv aus.</p></div>
       </div>
     </div>
 
-    <div class="panel" id="vorlagen-panel">
+    <div class="panel" id="vorlagen-panel" data-reiter="vorlagen">
       <h3>Produktvorlagen</h3>
       <p class="muted">So sehen die Produktfotos bei eBay aus: <b>1</b> die Ware allein,
         <b>2</b> am Mann, <b>3</b> an der Frau – danach dieselben drei von hinten. Hier die leeren Vorlagen – öffnest du ein Motiv
@@ -434,7 +242,7 @@ details.gruppe summary:hover { background: var(--panel); }
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-reiter="radar">
       <h3>Motiv-Radar</h3>
       <p class="muted">Liest einen <b>fremden</b> Shop und merkt sich, was dort läuft.
         Übernommen wird das <b>Thema</b> — nie der Wortlaut und nie die Gestaltung.
@@ -465,8 +273,8 @@ details.gruppe summary:hover { background: var(--panel); }
       <div id="r-liste"><p class="muted">Noch nichts gelesen.</p></div>
     </div>
 
-    <div class="panel">
-      <h3>Motive <span class="muted" id="anzahl"></span></h3>
+    <div class="panel" data-reiter="motive">
+      <h3>Meine Motive <span class="muted" id="anzahl"></span></h3>
       <div class="wahl" id="wahl-filter" style="margin-bottom:12px"></div>
       <div class="karten" id="karten"><p class="muted">Wird geladen …</p></div>
     </div>
@@ -506,6 +314,27 @@ async function hole(pfad, optionen) {
   return r.json();
 }
 
+const REITER = ['motive', 'empfehlungen', 'preise', 'radar', 'vorlagen'];
+function zeigeReiter(name) {
+  if (!REITER.includes(name)) name = 'motive';
+  document.querySelectorAll('[data-reiter].panel').forEach((p) => {
+    p.classList.toggle('reiter-aus', p.dataset.reiter !== name);
+  });
+  document.querySelectorAll('#studio-reiter button').forEach((b) => {
+    b.classList.toggle('active', b.dataset.reiter === name);
+  });
+  try { sessionStorage.setItem('studio-reiter', name); } catch (e) { /* egal */ }
+}
+$('studio-reiter').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-reiter]');
+  if (b) zeigeReiter(b.dataset.reiter);
+});
+(function () {
+  let r = null;
+  try { r = sessionStorage.getItem('studio-reiter'); } catch (e) { /* egal */ }
+  zeigeReiter(r || 'motive');
+})();
+
 async function ladeStand() {
   const s = await hole('/api/v1/studio/status');
   $('k-motive').textContent = s.designs ?? 0;
@@ -513,6 +342,7 @@ async function ladeStand() {
   const unbegrenzt = s.tagesbudget_usd < 0;
   $('k-rest').textContent = unbegrenzt ? 'unbegrenzt' : usd(s.rest_heute_usd);
   $('k-budget').textContent = unbegrenzt ? 'unbegrenzt' : usd(s.tagesbudget_usd);
+  $('k-rest').closest('.kpi').hidden = unbegrenzt;
   if (s.tagesbudget_usd === 0) {
     $('hinweis').hidden = false;
     $('hinweis').textContent =
@@ -998,6 +828,7 @@ async function oeffneAnprobe(id) {
   const design = _motive.find((d) => d.id === Number(id));
   if (!design) return;
   _anprobe.design = design;
+  zeigeReiter('motive');
   $('anprobe-panel').hidden = false;
   zeichneAnprobe();
   await ladeEbayVorschau(id, $('anprobe-ebay'), { kompakt: false });
@@ -1443,6 +1274,7 @@ function zeigeErzeugtesMotiv(design, scrollen = false, label = 'Zuletzt erzeugt'
   $('ergebnis-neu-loeschen').onclick = () => loescheMotiv(Number(design.id));
   panel.dataset.designId = design.id;
   panel.hidden = false;
+  if (scrollen) zeigeReiter('motive');
   if (scrollen) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
@@ -1559,7 +1391,7 @@ function trendZeile(label, text) {
 function trendKarte(idee) {
   const d = idee.beschreibung || {};
   const karte = el('div', 'panel');
-  karte.style.cssText = 'padding:16px;margin-bottom:12px;border-left:3px solid var(--accent)';
+  karte.style.cssText = 'padding:16px;margin-bottom:12px';
   const kopf = el('div');
   kopf.style.cssText = 'display:flex;gap:10px;align-items:baseline;flex-wrap:wrap';
   kopf.append(el('span', 'badge', `Empfehlung #${idee.platz ?? '?'}`),
