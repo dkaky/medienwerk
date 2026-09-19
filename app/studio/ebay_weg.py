@@ -289,8 +289,6 @@ def _seo_keywords(design: Any, p: Produkt, name: str, *, abteilung: str | None =
         add("Weihnachtsgeschenk")
     if re.search(r"\b(junggesellenabschied|jga)\b", text):
         add("JGA")
-    if p.key != "tasse":
-        add("Fun Shirt", "Geschenk")      # Standardbegriffe: fuellen nur den Rest der 80 Zeichen
     return aus
 
 
@@ -336,8 +334,85 @@ def _kurzer_titel(teile: list[str], limit: int = 80) -> str:
     return " ".join(teile)[:limit].rsplit(" ", 1)[0]
 
 
+EBAY_TITEL_MAX = 80
+_MAX_SPRUCH_IM_TITEL = 28
+
+
+def _material_kurz(p: Produkt) -> str | None:
+    """Materialangabe fuer den Titel - nur, was fuer ALLE Farben des Angebots stimmt."""
+    if p.material_je_farbe:
+        alle = {f.material for f in mockup_plan.FARBEN}
+        return "100% Baumwolle" if alle == {"100 % Baumwolle"} else "Baumwolle"
+    if p.material and p.material.startswith("100 % Baumwolle"):
+        return "100% Baumwolle"
+    if p.material == "Keramik":
+        return "Keramik"
+    return None
+
+
+#: Suchbegriffe je Produkt in der Reihenfolge ihres Suchwerts. Die Zeichen bis 80
+#: werden damit aufgefuellt; was schon im Titel steht, wird uebersprungen.
+_TITEL_FUELLER: dict[str, tuple[str, ...]] = {
+    "tshirt": ("Fun Shirt", "Geschenk", "{material}", "Herren", "Damen", "Unisex", "Geschenkidee",
+               "Bedruckt", "Witzig", "Geburtstag", "Sprüche", "Rundhals", "Lustig"),
+    "kids_tshirt": ("Fun Shirt", "Geschenk", "{material}", "Jungen", "Mädchen", "Kindershirt",
+                    "Geschenkidee", "Bedruckt", "Witzig", "Geburtstag", "Sprüche", "Lustig"),
+    "polo": ("Fun Shirt", "Geschenk", "{material}", "Herren", "Damen", "Geschenkidee",
+             "Bedruckt", "Witzig", "Geburtstag", "Sprüche", "Lustig"),
+    "oversize": ("Fun Shirt", "Geschenk", "{material}", "Streetwear", "Herren", "Damen", "Unisex",
+                 "Geschenkidee", "Bedruckt", "Witzig", "Sprüche", "Lustig"),
+    "hoodie": ("Fun Shirt", "Geschenk", "Kapuzenpullover", "Herren", "Damen", "Unisex",
+               "Pullover", "Geschenkidee", "Bedruckt", "Witzig", "Sprüche", "Lustig"),
+    "tasse": ("Fun", "{material}", "Kaffeebecher", "Geschenkidee", "Bürotasse", "Teetasse",
+              "Bedruckt", "Witzig", "Geburtstag", "Sprüche", "Lustig"),
+}
+
+
+def _wort(w: str) -> str:
+    return re.sub(r"[^\wäöüß%]", "", w.lower())
+
+
+def _titel_auffuellen(basis: str, kandidaten: list[str], limit: int = EBAY_TITEL_MAX) -> str:
+    """Haengt Begriffe an, solange sie in die 80 Zeichen passen und nichts doppelt wird."""
+    titel_ = basis
+    benutzt = {_wort(w) for w in titel_.split()}
+    for kandidat in kandidaten:
+        woerter = [_wort(w) for w in kandidat.split() if _wort(w)]
+        if not woerter:
+            continue
+        if any(w in benutzt for w in woerter if len(w) > 3):
+            continue
+        if len(titel_) + 1 + len(kandidat) <= limit:
+            titel_ = f"{titel_} {kandidat}"
+            benutzt.update(woerter)
+    return titel_
+
+
+def _spruch(design: Any) -> str:
+    radar = _design_meta(design).get("radar")
+    beschreibung = radar.get("beschreibung") if isinstance(radar, dict) else None
+    spruch = str(beschreibung.get("spruch") or "") if isinstance(beschreibung, dict) else ""
+    return re.sub(r"\s+", " ", spruch).strip(" .!?")
+
+
+def _themenwort(design: Any) -> str:
+    """Das Suchwort des Themas (z. B. "Kaffee", "Angeln"): das, wonach Kaeufer tippen."""
+    radar = _design_meta(design).get("radar")
+    stichworte = radar.get("stichworte") if isinstance(radar, dict) else None
+    if not isinstance(stichworte, list) or not stichworte:
+        return ""
+    erst = re.sub(r"\s+(Shirt|T-Shirt)\s+(lustig|Spruch)$", "", str(stichworte[0]).strip(), flags=re.I)
+    return "" if erst.lower().startswith("geschenk") else erst
+
+
 def titel(design: Any, p: Produkt, name: str | None = None, *, abteilung: str | None = None) -> str:
-    """SEO-Titel: Produkt, Motiv/Spruch, Suchbegriffe und Anlass - max. 80 Zeichen."""
+    """SEO-Titel: schoepft die 80 Zeichen von eBay aus.
+
+    Reihenfolge nach Suchwert: Produkt, Motiv, Themenwort, Anlass und Zielgruppe, dann
+    Standardbegriffe (Fun Shirt, Geschenk, Material ...), dann der Spruch, wenn er noch
+    passt, zuletzt kurze Fueller bis zur letzten freien Stelle. Das Material steht nur
+    drin, wenn es fuer alle Farben des Angebots stimmt.
+    """
     from app.studio import verkaufstext
 
     if not name:
@@ -346,7 +421,26 @@ def titel(design: Any, p: Produkt, name: str | None = None, *, abteilung: str | 
     name = _PROMPT_REST.sub(" ", name)
     name = re.sub(r"\s{2,}", " ", name).strip(" -,.") or motivname(design)
     kern = _titel_kern(design, p, name, abteilung=abteilung)
-    return _kurzer_titel([p.titel_wort, kern, *_seo_keywords(design, p, kern, abteilung=abteilung)])
+    spruch = _spruch(design)
+    if kern == name and spruch and len(spruch) <= _MAX_SPRUCH_IM_TITEL:
+        # Kein Anlass erkannt (Mama, Papa ...): der Spruch selbst ist der beste Suchkern.
+        # Der interne Themenname ("Kaffee-Charakter") sagt einem Kaeufer nichts.
+        kern = re.sub(r"[,.!?:;]", "", spruch)
+    elif kern == name and _themenwort(design):
+        kern = _themenwort(design)
+    elif kern == "Kinder" and p.titel_wort.startswith("Kinder"):
+        kern = ""
+    basis = _kurzer_titel([p.titel_wort, kern, *_seo_keywords(design, p, kern, abteilung=abteilung)])
+
+    ziel = abteilung or (p.merkmale.get("Abteilung") or [""])[0]
+    material = _material_kurz(p) or ""
+    fueller = [f.replace("{material}", material) for f in _TITEL_FUELLER.get(p.key, ())]
+    if p.key in {"tshirt", "polo", "oversize", "hoodie"} and ziel in {"Damen", "Herren"}:
+        fueller = [f for f in fueller if f not in {"Herren", "Damen", "Unisex"}]
+    themenwort = _themenwort(design)
+    if themenwort:
+        fueller.insert(0, themenwort)
+    return _titel_auffuellen(basis, [f for f in fueller if f])
 
 
 def _beschreibungs_kontext(design: Any, p: Produkt, *, abteilung: str | None = None) -> list[str]:

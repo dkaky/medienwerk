@@ -66,3 +66,46 @@ def test_beschreibung_enthaelt_die_suchbegriffe_der_kaeufer():
         assert begriff.lower() in text.lower(), begriff
     kinder = ebay_weg.beschreibung(design, ebay_weg.produkt("kids_tshirt"), Settings())
     assert "Kinder T-Shirt" in kinder and "Jungen und Mädchen" in kinder
+
+
+# --------------------------------------------------------------------------
+# eBay-Titel: 80 Zeichen ausschoepfen
+# --------------------------------------------------------------------------
+def _radar_motiv(thema: str) -> SimpleNamespace:
+    t = next(x for x in fk.eintraege() if x.thema == thema)
+    meta = {"radar": {"thema": t.thema, "beschreibung": {"spruch": t.spruch},
+                      "stichworte": t.suchbegriffe}}
+    import json
+    return SimpleNamespace(id=1, title=t.thema, meta_json=json.dumps(meta, ensure_ascii=False))
+
+
+def test_titel_schoepft_die_80_zeichen_aus():
+    for thema in ("Kaffee-Charakter", "Grillen-Feuerwehr", "Angeln-Therapie", "Camping-Mücken"):
+        titel = ebay_weg.titel(_radar_motiv(thema), ebay_weg.produkt("tshirt"))
+        assert 72 <= len(titel) <= 80, titel
+        assert titel.startswith("T-Shirt ")
+        assert "Fun Shirt" in titel and "Geschenk" in titel and "Baumwolle" in titel
+
+
+def test_titel_nennt_das_themenwort_statt_des_internen_namens():
+    titel = ebay_weg.titel(_radar_motiv("Grillen-Feuerwehr"), ebay_weg.produkt("tshirt"))
+    assert "Grillen" in titel and "Feuerwehr" not in titel
+
+
+def test_kurzer_spruch_steht_im_titel():
+    titel = ebay_weg.titel(_radar_motiv("Kaffee-Charakter"), ebay_weg.produkt("tshirt"))
+    assert "Erst Kaffee dann Charakter" in titel
+
+
+def test_titel_sagt_nicht_pauschal_100_prozent_baumwolle():
+    # Grau meliert hat 85 % Baumwolle: die pauschale Angabe waere falsch (und abmahnbar).
+    titel = ebay_weg.titel(_radar_motiv("Angeln-Therapie"), ebay_weg.produkt("tshirt"))
+    assert "100%" not in titel
+    assert ebay_weg._material_kurz(ebay_weg.produkt("hoodie")) is None
+    assert ebay_weg._material_kurz(ebay_weg.produkt("polo")) == "100% Baumwolle"
+
+
+def test_titel_wiederholt_kein_wort_beim_auffuellen():
+    titel = ebay_weg.titel(_radar_motiv("Angeln-Therapie"), ebay_weg.produkt("tshirt"))
+    woerter = [w.lower() for w in titel.split()]
+    assert len(woerter) == len(set(woerter)), titel
