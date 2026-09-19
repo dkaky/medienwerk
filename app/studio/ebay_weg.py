@@ -174,7 +174,12 @@ def hauptfarbe(s: Settings) -> str:
 
 
 def preis(p: Produkt, s: Settings) -> float:
-    """Katalogpreis, ausser EBAY_PREISE ueberschreibt ihn fuer dieses Produkt."""
+    """Studio-Einstellung, sonst EBAY_PREISE, sonst Katalogpreis (siehe ``preise``)."""
+    from app.studio import preise
+
+    eigener = preise.aktuell(p.key)
+    if eigener is not None:
+        return round(eigener, 2)
     for teil in (s.ebay_preise or "").split(","):
         name, _, wert = teil.partition("=")
         if name.strip() == p.key and wert.strip():

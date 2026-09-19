@@ -87,6 +87,19 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .feld { display: flex; flex-direction: column; gap: 5px; }
 .feld label { font-size: 12px; color: var(--muted); }
 
+/* --- Preise ---------------------------------------------------------------
+   Ein Feld je Produktart, ganz oben im Studio. Speichern wirkt sofort auf alle
+   Angebote, die ab jetzt eingestellt werden - nichts geht dabei live. */
+.preise { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin-top: 12px; }
+.preis-karte { background: var(--panel-2); border: 1px solid var(--border); border-radius: 11px;
+  padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.preis-karte .name { font-weight: 600; font-size: 14px; }
+.preis-karte .eingabe { display: flex; align-items: center; gap: 6px; }
+.preis-karte input { width: 100%; min-width: 0; text-align: right; font-size: 16px; }
+.preis-karte .std { font-size: 11px; color: var(--muted); }
+.preis-karte.eigen { border-color: var(--accent); }
+.preis-karte .aktionen { display: flex; gap: 6px; }
+
 /* --- Anprobe -------------------------------------------------------------
    Zweck: sehen, wie ein Motiv auf der Ware wirkt, BEVOR daraus ein Produkt
    wird. Die Kleidungsstuecke sind gezeichnet (SVG), keine Fotos - dadurch
@@ -231,6 +244,14 @@ details.gruppe summary:hover { background: var(--panel); }
       <div class="kpi"><div class="label">Heute verbraucht</div><div class="value" id="k-verbraucht">–</div></div>
       <div class="kpi"><div class="label">Rest heute</div><div class="value" id="k-rest">–</div></div>
       <div class="kpi"><div class="label">Tagesbudget</div><div class="value" id="k-budget">–</div></div>
+    </div>
+
+    <div class="panel" id="preise-panel">
+      <h3>Preise</h3>
+      <p class="muted">Verkaufspreis je Produktart, jederzeit änderbar &ndash; inklusive 19&nbsp;% MwSt. und Versand.
+        Ein neuer Preis gilt für alle Angebote, die du ab jetzt einstellst. Bereits aktive eBay-Angebote ändern sich
+        erst, wenn du sie erneut einstellst.</p>
+      <div class="preise" id="preise"></div>
     </div>
 
     <div class="panel">
@@ -1865,7 +1886,49 @@ $('b-radar').onclick = async () => {
   }
 };
 
-Promise.all([ladeStand(), ladeMotive(), ladeRadar()])
+async function ladePreise() {
+  const daten = await hole('/api/v1/studio/preise');
+  const eur = (n) => n.toFixed(2).replace('.', ',');
+  $('preise').innerHTML = daten.produkte.map((p) => `
+    <div class="preis-karte${p.eigener_preis ? ' eigen' : ''}" data-key="${esc(p.key)}">
+      <div class="name">${esc(p.label)}</div>
+      <div class="eingabe">
+        <input type="number" inputmode="decimal" step="0.01" min="${daten.min_eur}" max="${daten.max_eur}"
+               value="${p.preis_eur.toFixed(2)}" aria-label="Preis ${esc(p.label)} in Euro"> <span>€</span>
+      </div>
+      <div class="std">Standard: ${eur(p.standard_eur)} €</div>
+      <div class="aktionen">
+        <button class="btn klein" data-speichern="${esc(p.key)}">Speichern</button>
+        ${p.eigener_preis ? `<button class="btn ghost klein" data-standard="${esc(p.key)}">Standard</button>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+$('preise').addEventListener('click', async (ev) => {
+  const speichern = ev.target.closest('[data-speichern]');
+  const standard = ev.target.closest('[data-standard]');
+  if (!speichern && !standard) return;
+  const key = (speichern || standard).dataset.speichern || (speichern || standard).dataset.standard;
+  const karte = ev.target.closest('.preis-karte');
+  try {
+    if (speichern) {
+      const wert = parseFloat(karte.querySelector('input').value.replace(',', '.'));
+      const r = await hole('/api/v1/studio/preise/' + encodeURIComponent(key), {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preis_eur: wert }),
+      });
+      melde(`${karte.querySelector('.name').textContent}: ${r.preis_eur.toFixed(2).replace('.', ',')} € gespeichert`);
+    } else {
+      await hole('/api/v1/studio/preise/' + encodeURIComponent(key), { method: 'DELETE' });
+      melde(`${karte.querySelector('.name').textContent}: Standardpreis gilt wieder`);
+    }
+    await ladePreise();
+  } catch (err) {
+    zeigeFehler(err);
+  }
+});
+
+Promise.all([ladeStand(), ladeMotive(), ladeRadar(), ladePreise()])
   .catch(() => { /* Hinweis steht schon */ });
 </script>
 </body>

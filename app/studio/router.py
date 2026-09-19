@@ -898,6 +898,40 @@ async def radar_trends(body: TrendLaufIn, db: Session = Depends(get_db)) -> dict
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
+@router.get("/preise")
+def preise_stand(db: Session = Depends(get_db)) -> dict:
+    """Verkaufspreise je Produktart samt Standardpreis. Aendert nichts."""
+    from app.studio import preise
+
+    return {"produkte": preise.uebersicht(db, get_settings()),
+            "min_eur": preise.MIN_EUR, "max_eur": preise.MAX_EUR}
+
+
+@router.put("/preise/{produkt}")
+def preis_setzen(produkt: str, daten: dict, db: Session = Depends(get_db)) -> dict:
+    """Verkaufspreis einer Produktart einstellen. Gilt fuer neu eingestellte Angebote;
+    aktive eBay-Angebote aendern sich erst, wenn sie erneut eingestellt werden."""
+    from app.studio import preise
+
+    try:
+        preis = preise.setze(db, produkt, daten.get("preis_eur"))
+    except preise.PreisFehler as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"produkt": produkt, "preis_eur": preis}
+
+
+@router.delete("/preise/{produkt}")
+def preis_zuruecksetzen(produkt: str, db: Session = Depends(get_db)) -> dict:
+    """Eigenen Preis entfernen - es gilt wieder der Standardpreis."""
+    from app.studio import preise
+
+    try:
+        preise.zuruecksetzen(db, produkt)
+    except preise.PreisFehler as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"produkt": produkt, "zurueckgesetzt": True}
+
+
 @router.post("/radar/fussball-kollektion")
 def radar_fussball_kollektion(db: Session = Depends(get_db)) -> dict:
     """Die feste, markenfreie Fussball-Kollektion als Empfehlungen laden. Kostenlos, erzeugt kein Bild."""

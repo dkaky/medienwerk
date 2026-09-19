@@ -202,3 +202,16 @@ class PodLedgerEntry(TimestampMixin, Base):
     occurred_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     reference: Mapped[Optional[str]] = mapped_column(String(255))
     note: Mapped[Optional[str]] = mapped_column(Text)
+
+
+class StudioPreis(TimestampMixin, Base):
+    """Vom Betreiber im Studio eingestellter Verkaufspreis je Produktart.
+
+    Steht hier ein Eintrag, gilt er vor ``EBAY_PREISE`` und vor dem Katalogpreis
+    (``ebay_weg.preis``). Ohne Eintrag bleibt alles wie im Katalog.
+    """
+
+    __tablename__ = "studio_preise"
+
+    produkt: Mapped[str] = mapped_column(String(30), primary_key=True)
+    preis_eur: Mapped[float] = mapped_column(nullable=False)
