@@ -176,6 +176,27 @@ async def _marktcheck_job() -> None:
         db.close()
 
 
+async def _bestellabgleich_job() -> None:
+    """Neue Verkaeufe bei eBay lesen und in die Bestellliste eintragen. Nur lesend."""
+    s = get_settings()
+    if not (s.ebay_client_id and s.ebay_client_secret):
+        return
+    db = SessionLocal()
+    ebay = None
+    try:
+        from app.integrations.ebay import RealEbayClient
+        from app.studio import bestellimport
+
+        ebay = RealEbayClient(s)
+        await bestellimport.gleiche_ab(db, ebay, erzwingen=True)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("scheduler: bestellabgleich failed", extra={"error": str(exc)[:200]})
+    finally:
+        if ebay is not None and getattr(ebay, "_client", None) is not None:
+            await ebay._client.aclose()
+        db.close()
+
+
 # Der Job "haengende Veroeffentlichungen nachholen" ist am 08.09.2026 entfallen.
 # Er lief ueber golive_service, das Lieferantenware auf eBay stellte und mit dem
 # Handelsteil ausgezogen ist. Er kommt zurueck, sobald der Print-on-Demand-Weg
@@ -252,6 +273,11 @@ def start_scheduler() -> AsyncIOScheduler:
                   id="trend_radar_taeglich", replace_existing=True)
     sched.add_job(_marktcheck_job, CronTrigger(hour="*/6", minute=45),
                   id="studio_marktcheck_6h", replace_existing=True)
+    sched.add_job(_bestellabgleich_job, CronTrigger(minute="*/15"),
+                  id="bestellabgleich_15min", replace_existing=True)
+    sched.add_job(_bestellabgleich_job,
+                  DateTrigger(run_date=datetime.now(timezone.utc) + timedelta(seconds=45)),
+                  id="bestellabgleich_startup", replace_existing=True)
     # Einmalig 3 Min nach dem Start denselben Lauf anstossen, damit ein frischer
     # Start den Rueckstand nicht erst am naechsten Morgen aufholt (gleiche
     # Funktion, gleicher NULL-Filter -> ohne Rueckstand ein reiner

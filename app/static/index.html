@@ -82,7 +82,10 @@
       </div>
 
       <section class="card">
-        <h2>Letzte Bestellungen</h2>
+        <h2>Letzte Bestellungen
+          <span class="spacer"></span>
+          <button class="btn sm" id="bestellAbgleichKnopf" onclick="bestellungenAbgleichen(true)" title="Bestellungen jetzt bei eBay abfragen (nur lesend)">Mit eBay abgleichen</button>
+        </h2>
         <div class="body tight"><div class="table-scroll">
           <table>
             <thead><tr><th>Kanal</th><th>Referenz</th><th>Status</th><th class="num">Umsatz</th></tr></thead>
@@ -792,6 +795,9 @@
     // Kacheln mit 0 fallen weg. Wer jeden Morgen fuenf Nullen sieht, gewoehnt
     // sich das Hinsehen ab; dann faellt die Sieben auch nicht mehr auf.
     const HEUTE_AUFGABEN = [
+      { schluessel: s => s.orders?.offen || 0,
+        was: "Neue Bestellung", wie: "wartet auf Druckauftrag und Versand",
+        ton: "dringend", ziel: () => $("heuteBestellungen").scrollIntoView({ behavior: "smooth", block: "center" }) },
       { schluessel: s => s.listings?.publish_errors || 0,
         was: "Upload fehlgeschlagen", wie: "Entwurf wartet auf Entscheidung",
         ton: "dringend", ziel: () => { showView("products"); zeigeNurFehler(true); } },
@@ -868,7 +874,22 @@
       cancelled: "storniert", refunded: "erstattet", pending: "offen", failed: "fehlgeschlagen" };
     const statusText = (s) => STATUS_TEXT[s] || s;
 
-    async function loadOverview() {
+    // Verkaeufe kommen von eBay, nicht von selbst hierher: der Abgleich liest sie (nur lesend)
+    // und traegt sie ein. Beim Oeffnen der Startseite laeuft er still mit; der Server fragt
+    // hoechstens alle fuenf Minuten nach.
+    async function bestellungenAbgleichen(sichtbar) {
+      const knopf = $("bestellAbgleichKnopf");
+      if (knopf) { knopf.disabled = true; knopf.textContent = "gleiche ab …"; }
+      try {
+        const r = await api("POST", "/api/v1/pod/orders/abgleich" + (sichtbar ? "?erzwingen=true" : ""));
+        if (sichtbar) toast(r.neu ? `${r.neu} neue Bestellung(en) von eBay` : "Keine neuen Bestellungen bei eBay");
+        if (r.neu || sichtbar) await loadOverview(false);
+      } catch (e) { /* api() hat bei sichtbarem Aufruf schon gemeldet */ }
+      finally { if (knopf) { knopf.disabled = false; knopf.textContent = "Mit eBay abgleichen"; } }
+    }
+
+    async function loadOverview(abgleichen = true) {
+      if (abgleichen) bestellungenAbgleichen(false);
       try {
         const [dash, produkte, angebote] = await Promise.all([
           api("GET", "/api/v1/pod/dashboard"),
@@ -883,7 +904,7 @@
           publish_errors: (produkte || []).filter(p => p.status === "fehler").length,
           drafts: (angebote || []).filter(l => l.status === "draft").length,
           total: (angebote || []).length,
-        } });
+        }, orders: { offen: k.open_orders || 0 } });
         const bestellungen = dash.orders || [];
         $("heuteBestellungen").innerHTML = bestellungen.length
           ? bestellungen.map(o => `<tr><td>${esc(o.channel)}</td><td>${esc(o.external_id)}</td>

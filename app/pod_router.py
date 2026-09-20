@@ -5,11 +5,12 @@ bestellt nichts und veröffentlicht nichts bei einem Verkaufskanal.
 """
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.database import get_db
 from app.studio.models import PodLedgerEntry, PodListing, PodOrder, PodProduct
 
@@ -61,7 +62,8 @@ def _listing(x: PodListing) -> dict:
 def dashboard(db: Session = Depends(get_db)) -> dict:
     listings = list(db.scalars(select(PodListing).order_by(PodListing.updated_at.desc()).limit(8)).all())
     orders = list(db.scalars(select(PodOrder).order_by(PodOrder.created_at.desc()).limit(8)).all())
-    revenue = db.scalar(select(func.coalesce(func.sum(PodOrder.sale_total_eur), 0.0))) or 0.0
+    zaehlt = PodOrder.status.notin_(("cancelled", "refunded", "pending"))     # nur echte, bezahlte Verkaeufe
+    revenue = db.scalar(select(func.coalesce(func.sum(PodOrder.sale_total_eur), 0.0)).where(zaehlt)) or 0.0
     cost = db.scalar(select(func.coalesce(func.sum(PodOrder.fulfillment_cost_eur), 0.0))) or 0.0
     return {
         "kpis": {"products": db.scalar(select(func.count()).select_from(PodProduct)) or 0,
@@ -104,6 +106,25 @@ def orders(db: Session = Depends(get_db)) -> list[dict]:
     return [{"id": x.id, "channel": x.channel, "external_id": x.external_id, "status": x.status,
              "sale_total_eur": x.sale_total_eur, "fulfillment_cost_eur": x.fulfillment_cost_eur}
             for x in db.scalars(select(PodOrder).order_by(PodOrder.created_at.desc())).all()]
+
+
+@router.post("/orders/abgleich")
+async def orders_abgleich(erzwingen: bool = False, db: Session = Depends(get_db)) -> dict:
+    """Bestellungen bei eBay lesen und in die eigene Liste uebernehmen. Nur lesend."""
+    from app.integrations.ebay import RealEbayClient
+    from app.studio import bestellimport
+
+    s = get_settings()
+    if not (s.ebay_client_id and s.ebay_client_secret):
+        raise HTTPException(status_code=400, detail="Kein eBay-Zugang eingerichtet - Bestellungen lassen sich nicht abrufen.")
+    ebay = RealEbayClient(s)
+    try:
+        return await bestellimport.gleiche_ab(db, ebay, erzwingen=erzwingen)
+    except Exception as exc:  # noqa: BLE001 - Anbieterfehler lesbar weitergeben
+        raise HTTPException(status_code=502, detail=f"eBay-Abgleich fehlgeschlagen: {str(exc)[:200]}") from exc
+    finally:
+        if getattr(ebay, "_client", None) is not None:
+            await ebay._client.aclose()
 
 
 @router.post("/orders", status_code=201)
