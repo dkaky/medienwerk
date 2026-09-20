@@ -88,8 +88,8 @@
         </h2>
         <div class="body tight"><div class="table-scroll">
           <table>
-            <thead><tr><th>Datum</th><th>Produkt</th><th>Motiv</th><th>Status</th><th class="num">Umsatz</th></tr></thead>
-            <tbody id="heuteBestellungen"><tr><td colspan="5" class="empty">lade…</td></tr></tbody>
+            <thead><tr><th></th><th>Datum</th><th>Produkt</th><th>Motiv</th><th>Status</th><th class="num">Umsatz</th></tr></thead>
+            <tbody id="heuteBestellungen"><tr><td colspan="6" class="empty">lade…</td></tr></tbody>
           </table>
         </div></div>
       </section>
@@ -915,11 +915,14 @@
                   <div class="muted">${esc(p.titel)}</div></div>`).join("");
               const links = pos.flatMap(p => p.downloads || []).map(d =>
                 `<a class="btn sm" href="${esc(d.url)}" download>${esc(d.name)} laden</a>`).join(" ");
-              return `<tr><td>${datum}<div class="muted">${esc(o.external_id)}</div></td><td>${produkt}</td>
+              const bilder = pos.filter(p => p.bild).map(p =>
+                `<img class="produktbild ${p.bild_art === "motiv" ? "schachbrett" : ""}" src="${esc(p.bild)}${p.bild.includes("?") ? "&" : "?"}breite=240" alt="${esc(p.produkt || "Produkt")}" loading="lazy">`).join("");
+              return `<tr><td class="bildzelle">${bilder || '<span class="produktbild leer"></span>'}</td>
+                <td>${datum}<div class="muted">${esc(o.external_id)}</div></td><td>${produkt}</td>
                 <td>${links || '<span class="muted">kein Motiv verknüpft</span>'}</td>
                 <td><span class="badge ${esc(o.status)}">${esc(statusText(o.status))}</span></td>
                 <td class="num">${eur(o.sale_total_eur)}</td></tr>`; }).join("")
-          : `<tr><td colspan="5" class="empty">Noch keine Bestellungen.</td></tr>`;
+          : `<tr><td colspan="6" class="empty">Noch keine Bestellungen.</td></tr>`;
       } catch (e) {
         $("heuteAufgaben").innerHTML = `<div class="empty">Daten nicht abrufbar.</div>`;
       }

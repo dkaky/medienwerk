@@ -186,6 +186,14 @@ tbody tr:last-child td { border-bottom: 0; }
 .bel-table th:last-child, .bel-table td:last-child { position: sticky; right: 0; background: var(--card); }
 tr.sale-void td { opacity: .55; }
 
+.bildzelle { width: 1%; padding-right: 0; }
+.produktbild { display: block; width: 64px; height: 64px; object-fit: contain; background: var(--card-2);
+  border: 1px solid var(--line); border-radius: 6px; }
+.produktbild + .produktbild { margin-top: 4px; }
+.produktbild.leer { background: var(--card-2); }
+#heuteBestellungen .title-cell { white-space: normal; max-width: 300px; overflow: visible; }
+#heuteBestellungen td { vertical-align: top; }
+
 /* ---------- Status ---------- */
 .badge { display: inline-block; padding: 1px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;
   color: var(--muted); background: var(--card-2); border: 0; }

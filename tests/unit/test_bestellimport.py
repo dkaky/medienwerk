@@ -162,3 +162,28 @@ def test_download_ohne_motiv_im_studio_ist_ein_klarer_404(db):
     with pytest.raises(HTTPException) as fehler:
         pod_router.order_motiv(o.id, 0, "vorne", 0, db)
     assert fehler.value.status_code == 404
+
+
+def test_zeile_zeigt_das_produktfoto_in_der_verkauften_farbe(db, tmp_path, monkeypatch):
+    from PIL import Image
+
+    from app import pod_router
+
+    d = _motiv(db, tmp_path, monkeypatch)
+    ordner = tmp_path / "mockups" / str(d.id)
+    ordner.mkdir(parents=True)
+    Image.new("RGB", (8, 8), (200, 180, 140)).save(ordner / "tshirt-vorne-sand-123-abc.jpg")
+    Image.new("RGB", (8, 8), (255, 255, 255)).save(ordner / "tshirt-vorne-sand-999-leer.jpg")
+    bestellimport.uebernehme(db, [_bestellung(sku=f"MW-{d.id}-tshirt-Sand-XL")])
+    pos = pod_router.dashboard(db)["orders"][0]["positionen"][0]
+    assert pos["bild_art"] == "produkt"
+    assert pos["bild"] == f"/studio/bilder/mockups/{d.id}/tshirt-vorne-sand-123-abc.jpg"    # nicht das leere Foto
+
+
+def test_ohne_produktfoto_zeigt_die_zeile_das_motiv(db, tmp_path, monkeypatch):
+    from app import pod_router
+
+    d = _motiv(db, tmp_path, monkeypatch)
+    bestellimport.uebernehme(db, [_bestellung(sku=f"MW-{d.id}-tshirt-Sand-XL")])
+    pos = pod_router.dashboard(db)["orders"][0]["positionen"][0]
+    assert pos["bild_art"] == "motiv" and pos["bild"] == "/studio/bilder/kaffee.png"

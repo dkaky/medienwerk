@@ -62,6 +62,26 @@ def _listing(x: PodListing) -> dict:
             "price_eur": x.price_eur, "quantity_available": x.quantity_available, "url": x.url}
 
 
+def _produktbild(design: StudioDesign | None, p: dict) -> dict:
+    """Bild fuer die Zeile: das Produktfoto in der verkauften Farbe, sonst das Motiv selbst."""
+    from app.config import get_settings
+    from app.studio import mockup_montage
+
+    ordner = Path(get_settings().studio_image_dir)
+    if design is not None and p.get("produktart") and p.get("farbe"):
+        mockups = ordner / "mockups" / str(design.id)
+        code = mockup_montage.farbcode(p["farbe"])
+        treffer = sorted(mockups.glob(f"{p['produktart']}-vorne-{code}-*.jpg"),
+                         key=lambda f: f.stat().st_mtime, reverse=True)
+        treffer = [f for f in treffer if not f.stem.endswith("-leer")] or treffer
+        if treffer:
+            return {"bild": "/studio/bilder/" + treffer[0].resolve().relative_to(ordner.resolve()).as_posix(),
+                    "bild_art": "produkt"}
+    if design is not None and design.image_url:
+        return {"bild": design.image_url, "bild_art": "motiv"}
+    return {"bild": None, "bild_art": None}
+
+
 def _positionen(db: Session, x: PodOrder) -> list[dict]:
     """Was in der Bestellung steckt, samt Download-Adressen der Motivdateien."""
     from app.studio import druckseiten, ebay_weg
@@ -83,7 +103,7 @@ def _positionen(db: Session, x: PodOrder) -> list[dict]:
                     downloads.append({
                         "name": f"{name}{zusatz}",
                         "url": f"/api/v1/pod/orders/{x.id}/motiv?position={n}&seite={seite}&ebene={e}"})
-        aus.append({**p, "produkt": label, "downloads": downloads})
+        aus.append({**p, "produkt": label, "downloads": downloads, **_produktbild(design, p)})
     return aus
 
 
