@@ -52,3 +52,46 @@ def test_nur_caddy_ist_aus_dem_internet_erreichbar():
     compose = (PAKET / "docker-compose.yml").read_text(encoding="utf-8")
     assert '"8030:8030"' not in compose, "Die Anwendung darf nicht direkt im Internet stehen"
     assert '"443:443"' in compose
+
+
+# --------------------------------------------------------------------------
+# Benutzername + Passwort
+# --------------------------------------------------------------------------
+@pytest.fixture
+def mit_benutzer(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app import auth
+    from app.config import get_settings
+    from app.main import app
+
+    s = get_settings()
+    monkeypatch.setattr(s, "dashboard_user", "medienwerk")
+    monkeypatch.setattr(s, "dashboard_password", "testpasswort1")
+    auth._failed.clear()
+    with TestClient(app, follow_redirects=False) as c:
+        yield c
+    auth._failed.clear()
+
+
+def test_login_verlangt_benutzername_und_passwort(mit_benutzer):
+    seite = mit_benutzer.get("/login").text
+    assert 'name="benutzer"' in seite and 'name="password"' in seite
+    ok = mit_benutzer.post("/login", data={"benutzer": "medienwerk", "password": "testpasswort1"})
+    assert ok.status_code == 303 and "podshop_session" in ok.headers["set-cookie"]
+
+
+def test_falscher_benutzer_oder_falsches_passwort_kommt_nicht_rein(mit_benutzer):
+    for daten in ({"benutzer": "anderer", "password": "testpasswort1"},
+                  {"benutzer": "medienwerk", "password": "falsch"},
+                  {"benutzer": "", "password": "testpasswort1"}):
+        r = mit_benutzer.post("/login", data=daten)
+        assert r.status_code == 401 and "Benutzername oder Passwort falsch" in r.text
+
+
+def test_ohne_benutzernamen_in_der_einstellung_genuegt_das_passwort(monkeypatch):
+    from app.auth import _render_login
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "dashboard_user", "")
+    assert 'name="benutzer"' not in _render_login()

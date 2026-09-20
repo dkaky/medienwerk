@@ -52,8 +52,10 @@ _failed: dict[str, tuple[int, float]] = {}  # ip -> (fehlversuche, gesperrt_bis)
 
 def _secret() -> bytes:
     """Signierschlüssel, deterministisch aus dem Dashboard-Passwort abgeleitet."""
-    pw = get_settings().dashboard_password
-    return hashlib.sha256(f"ma-session-v1:{pw}".encode("utf-8")).digest()
+    cfg = get_settings()
+    pw = cfg.dashboard_password
+    basis = f"ma-session-v1:{cfg.dashboard_user}:{pw}" if cfg.dashboard_user else f"ma-session-v1:{pw}"
+    return hashlib.sha256(basis.encode("utf-8")).digest()
 
 
 def issue_token(now: float | None = None) -> str:
@@ -119,7 +121,7 @@ def login_page():
 
 
 @router.post("/login")
-async def login(request: Request, password: str = Form("")):
+async def login(request: Request, password: str = Form(""), benutzer: str = Form("")):
     s = get_settings()
     if not s.dashboard_password:
         return RedirectResponse("/", status_code=303)
@@ -135,7 +137,11 @@ async def login(request: Request, password: str = Form("")):
             status_code=429,
         )
 
-    if hmac.compare_digest(password.encode("utf-8"), s.dashboard_password.encode("utf-8")):
+    passwort_ok = hmac.compare_digest(password.encode("utf-8"), s.dashboard_password.encode("utf-8"))
+    # Beides wird IMMER verglichen, damit die Antwortzeit nicht verraet, welcher Teil stimmte.
+    benutzer_ok = (not s.dashboard_user) or hmac.compare_digest(
+        benutzer.strip().encode("utf-8"), s.dashboard_user.encode("utf-8"))
+    if passwort_ok and benutzer_ok:
         _failed.pop(ip, None)
         response = RedirectResponse("/", status_code=303)
         response.set_cookie(
@@ -157,11 +163,12 @@ async def login(request: Request, password: str = Form("")):
     _failed[ip] = (attempts, locked)
     logger.warning("login failed", extra={"ip": ip, "attempts": attempts})
     remaining = max(_MAX_ATTEMPTS - attempts, 0)
-    msg = "Falsches Passwort."
+    was = "Benutzername oder Passwort falsch." if s.dashboard_user else "Falsches Passwort."
+    msg = was
     if remaining:
         msg += f" Noch {remaining} Versuch{'e' if remaining != 1 else ''}."
     else:
-        msg = "Falsches Passwort. Zugang für 15 Minuten gesperrt."
+        msg = f"{was} Zugang für 15 Minuten gesperrt."
     return HTMLResponse(_render_login(msg), status_code=401)
 
 
@@ -214,6 +221,7 @@ _LOGIN_HTML = """<!doctype html>
       <p class="unter">Interner Zugang</p>
       <!--ERROR-->
       <form method="post" action="/login">
+        <!--USER-->
         <input type="password" name="password" placeholder="Passwort" autofocus autocomplete="current-password">
         <button class="btn primary" type="submit">Anmelden</button>
       </form>
@@ -225,4 +233,9 @@ _LOGIN_HTML = """<!doctype html>
 
 def _render_login(error: str | None = None) -> str:
     error_html = f'<p class="fehler">{error}</p>' if error else ""
-    return _LOGIN_HTML.replace("<!--ERROR-->", error_html)
+    benutzer_html = ('<input type="text" name="benutzer" placeholder="Benutzername" autocomplete="username" '
+                     'style="margin-bottom:8px" autofocus>' if get_settings().dashboard_user else "")
+    seite = _LOGIN_HTML.replace("<!--ERROR-->", error_html).replace("<!--USER-->", benutzer_html)
+    if benutzer_html:
+        seite = seite.replace('placeholder="Passwort" autofocus', 'placeholder="Passwort"')
+    return seite

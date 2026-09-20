@@ -32,7 +32,7 @@ setup_logging(settings.log_level)
 logger = logging.getLogger("app.main")
 
 
-MIN_PASSWORT_LAENGE = 12
+MIN_PASSWORT_LAENGE = 8
 
 
 def pruefe_betrieb(s) -> None:

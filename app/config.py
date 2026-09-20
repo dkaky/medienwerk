@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     # Dashboard-Login: leer = Auth AUS (lokale Entwicklung/Tests). Fuer Betrieb auf
     # einem Server/VPS ZWINGEND setzen – sonst ist der Shop offen im Netz.
     dashboard_password: str = ""
+    # Optionaler Benutzername zum Passwort. Leer = nur das Passwort wird abgefragt.
+    dashboard_user: str = ""
     # Per-Integration-Override (None = folgt use_mocks). So kann man z. B. LLM +
     # eBay echt nutzen, AliExpress aber gemockt lassen (Extraktion noch offen).
     mock_llm: bool | None = None
