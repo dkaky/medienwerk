@@ -1,0 +1,25 @@
+# Was NIE in ein Server-Abbild gehoert: Zugangsdaten, Historie, Daten, Sicherungen.
+.git
+.gitignore
+.env
+.env.*
+*.txt
+!requirements.txt
+data
+backups
+logs
+.venv*
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.pytest_tmp
+chrome-belege-profil
+tests
+docs/*
+!docs/PROMPT-REGELN-BILD.md
+ebay_mcp
+deploy
+scripts
+*.bat
+*.md

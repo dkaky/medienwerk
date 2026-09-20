@@ -32,8 +32,27 @@ setup_logging(settings.log_level)
 logger = logging.getLogger("app.main")
 
 
+MIN_PASSWORT_LAENGE = 12
+
+
+def pruefe_betrieb(s) -> None:
+    """Im Internet (APP_ENV=production) startet die Anwendung nur mit einem starken Passwort.
+
+    Das Dashboard enthaelt eBay-Zugaenge, Belege und Kontodaten. Ohne Login oder mit einem
+    kurzen Passwort waere es fuer jeden erreichbar, der die Adresse kennt.
+    """
+    if not s.is_production:
+        return
+    if len(s.dashboard_password or "") < MIN_PASSWORT_LAENGE:
+        raise RuntimeError(
+            f"APP_ENV=production verlangt ein DASHBOARD_PASSWORT mit mindestens "
+            f"{MIN_PASSWORT_LAENGE} Zeichen. Bitte in der .env setzen - ohne Passwort "
+            "startet die Anwendung im Internet nicht.")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    pruefe_betrieb(settings)
     logger.info("startup", extra={"env": settings.app_env, "mocks": settings.use_mocks})
     if not settings.dashboard_password:
         logger.warning(

@@ -1,0 +1,37 @@
+# Intranet: Dashboard + Studio hinter automatischem HTTPS.
+# Start auf dem Server:  docker compose up -d --build
+name: medienwerk
+
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: deploy/intranet/Dockerfile
+    restart: unless-stopped
+    env_file: .env                # Zugangsdaten - liegen NUR auf dem Server (siehe env.beispiel)
+    volumes:
+      - ./daten:/app/data         # Datenbank, Motive, Belege, Schluessel
+    expose:
+      - "8030"                    # nur fuer Caddy erreichbar, nicht aus dem Internet
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8030/health', timeout=4)"]
+      interval: 30s
+      timeout: 6s
+      retries: 3
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      INTRANET_DOMAIN: ${INTRANET_DOMAIN:-intranet.medienwerk-kw.de}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_daten:/data         # hier liegt das HTTPS-Zertifikat
+
+volumes:
+  caddy_daten:
