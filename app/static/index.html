@@ -88,8 +88,8 @@
         </h2>
         <div class="body tight"><div class="table-scroll">
           <table>
-            <thead><tr><th>Kanal</th><th>Referenz</th><th>Status</th><th class="num">Umsatz</th></tr></thead>
-            <tbody id="heuteBestellungen"><tr><td colspan="4" class="empty">lade…</td></tr></tbody>
+            <thead><tr><th>Datum</th><th>Produkt</th><th>Motiv</th><th>Status</th><th class="num">Umsatz</th></tr></thead>
+            <tbody id="heuteBestellungen"><tr><td colspan="5" class="empty">lade…</td></tr></tbody>
           </table>
         </div></div>
       </section>
@@ -907,10 +907,19 @@
         }, orders: { offen: k.open_orders || 0 } });
         const bestellungen = dash.orders || [];
         $("heuteBestellungen").innerHTML = bestellungen.length
-          ? bestellungen.map(o => `<tr><td>${esc(o.channel)}</td><td>${esc(o.external_id)}</td>
-              <td><span class="badge ${esc(o.status)}">${esc(statusText(o.status))}</span></td>
-              <td class="num">${eur(o.sale_total_eur)}</td></tr>`).join("")
-          : `<tr><td colspan="4" class="empty">Noch keine Bestellungen.</td></tr>`;
+          ? bestellungen.map(o => {
+              const pos = (o.positionen && o.positionen.length) ? o.positionen : [{ titel: o.titel || o.external_id, downloads: [] }];
+              const datum = o.ordered_at ? new Date(o.ordered_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : "–";
+              const produkt = pos.map(p => `<div class="title-cell" title="${esc(p.titel)}"><b>${esc(p.menge > 1 ? p.menge + "× " : "")}${esc(p.produkt || "Artikel")}</b>
+                  <div class="muted">${esc([p.farbe, p.groesse ? "Größe " + p.groesse : ""].filter(Boolean).join(" · "))}</div>
+                  <div class="muted">${esc(p.titel)}</div></div>`).join("");
+              const links = pos.flatMap(p => p.downloads || []).map(d =>
+                `<a class="btn sm" href="${esc(d.url)}" download>${esc(d.name)} laden</a>`).join(" ");
+              return `<tr><td>${datum}<div class="muted">${esc(o.external_id)}</div></td><td>${produkt}</td>
+                <td>${links || '<span class="muted">kein Motiv verknüpft</span>'}</td>
+                <td><span class="badge ${esc(o.status)}">${esc(statusText(o.status))}</span></td>
+                <td class="num">${eur(o.sale_total_eur)}</td></tr>`; }).join("")
+          : `<tr><td colspan="5" class="empty">Noch keine Bestellungen.</td></tr>`;
       } catch (e) {
         $("heuteAufgaben").innerHTML = `<div class="empty">Daten nicht abrufbar.</div>`;
       }

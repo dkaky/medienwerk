@@ -3,16 +3,20 @@
 Diese API speichert nur eigene Betriebsdaten. Sie importiert keine Produkte,
 bestellt nichts und veröffentlicht nichts bei einem Verkaufskanal.
 """
+import json
+import re
 from datetime import datetime
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
-from app.studio.models import PodLedgerEntry, PodListing, PodOrder, PodProduct
+from app.studio.models import PodLedgerEntry, PodListing, PodOrder, PodProduct, StudioDesign
 
 router = APIRouter(prefix="/api/v1/pod", tags=["POD-Betrieb"])
 
@@ -58,6 +62,76 @@ def _listing(x: PodListing) -> dict:
             "price_eur": x.price_eur, "quantity_available": x.quantity_available, "url": x.url}
 
 
+def _positionen(db: Session, x: PodOrder) -> list[dict]:
+    """Was in der Bestellung steckt, samt Download-Adressen der Motivdateien."""
+    from app.studio import druckseiten, ebay_weg
+
+    try:
+        roh = json.loads(x.positionen_json or "[]")
+    except ValueError:
+        roh = []
+    aus = []
+    for n, p in enumerate(roh):
+        label = ebay_weg.PRODUKTE[p["produktart"]].label if p.get("produktart") in ebay_weg.PRODUKTE else None
+        downloads = []
+        design = db.get(StudioDesign, p["design_id"]) if p.get("design_id") else None
+        if design is not None:
+            seiten = druckseiten.lese(db, design)
+            for seite, name in (("vorne", "Vorderseite"), ("hinten", "Rückseite")):
+                for e, ebene in enumerate(getattr(seiten, seite)):
+                    zusatz = f" {e + 1}" if len(getattr(seiten, seite)) > 1 else ""
+                    downloads.append({
+                        "name": f"{name}{zusatz}",
+                        "url": f"/api/v1/pod/orders/{x.id}/motiv?position={n}&seite={seite}&ebene={e}"})
+        aus.append({**p, "produkt": label, "downloads": downloads})
+    return aus
+
+
+def _bestellung(db: Session, x: PodOrder) -> dict:
+    return {"id": x.id, "channel": x.channel, "external_id": x.external_id, "status": x.status,
+            "sale_total_eur": x.sale_total_eur, "fulfillment_cost_eur": x.fulfillment_cost_eur,
+            "ordered_at": x.ordered_at.isoformat() if x.ordered_at else None,
+            "titel": x.note, "positionen": _positionen(db, x)}
+
+
+@router.get("/orders/{order_id}/motiv")
+def order_motiv(order_id: int, position: int = 0, seite: str = "vorne", ebene: int = 0,
+                db: Session = Depends(get_db)) -> FileResponse:
+    """Die Motivdatei einer Bestellung zum Herunterladen.
+
+    Bei einem weissen Shirt ist es die Fassung mit SCHWARZER Schrift - genau die Datei,
+    die fuer diese Farbe gedruckt gehoert.
+    """
+    from app.config import get_settings
+    from app.studio import druckseiten, produktweg
+    from app.studio.postprocess import schriftfarbe
+
+    x = db.get(PodOrder, order_id)
+    if x is None:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    try:
+        p = json.loads(x.positionen_json or "[]")[position]
+    except (ValueError, IndexError):
+        raise HTTPException(status_code=404, detail="Position nicht gefunden") from None
+    design = db.get(StudioDesign, p.get("design_id")) if p.get("design_id") else None
+    if design is None or seite not in ("vorne", "hinten"):
+        raise HTTPException(status_code=404, detail="Zu dieser Bestellung gibt es kein Motiv im Studio")
+    ebenen = getattr(druckseiten.lese(db, design), seite)
+    if ebene >= len(ebenen):
+        raise HTTPException(status_code=404, detail="Diese Seite hat kein Motiv")
+    motiv = ebenen[ebene].design
+    try:
+        pfad = produktweg.bildpfad(motiv, Path(get_settings().studio_image_dir))
+    except produktweg.MotivFehler as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    weiss = p.get("farbcode") == "White"
+    if weiss:
+        pfad = schriftfarbe.dunkle_fassung(pfad)
+    slug = re.sub(r"[^a-z0-9]+", "-", (motiv.title or "motiv").lower().encode("ascii", "ignore").decode()).strip("-")[:40] or "motiv"
+    name = f"{slug}-{seite}{'-schwarze-schrift' if weiss else ''}{pfad.suffix}"
+    return FileResponse(pfad, filename=name)
+
+
 @router.get("/dashboard")
 def dashboard(db: Session = Depends(get_db)) -> dict:
     listings = list(db.scalars(select(PodListing).order_by(PodListing.updated_at.desc()).limit(8)).all())
@@ -71,9 +145,7 @@ def dashboard(db: Session = Depends(get_db)) -> dict:
                  "open_orders": db.scalar(select(func.count()).select_from(PodOrder).where(PodOrder.status.in_(("new", "needs_review")))) or 0,
                  "revenue_eur": round(float(revenue), 2), "contribution_eur": round(float(revenue - cost), 2)},
         "listings": [_listing(x) for x in listings],
-        "orders": [{"id": x.id, "channel": x.channel, "external_id": x.external_id,
-                    "status": x.status, "sale_total_eur": x.sale_total_eur,
-                    "fulfillment_cost_eur": x.fulfillment_cost_eur} for x in orders],
+        "orders": [_bestellung(db, x) for x in orders],
     }
 
 
@@ -103,9 +175,7 @@ def create_listing(body: ListingIn, db: Session = Depends(get_db)) -> dict:
 
 @router.get("/orders")
 def orders(db: Session = Depends(get_db)) -> list[dict]:
-    return [{"id": x.id, "channel": x.channel, "external_id": x.external_id, "status": x.status,
-             "sale_total_eur": x.sale_total_eur, "fulfillment_cost_eur": x.fulfillment_cost_eur}
-            for x in db.scalars(select(PodOrder).order_by(PodOrder.created_at.desc())).all()]
+    return [_bestellung(db, x) for x in db.scalars(select(PodOrder).order_by(PodOrder.created_at.desc())).all()]
 
 
 @router.post("/orders/abgleich")

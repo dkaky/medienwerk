@@ -188,6 +188,8 @@ class PodOrder(TimestampMixin, Base):
     fulfillment_cost_eur: Mapped[Optional[float]] = mapped_column()
     ordered_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     note: Mapped[Optional[str]] = mapped_column(Text)
+    # Was genau bestellt wurde (Titel, Menge, Produktart, Farbe, Groesse, Motiv-Nummer) als JSON.
+    positionen_json: Mapped[Optional[str]] = mapped_column(Text)
 
 
 class PodLedgerEntry(TimestampMixin, Base):

@@ -12,6 +12,7 @@ ausgeloest (Eiserne Regel 1). Was der Druck kostet, ist nicht bekannt und bleibt
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 import time
@@ -31,6 +32,7 @@ MIN_ABSTAND_SEKUNDEN = 300
 _letzter_lauf = 0.0
 
 _SKU = re.compile(r"^MW-(\d+)-([a-z_]+?)(?:-|$)")
+_SKU_VOLL = re.compile(r"^MW-(\d+)-([a-z_]+)(?:-([A-Za-z]+))?(?:-([A-Za-z0-9]+))?$")
 
 
 def _status(bestellung: dict) -> str:
@@ -49,6 +51,23 @@ def _zeit(text: str | None) -> datetime | None:
         return datetime.fromisoformat(text.replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
+def _position(pos: dict) -> dict:
+    """Eine Bestellposition: was, in welcher Farbe und Groesse, welches Motiv (aus der Artikelnummer)."""
+    from app.studio import mockup_plan
+
+    sku = str(pos.get("sku") or "")
+    m = _SKU_VOLL.match(sku)
+    design_id = int(m.group(1)) if m else None
+    produktart = m.group(2) if m else None
+    code = m.group(3) if m else None
+    farbe = None
+    if code:
+        farbe = next((f.name for f in mockup_plan.FARBEN if f.hersteller.replace(" ", "") == code), code)
+    return {"titel": str(pos.get("title") or ""), "menge": int(pos.get("quantity") or 1), "sku": sku,
+            "design_id": design_id, "produktart": produktart, "farbcode": code, "farbe": farbe,
+            "groesse": m.group(4) if m else None}
 
 
 def _angebot(db: Session, positionen: list[dict]) -> int | None:
@@ -93,6 +112,7 @@ def uebernehme(db: Session, bestellungen: list[dict[str, Any]]) -> dict:
         zeile.ordered_at = _zeit(b.get("creationDate"))
         zeile.listing_id = _angebot(db, positionen)
         zeile.note = titel or None
+        zeile.positionen_json = json.dumps([_position(p) for p in positionen], ensure_ascii=False)
     db.commit()
     return {"gelesen": len(bestellungen), "neu": neu, "aktualisiert": aktualisiert}
 
