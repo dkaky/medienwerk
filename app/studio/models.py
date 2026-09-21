@@ -217,3 +217,19 @@ class StudioPreis(TimestampMixin, Base):
 
     produkt: Mapped[str] = mapped_column(String(30), primary_key=True)
     preis_eur: Mapped[float] = mapped_column(nullable=False)
+
+class StudioAngebotOption(TimestampMixin, Base):
+    """Einstellungen fuer EIN eingestelltes Angebot (Motiv x Produktart).
+
+    ``preis_eur`` ueberschreibt den Preis der Produktart; ``farben_aus`` und
+    ``groessen_aus`` sind JSON-Listen dessen, was bei diesem Angebot nicht mehr
+    verfuegbar sein soll. Gilt beim naechsten Einstellen/Aktualisieren bei eBay.
+    """
+
+    __tablename__ = "studio_angebot_optionen"
+
+    design_id: Mapped[int] = mapped_column(ForeignKey("studio_designs.id"), primary_key=True)
+    produkt: Mapped[str] = mapped_column(String(30), primary_key=True)
+    preis_eur: Mapped[Optional[float]] = mapped_column()
+    farben_aus: Mapped[Optional[str]] = mapped_column(Text)
+    groessen_aus: Mapped[Optional[str]] = mapped_column(Text)

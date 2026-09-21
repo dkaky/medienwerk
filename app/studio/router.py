@@ -932,6 +932,31 @@ def preis_zuruecksetzen(produkt: str, db: Session = Depends(get_db)) -> dict:
     return {"produkt": produkt, "zurueckgesetzt": True}
 
 
+@router.get("/angebote")
+def angebote_stand(db: Session = Depends(get_db)) -> dict:
+    """Alle aktiven eBay-Angebote des Studios mit Preis, Farben und Groessen. Aendert nichts."""
+    from app.studio import angebote, preise
+
+    return {"angebote": angebote.uebersicht(db, get_settings()),
+            "min_eur": preise.MIN_EUR, "max_eur": preise.MAX_EUR}
+
+
+@router.put("/angebote/{design_id}/{produkt}")
+def angebot_speichern(design_id: int, produkt: str, daten: dict,
+                      db: Session = Depends(get_db)) -> dict:
+    """Preis, abgeschaltete Farben und Groessen eines Angebots lokal speichern.
+    Bei eBay wirkt es erst nach "Bei eBay aktualisieren" (POST /designs/{id}/ebay)."""
+    from app.studio import angebote
+
+    try:
+        return angebote.setze(db, get_settings(), design_id, produkt,
+                              preis_eur=daten.get("preis_eur"),
+                              farben_aus=daten.get("farben_aus"),
+                              groessen_aus=daten.get("groessen_aus"))
+    except angebote.AngebotFehler as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.post("/radar/fussball-kollektion")
 def radar_fussball_kollektion(db: Session = Depends(get_db)) -> dict:
     """Die feste, markenfreie Fussball-Kollektion als Empfehlungen laden. Kostenlos, erzeugt kein Bild."""

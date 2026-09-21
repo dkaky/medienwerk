@@ -8,7 +8,7 @@
      /favicon.ico zurueck, und dort lag ein SVG unter falschem Namen. -->
 <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=7" />
 <link rel="icon" type="image/x-icon" href="/favicon.ico?v=7" sizes="any" />
-<link rel="stylesheet" href="/design.css?v=2">
+<link rel="stylesheet" href="/design.css?v=3">
 </head>
 <body>
   <script>
@@ -61,10 +61,19 @@
 
     <div class="studio-reiter" id="studio-reiter" role="tablist">
       <button type="button" data-reiter="motive">Motive</button>
+      <button type="button" data-reiter="angebote">Angebote</button>
       <button type="button" data-reiter="empfehlungen">Empfehlungen</button>
       <button type="button" data-reiter="preise">Preise</button>
       <button type="button" data-reiter="radar">Radar</button>
       <button type="button" data-reiter="vorlagen">Vorlagen</button>
+    </div>
+
+    <div class="panel" id="angebote-panel" data-reiter="angebote">
+      <h3>Eingestellte Angebote</h3>
+      <p class="muted">Alle Motive, die bei eBay live sind. Ändere den Preis, schalte Farben oder Größen ab
+        (Haken raus = nicht mehr verfügbar) und übertrage es mit „Bei eBay aktualisieren“. Erst dieser Klick
+        ändert das Angebot bei eBay; „Speichern“ merkt die Änderung nur hier.</p>
+      <div id="angebote"><p class="muted">Lade …</p></div>
     </div>
 
     <div class="panel" id="preise-panel" data-reiter="preise">
@@ -320,7 +329,7 @@ async function hole(pfad, optionen) {
   return r.json();
 }
 
-const REITER = ['motive', 'empfehlungen', 'preise', 'radar', 'vorlagen'];
+const REITER = ['motive', 'angebote', 'empfehlungen', 'preise', 'radar', 'vorlagen'];
 function zeigeReiter(name) {
   if (!REITER.includes(name)) name = 'motive';
   document.querySelectorAll('[data-reiter].panel').forEach((p) => {
@@ -1771,7 +1780,74 @@ $('preise').addEventListener('click', async (ev) => {
   }
 });
 
-Promise.all([ladeStand(), ladeMotive(), ladeRadar(), ladePreise()])
+async function ladeAngebote() {
+  const daten = await hole('/api/v1/studio/angebote');
+  const eur = (n) => (n == null ? '–' : Number(n).toFixed(2).replace('.', ',') + ' €');
+  const chips = (liste, art) => liste.map((x) => `
+    <label class="chip"><input type="checkbox" data-art="${art}" value="${esc(x.name)}"${x.aus ? '' : ' checked'}>
+      <span>${esc(x.name)}</span></label>`).join('');
+  if (!daten.angebote.length) {
+    $('angebote').innerHTML = '<p class="muted">Noch kein Motiv ist bei eBay eingestellt.</p>';
+    return;
+  }
+  $('angebote').innerHTML = daten.angebote.map((a) => `
+    <div class="angebot-karte" data-design="${a.design_id}" data-produkt="${esc(a.produkt)}">
+      <div class="angebot-kopf">
+        ${a.bild ? `<img src="${esc(a.bild)}" alt="">` : ''}
+        <div>
+          <div class="name">${esc(a.motiv)} &ndash; ${esc(a.label)}</div>
+          <div class="muted">Bei eBay live für ${eur(a.preis_live)}
+            ${a.url ? `&middot; <a href="${esc(a.url)}" target="_blank" rel="noopener">Angebot öffnen</a>` : ''}</div>
+          ${a.unterschied ? '<div class="offen">Änderungen sind noch nicht bei eBay</div>' : ''}
+        </div>
+      </div>
+      <div class="angebot-preis"><label>Preis (inkl. MwSt. + Versand)
+        <input type="number" step="0.01" min="${daten.min_eur}" max="${daten.max_eur}" value="${Number(a.preis_eur).toFixed(2)}"> €</label></div>
+      ${a.farben.length > 1 ? `<div class="chipzeile"><b>Farben</b>${chips(a.farben, 'farben')}</div>` : ''}
+      ${a.groessen.length ? `<div class="chipzeile"><b>Größen</b>${chips(a.groessen, 'groessen')}</div>` : ''}
+      <div class="aktionen">
+        <button class="btn klein" data-angebot="speichern">Speichern</button>
+        <button class="btn klein" data-angebot="ebay">Bei eBay aktualisieren</button>
+      </div>
+    </div>`).join('');
+}
+
+function angebotDaten(karte) {
+  const aus = (art) => [...karte.querySelectorAll(`input[data-art="${art}"]:not(:checked)`)].map((i) => i.value);
+  return { preis_eur: parseFloat(karte.querySelector('.angebot-preis input').value.replace(',', '.')),
+           farben_aus: aus('farben'), groessen_aus: aus('groessen') };
+}
+
+$('angebote').addEventListener('click', async (ev) => {
+  const knopf = ev.target.closest('[data-angebot]');
+  if (!knopf) return;
+  const karte = knopf.closest('.angebot-karte');
+  const { design, produkt } = karte.dataset;
+  const name = karte.querySelector('.name').textContent;
+  try {
+    if (knopf.dataset.angebot === 'ebay' && !confirm(
+      `${name} jetzt bei eBay aktualisieren?\n\nPreis, Fotos, Farben und Größen werden live überschrieben.`)) return;
+    knopf.disabled = true;
+    await hole(`/api/v1/studio/angebote/${design}/${encodeURIComponent(produkt)}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(angebotDaten(karte)) });
+    if (knopf.dataset.angebot === 'ebay') {
+      const r = await hole(`/api/v1/studio/designs/${design}/ebay?bestaetigt=true&aktualisieren=true&produkte=${encodeURIComponent(produkt)}`,
+                           { method: 'POST' });
+      const e = r.ergebnisse[0];
+      if (!e.ok) throw new Error(e.fehler);
+      melde(`${name}: bei eBay aktualisiert`);
+    } else {
+      melde(`${name}: gespeichert (noch nicht bei eBay)`);
+    }
+    await ladeAngebote();
+  } catch (err) {
+    zeigeFehler(err);
+  } finally {
+    knopf.disabled = false;
+  }
+});
+
+Promise.all([ladeStand(), ladeMotive(), ladeRadar(), ladePreise(), ladeAngebote()])
   .catch(() => { /* Hinweis steht schon */ });
 </script>
 </body>

@@ -878,9 +878,15 @@ async def veroeffentliche(db, design: Any, *, produkt_key: str, ebay: Any, s: Se
 
     from app.studio import druckseiten
 
+    from app.studio import angebote
+
     eintrag = produkt_fuer(db, design, p)
-    betrag, menge, gr = preis(p, s), int(s.ebay_menge_je_variante), groessen(p, s)
+    betrag, menge = angebote.preis_fuer(db, design.id, p, s), int(s.ebay_menge_je_variante)
+    gr = angebote.aktive_groessen(db, design.id, p, s)
+    aktiv = angebote.aktive_farben(db, design.id, p) if p.textil else [TASSENFARBE]
     haupt = hauptfarbe(s) if p.textil else TASSENFARBE
+    if haupt not in aktiv:
+        haupt = aktiv[0]
     try:
         seiten = druckseiten.lese(db, design)
         vorne_pfad, hinten_pfad = await asyncio.to_thread(
@@ -891,7 +897,7 @@ async def veroeffentliche(db, design: Any, *, produkt_key: str, ebay: Any, s: Se
         fotos = await produktfotos(design, p, s=s, bildordner=bildordner, motiv=vorne_pfad,
                                    hinten=hinten_pfad, mockups=mockups, ganzflaeche=True)
         adressen = {f: [await ebay.upload_image(x) for x in pfade[:_MAX_BILDER]]
-                    for f, pfade in fotos["je_farbe"].items()}
+                    for f, pfade in fotos["je_farbe"].items() if f in aktiv}
 
         basis = basis_merkmale(p, s, abteilung=abteilung)
         merkmale = await ebay.build_aspects(p.kategorie_id, basis)
@@ -907,7 +913,7 @@ async def veroeffentliche(db, design: Any, *, produkt_key: str, ebay: Any, s: Se
 
         if p.textil:
             skus = []
-            for f in farben(p):
+            for f in aktiv:
                 for g in gr:
                     nummer = sku(design.id, p, g, farbe=f)
                     await ebay.create_inventory_item(
@@ -916,11 +922,11 @@ async def veroeffentliche(db, design: Any, *, produkt_key: str, ebay: Any, s: Se
                         brand=marke(s), mpn=nummer)
                     skus.append(nummer)
             gruppenbilder = (adressen[haupt]
-                             + [adressen[f][0] for f in farben(p) if f != haupt])[:_MAX_BILDER]
+                             + [adressen[f][0] for f in aktiv if f != haupt])[:_MAX_BILDER]
             await ebay.create_inventory_item_group(
                 gruppe(design.id, p), title=t, description=text, image_urls=gruppenbilder,
                 variant_skus=skus,
-                specifications=[{"name": "Farbe", "values": farben(p)},
+                specifications=[{"name": "Farbe", "values": aktiv},
                                 {"name": "Größe", "values": gr}],
                 image_varies_by=["Farbe"], aspects=merkmale)
             for nummer in skus:

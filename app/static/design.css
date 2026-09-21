@@ -345,3 +345,20 @@ details.gruppe summary:hover { background: var(--bg-soft); }
   #toasts, body > .toast { left: 16px; right: 16px; bottom: 16px; }
   #imgZoom { display: none !important; }
 }
+
+/* Studio: eingestellte Angebote bearbeiten */
+.angebot-karte { border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 12px; background: var(--card); }
+.angebot-kopf { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.angebot-kopf img { width: 56px; height: 56px; object-fit: contain; border-radius: 6px; background: var(--card-2); }
+.angebot-kopf .name { font-weight: 600; }
+.angebot-kopf .offen { color: var(--brand); font-size: 12px; margin-top: 2px; }
+.angebot-preis { margin-bottom: 8px; }
+.angebot-preis input { width: 90px; }
+.chipzeile { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
+.chipzeile b { min-width: 60px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.chip { cursor: pointer; }
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chip span { display: inline-block; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; color: var(--muted); text-decoration: line-through; }
+.chip input:checked + span { color: var(--ink); background: var(--card-2); text-decoration: none; border-color: var(--ink); }
+.chip input:focus-visible + span { outline: 2px solid var(--brand); }
+.angebot-karte .aktionen { display: flex; gap: 8px; margin-top: 10px; }
