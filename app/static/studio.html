@@ -8,7 +8,7 @@
      /favicon.ico zurueck, und dort lag ein SVG unter falschem Namen. -->
 <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=7" />
 <link rel="icon" type="image/x-icon" href="/favicon.ico?v=7" sizes="any" />
-<link rel="stylesheet" href="/design.css?v=4">
+<link rel="stylesheet" href="/design.css?v=5">
 </head>
 <body>
   <script>
@@ -1823,63 +1823,86 @@ function angebotDaten(karte) {
            farben_aus: aus('farben'), groessen_aus: aus('groessen') };
 }
 
+// Rueckfrage im Knopf selbst statt confirm(): Browser-Fenster in Apps unterdruecken
+// confirm() teils stumm, dann "passiert nichts". Erster Klick fragt, zweiter fuehrt aus.
+const ANGEBOT_FRAGE = {
+  ebay: 'Ja, jetzt live aktualisieren',
+  beenden: 'Ja, jetzt deaktivieren',
+  loeschen: 'Ja, endgültig löschen',
+  'ebay-neu': 'Ja, wieder einstellen',
+};
+
+function angebotStatus(karte, text, fehler) {
+  let z = karte.querySelector('.angebot-status');
+  if (!z) {
+    z = document.createElement('div');
+    z.className = 'angebot-status';
+    karte.appendChild(z);
+  }
+  z.textContent = text;
+  z.classList.toggle('err', !!fehler);
+  z.hidden = !text;
+}
+
 $('angebote').addEventListener('click', async (ev) => {
   const knopf = ev.target.closest('[data-angebot]');
-  if (!knopf) return;
+  if (!knopf || knopf.disabled) return;
   const karte = knopf.closest('.angebot-karte');
   const { design, produkt } = karte.dataset;
   const name = karte.querySelector('.name').textContent;
   const art = knopf.dataset.angebot;
-  if (art === 'beenden' || art === 'loeschen') {
-    const text = art === 'beenden'
-      ? `${name} deaktivieren?\n\nDas Angebot verschwindet sofort bei eBay. Du kannst es später wieder einstellen.`
-      : `${name} KOMPLETT von eBay löschen?\n\nAngebot, Artikel und Varianten werden bei eBay entfernt. Das lässt sich nicht rückgängig machen (neu einstellen geht aber).`;
-    if (!confirm(text)) return;
-    knopf.disabled = true;
-    try {
+
+  if (ANGEBOT_FRAGE[art] && !knopf.dataset.bereit) {
+    const alt = knopf.textContent;
+    knopf.dataset.bereit = '1';
+    knopf.textContent = ANGEBOT_FRAGE[art];
+    knopf.classList.add('gefahr');
+    angebotStatus(karte, 'Zum Bestätigen den Knopf noch einmal klicken.', false);
+    setTimeout(() => {
+      if (!knopf.dataset.bereit) return;
+      delete knopf.dataset.bereit;
+      knopf.textContent = alt;
+      if (art !== 'loeschen') knopf.classList.remove('gefahr');
+      angebotStatus(karte, '', false);
+    }, 8000);
+    return;
+  }
+
+  const knoepfe = karte.querySelectorAll('[data-angebot]');
+  knoepfe.forEach((k) => { k.disabled = true; });
+  try {
+    if (art === 'beenden' || art === 'loeschen') {
+      angebotStatus(karte, 'Wird bei eBay ' + (art === 'loeschen' ? 'gelöscht' : 'deaktiviert') + ' …', false);
       const r = await hole(`/api/v1/studio/designs/${design}/ebay/beenden?bestaetigt=true&loeschen=${art === 'loeschen'}&produkt=${encodeURIComponent(produkt)}`,
                            { method: 'POST' });
       melde(`${name}: ${art === 'loeschen' ? 'von eBay gelöscht' : 'deaktiviert'}` + (r.hinweise && r.hinweise.length ? ' (mit Hinweisen)' : ''));
-      await ladeAngebote();
-    } catch (err) {
-      zeigeFehler(err);
-    } finally {
-      knopf.disabled = false;
-    }
-    return;
-  }
-  try {
-    if (art === 'ebay-neu') {
-      if (!confirm(`${name} wieder bei eBay einstellen?`)) return;
-      knopf.disabled = true;
+    } else if (art === 'ebay-neu') {
+      angebotStatus(karte, 'Wird bei eBay eingestellt – das kann ein bis drei Minuten dauern …', false);
       const r = await hole(`/api/v1/studio/designs/${design}/ebay?bestaetigt=true&produkte=${encodeURIComponent(produkt)}`, { method: 'POST' });
       if (!r.ergebnisse[0].ok) throw new Error(r.ergebnisse[0].fehler);
       melde(`${name}: wieder bei eBay eingestellt`);
-      await ladeAngebote();
-      return;
-    }
-    if (knopf.dataset.angebot === 'ebay' && !confirm(
-      `${name} jetzt bei eBay aktualisieren?\n\nPreis, Fotos, Farben und Größen werden live überschrieben.`)) return;
-    knopf.disabled = true;
-    await hole(`/api/v1/studio/angebote/${design}/${encodeURIComponent(produkt)}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(angebotDaten(karte)) });
-    if (knopf.dataset.angebot === 'ebay') {
-      const r = await hole(`/api/v1/studio/designs/${design}/ebay?bestaetigt=true&aktualisieren=true&produkte=${encodeURIComponent(produkt)}`,
-                           { method: 'POST' });
-      const e = r.ergebnisse[0];
-      if (!e.ok) throw new Error(e.fehler);
-      melde(`${name}: bei eBay aktualisiert`);
     } else {
-      melde(`${name}: gespeichert (noch nicht bei eBay)`);
+      angebotStatus(karte, 'Wird gespeichert …', false);
+      await hole(`/api/v1/studio/angebote/${design}/${encodeURIComponent(produkt)}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(angebotDaten(karte)) });
+      if (art === 'ebay') {
+        angebotStatus(karte, 'Wird bei eBay aktualisiert – Fotos werden hochgeladen, das kann ein bis drei Minuten dauern …', false);
+        const r = await hole(`/api/v1/studio/designs/${design}/ebay?bestaetigt=true&aktualisieren=true&produkte=${encodeURIComponent(produkt)}`,
+                             { method: 'POST' });
+        const e = r.ergebnisse[0];
+        if (!e.ok) throw new Error(e.fehler);
+        melde(`${name}: bei eBay aktualisiert`);
+      } else {
+        melde(`${name}: gespeichert (noch nicht bei eBay)`);
+      }
     }
     await ladeAngebote();
   } catch (err) {
+    angebotStatus(karte, 'Fehler: ' + String(err.message || err), true);
     zeigeFehler(err);
-  } finally {
-    knopf.disabled = false;
+    knoepfe.forEach((k) => { k.disabled = false; delete k.dataset.bereit; });
   }
 });
-
 Promise.all([ladeStand(), ladeMotive(), ladeRadar(), ladePreise(), ladeAngebote()])
   .catch(() => { /* Hinweis steht schon */ });
 </script>
