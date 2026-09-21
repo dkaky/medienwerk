@@ -8,7 +8,7 @@
      /favicon.ico zurueck, und dort lag ein SVG unter falschem Namen. -->
 <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=7" />
 <link rel="icon" type="image/x-icon" href="/favicon.ico?v=7" sizes="any" />
-<link rel="stylesheet" href="/design.css?v=3">
+<link rel="stylesheet" href="/design.css?v=4">
 </head>
 <body>
   <script>
@@ -1798,7 +1798,8 @@ async function ladeAngebote() {
           <div class="name">${esc(a.motiv)} &ndash; ${esc(a.label)}</div>
           <div class="muted">Bei eBay live für ${eur(a.preis_live)}
             ${a.url ? `&middot; <a href="${esc(a.url)}" target="_blank" rel="noopener">Angebot öffnen</a>` : ''}</div>
-          ${a.unterschied ? '<div class="offen">Änderungen sind noch nicht bei eBay</div>' : ''}
+          ${a.status === 'ended' ? '<div class="offen">Deaktiviert &ndash; nicht mehr bei eBay sichtbar</div>' : ''}
+          ${a.unterschied && a.status !== 'ended' ? '<div class="offen">Änderungen sind noch nicht bei eBay</div>' : ''}
         </div>
       </div>
       <div class="angebot-preis"><label>Preis (inkl. MwSt. + Versand)
@@ -1806,8 +1807,12 @@ async function ladeAngebote() {
       ${a.farben.length > 1 ? `<div class="chipzeile"><b>Farben</b>${chips(a.farben, 'farben')}</div>` : ''}
       ${a.groessen.length ? `<div class="chipzeile"><b>Größen</b>${chips(a.groessen, 'groessen')}</div>` : ''}
       <div class="aktionen">
+        ${a.status === 'ended' ? `
+        <button class="btn klein" data-angebot="ebay-neu">Wieder bei eBay einstellen</button>` : `
         <button class="btn klein" data-angebot="speichern">Speichern</button>
         <button class="btn klein" data-angebot="ebay">Bei eBay aktualisieren</button>
+        <button class="btn ghost klein" data-angebot="beenden">Deaktivieren</button>`}
+        <button class="btn ghost klein gefahr" data-angebot="loeschen">Von eBay löschen</button>
       </div>
     </div>`).join('');
 }
@@ -1824,7 +1829,35 @@ $('angebote').addEventListener('click', async (ev) => {
   const karte = knopf.closest('.angebot-karte');
   const { design, produkt } = karte.dataset;
   const name = karte.querySelector('.name').textContent;
+  const art = knopf.dataset.angebot;
+  if (art === 'beenden' || art === 'loeschen') {
+    const text = art === 'beenden'
+      ? `${name} deaktivieren?\n\nDas Angebot verschwindet sofort bei eBay. Du kannst es später wieder einstellen.`
+      : `${name} KOMPLETT von eBay löschen?\n\nAngebot, Artikel und Varianten werden bei eBay entfernt. Das lässt sich nicht rückgängig machen (neu einstellen geht aber).`;
+    if (!confirm(text)) return;
+    knopf.disabled = true;
+    try {
+      const r = await hole(`/api/v1/studio/designs/${design}/ebay/beenden?bestaetigt=true&loeschen=${art === 'loeschen'}&produkt=${encodeURIComponent(produkt)}`,
+                           { method: 'POST' });
+      melde(`${name}: ${art === 'loeschen' ? 'von eBay gelöscht' : 'deaktiviert'}` + (r.hinweise && r.hinweise.length ? ' (mit Hinweisen)' : ''));
+      await ladeAngebote();
+    } catch (err) {
+      zeigeFehler(err);
+    } finally {
+      knopf.disabled = false;
+    }
+    return;
+  }
   try {
+    if (art === 'ebay-neu') {
+      if (!confirm(`${name} wieder bei eBay einstellen?`)) return;
+      knopf.disabled = true;
+      const r = await hole(`/api/v1/studio/designs/${design}/ebay?bestaetigt=true&produkte=${encodeURIComponent(produkt)}`, { method: 'POST' });
+      if (!r.ergebnisse[0].ok) throw new Error(r.ergebnisse[0].fehler);
+      melde(`${name}: wieder bei eBay eingestellt`);
+      await ladeAngebote();
+      return;
+    }
     if (knopf.dataset.angebot === 'ebay' && !confirm(
       `${name} jetzt bei eBay aktualisieren?\n\nPreis, Fotos, Farben und Größen werden live überschrieben.`)) return;
     knopf.disabled = true;

@@ -362,3 +362,5 @@ details.gruppe summary:hover { background: var(--bg-soft); }
 .chip input:checked + span { color: var(--ink); background: var(--card-2); text-decoration: none; border-color: var(--ink); }
 .chip input:focus-visible + span { outline: 2px solid var(--brand); }
 .angebot-karte .aktionen { display: flex; gap: 8px; margin-top: 10px; }
+.btn.gefahr { color: var(--bad); }
+.btn.gefahr:hover { border-color: var(--bad); }

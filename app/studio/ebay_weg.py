@@ -982,6 +982,54 @@ async def veroeffentliche(db, design: Any, *, produkt_key: str, ebay: Any, s: Se
             "fehlende_vorlagen": fotos["fehlt"], "gerendert": fotos["gerendert"]}
 
 
+async def beende(db, design: Any, *, produkt_key: str, ebay: Any, s: Settings,
+                loeschen: bool = False) -> dict[str, Any]:
+    """Ein Angebot bei eBay beenden (deaktivieren) - mit ``loeschen`` auch Artikel und Gruppe entfernen.
+
+    Beenden nimmt das Angebot vom Markt, behaelt aber die Artikeldaten: ``veroeffentliche``
+    stellt es spaeter wieder ein. Loeschen ist endgueltig. Bestellungen bleiben unberuehrt.
+    """
+    p = produkt(produkt_key)
+    eintrag = db.scalars(
+        select(PodListing).join(PodProduct, PodListing.product_id == PodProduct.id)
+        .where(PodProduct.design_id == design.id, PodProduct.produktart == p.key,
+               PodListing.channel == KANAL,
+               PodListing.status.in_(("active", "ended") if loeschen else ("active",)))
+    ).first()
+    if eintrag is None:
+        raise EbayWegFehler("Kein solches Angebot vorhanden.")
+    hinweise: list[str] = []
+    if eintrag.status == "active":
+        if p.textil:
+            await ebay.withdraw_offer_by_group(gruppe(design.id, p))
+        else:
+            angebot = await ebay.erstes_angebot_zu_sku(sku(design.id, p))
+            if not angebot or not angebot.get("offerId"):
+                raise EbayWegFehler("Das Angebot wurde bei eBay nicht gefunden.")
+            await ebay.withdraw_offer(angebot["offerId"])
+    if loeschen:
+        if p.textil:
+            nummern = [sku(design.id, p, g, farbe=f) for f in farben(p) for g in groessen(p, s)]
+        else:
+            nummern = [sku(design.id, p)]
+        for nummer in nummern:
+            try:
+                await ebay.delete_inventory_item(nummer)
+            except Exception as exc:  # noqa: BLE001 - schon weg oder nie angelegt ist kein Fehler
+                hinweise.append(f"{nummer}: {str(exc)[:80]}")
+        if p.textil:
+            try:
+                await ebay.delete_inventory_item_group(gruppe(design.id, p))
+            except Exception as exc:  # noqa: BLE001
+                hinweise.append(f"Gruppe: {str(exc)[:80]}")
+    eintrag.status = "deleted" if loeschen else "ended"
+    produkt_fuer(db, design, p).status = "draft"
+    db.commit()
+    logger.info("Angebot bei eBay %s", "geloescht" if loeschen else "beendet",
+                extra={"design": design.id, "produkt": p.key, "listing": eintrag.external_id})
+    return {"produkt": p.key, "status": eintrag.status, "hinweise": hinweise[:5]}
+
+
 def ansage_nach_erzeugung(design: Any, *, s: Settings, bildordner: Path) -> str | None:
     """Ein Satz fuer die Meldung nach dem Erzeugen - was mit eBay passiert."""
     if not s.ebay_auto_veroeffentlichen:

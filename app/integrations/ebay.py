@@ -1158,6 +1158,18 @@ class RealEbayClient(EbayClient):
         except Exception as exc:  # noqa: BLE001
             raise self._translate(exc) from exc
 
+    async def delete_inventory_item_group(self, group_key: str) -> None:
+        """deleteInventoryItemGroup: die Variantengruppe nach dem Beenden entfernen."""
+        try:
+            resp = await self._http().delete(
+                f"{self._inv}/inventory_item_group/{group_key}", headers=await self._auth_headers())
+            resp.raise_for_status()
+        except Exception as exc:  # noqa: BLE001
+            raise self._translate(exc) from exc
+
+    async def erstes_angebot_zu_sku(self, sku: str) -> Optional[dict]:
+        return await self._first_offer_for_sku(sku)
+
     async def publish_listing(self, draft_id: str, *, title: str, category_id: str) -> str:
         """Offer publizieren -> oeffentliche listingId. `draft_id` = eBay offerId.
 

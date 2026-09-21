@@ -659,6 +659,42 @@ async def bei_ebay_einstellen(design_id: int, bestaetigt: bool = Query(False),
     return {"ergebnisse": ergebnisse}
 
 
+@router.post("/designs/{design_id}/ebay/beenden")
+async def bei_ebay_beenden(design_id: int, produkt: str = Query(...),
+                           loeschen: bool = Query(False),
+                           bestaetigt: bool = Query(False),
+                           db: Session = Depends(get_db)) -> dict:
+    """Ein Angebot bei eBay beenden (deaktivieren) oder mit ``loeschen=true`` komplett entfernen.
+    LIVE, braucht ``bestaetigt=true``. Ein beendetes Angebot laesst sich wieder einstellen."""
+    from app.integrations.ebay import RealEbayClient
+    from app.services import freigabe
+    from app.studio import ebay_weg
+
+    if not bestaetigt:
+        raise HTTPException(status_code=400, detail="Beenden braucht bestaetigt=true.")
+    if produkt not in ebay_weg.PRODUKTE:
+        raise HTTPException(status_code=422, detail=f"Unbekanntes Produkt '{produkt}'.")
+    design = service.get_design(db, design_id)
+    if design is None:
+        raise HTTPException(status_code=404, detail="Motiv nicht gefunden")
+    s = get_settings()
+    ebay = RealEbayClient(s)
+    schluessel = ebay_weg.freigabe_schluessel(design_id)
+    freigabe.erteile(schluessel)
+    try:
+        with freigabe.beim_veroeffentlichen(schluessel):
+            return await ebay_weg.beende(db, design, produkt_key=produkt, ebay=ebay, s=s,
+                                         loeschen=loeschen)
+    except ebay_weg.EbayWegFehler as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"eBay: {str(exc)[:300]}") from exc
+    finally:
+        freigabe.widerrufe(schluessel)
+        if ebay._client is not None:
+            await ebay._client.aclose()
+
+
 @router.post("/designs/{design_id}/ebay/auto", status_code=201)
 async def bei_ebay_auto_einstellen(design_id: int, bestaetigt: bool = Query(False),
                                    db: Session = Depends(get_db)) -> dict:

@@ -56,7 +56,7 @@ def uebersicht(db: Session, s: Settings) -> list[dict]:
         select(PodListing, PodProduct, StudioDesign)
         .join(PodProduct, PodListing.product_id == PodProduct.id)
         .join(StudioDesign, PodProduct.design_id == StudioDesign.id)
-        .where(PodListing.channel == ebay_weg.KANAL, PodListing.status == "active")
+        .where(PodListing.channel == ebay_weg.KANAL, PodListing.status.in_(("active", "ended")))
         .order_by(PodListing.id.desc())).all()
     aus = []
     for angebot, produkt, design in zeilen:
@@ -67,7 +67,7 @@ def uebersicht(db: Session, s: Settings) -> list[dict]:
         aus.append({
             "design_id": design.id, "motiv": ebay_weg.motivname(design), "bild": design.image_url,
             "produkt": p.key, "label": p.label, "listing_id": angebot.external_id,
-            "url": angebot.url, "preis_live": angebot.price_eur,
+            "url": angebot.url, "status": angebot.status, "preis_live": angebot.price_eur,
             "preis_eur": preis_fuer(db, design.id, p, s), "eigener_preis": o["preis_eur"] is not None,
             "farben": [{"name": f, "aus": f in o["farben_aus"]} for f in ebay_weg.farben(p)],
             "groessen": [{"name": g, "aus": g in o["groessen_aus"]} for g in ebay_weg.groessen(p, s)],
