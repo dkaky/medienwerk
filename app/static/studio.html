@@ -8,7 +8,7 @@
      /favicon.ico zurueck, und dort lag ein SVG unter falschem Namen. -->
 <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=7" />
 <link rel="icon" type="image/x-icon" href="/favicon.ico?v=7" sizes="any" />
-<link rel="stylesheet" href="/design.css?v=5">
+<link rel="stylesheet" href="/design.css?v=6">
 </head>
 <body>
   <script>
@@ -291,6 +291,7 @@
     <div class="panel" data-reiter="motive">
       <h3>Meine Motive <span class="muted" id="anzahl"></span></h3>
       <div class="wahl" id="wahl-filter" style="margin-bottom:12px"></div>
+      <div class="wahl-leiste" id="wahl-leiste"></div>
       <div class="karten" id="karten"><p class="muted">Wird geladen …</p></div>
     </div>
   </main>
@@ -394,6 +395,68 @@ function originalUrl(design) {
   return metaVon(design).upload?.original_url || design.image_url;
 }
 
+// ---------- Mehrere Motive auswaehlen und loeschen ----------
+const _auswahl = new Set();
+
+function zeichneWahlLeiste() {
+  const sichtbar = gefiltert().map((d) => d.id);
+  const n = _auswahl.size;
+  const leiste = $('wahl-leiste');
+  if (!sichtbar.length && !n) { leiste.innerHTML = ''; return; }
+  leiste.innerHTML = `
+    <button type="button" class="btn ghost klein" data-wahl-aktion="alle">Alle sichtbaren auswählen</button>
+    ${n ? `<button type="button" class="btn ghost klein" data-wahl-aktion="keine">Auswahl aufheben</button>
+    <button type="button" class="btn ghost klein gefahr" data-wahl-aktion="loeschen">${n} ausgewählte löschen</button>` : ''}
+    <span class="muted" id="wahl-status">${n ? `${n} ausgewählt` : ''}</span>`;
+}
+
+function aktualisiereHaken() {
+  document.querySelectorAll('input[data-wahl]').forEach((i) => { i.checked = _auswahl.has(Number(i.dataset.wahl)); });
+}
+
+document.addEventListener('change', (ev) => {
+  const i = ev.target.closest('input[data-wahl]');
+  if (!i) return;
+  const id = Number(i.dataset.wahl);
+  if (i.checked) _auswahl.add(id); else _auswahl.delete(id);
+  zeichneWahlLeiste();
+});
+
+document.addEventListener('click', async (ev) => {
+  const knopf = ev.target.closest('[data-wahl-aktion]');
+  if (!knopf || knopf.disabled) return;
+  const art = knopf.dataset.wahlAktion;
+  if (art === 'alle') { gefiltert().forEach((d) => _auswahl.add(d.id)); aktualisiereHaken(); zeichneWahlLeiste(); return; }
+  if (art === 'keine') { _auswahl.clear(); aktualisiereHaken(); zeichneWahlLeiste(); return; }
+  if (art !== 'loeschen') return;
+  // Rueckfrage im Knopf statt confirm(): Fenster in Apps unterdruecken confirm() teils stumm.
+  if (!knopf.dataset.bereit) {
+    const alt = knopf.textContent;
+    knopf.dataset.bereit = '1';
+    knopf.textContent = `Ja, ${_auswahl.size} endgültig löschen`;
+    $('wahl-status').textContent = 'Zum Bestätigen noch einmal klicken. Verknüpfte Motive (mit Angebot/Produkt) bleiben geschützt.';
+    setTimeout(() => { if (knopf.isConnected && knopf.dataset.bereit) { delete knopf.dataset.bereit; knopf.textContent = alt; zeichneWahlLeiste(); } }, 8000);
+    return;
+  }
+  const ids = [..._auswahl];
+  document.querySelectorAll('[data-wahl-aktion]').forEach((b) => { b.disabled = true; });
+  let geloescht = 0;
+  const fehler = [];
+  for (const [i, id] of ids.entries()) {
+    $('wahl-status').textContent = `Lösche ${i + 1} von ${ids.length} …`;
+    const titel = (_motive.find((d) => d.id === id) || {}).title || `Motiv ${id}`;
+    try {
+      await hole(`/api/v1/studio/designs/${id}`, { method: 'DELETE' });
+      geloescht += 1;
+      _auswahl.delete(id);
+    } catch (e) {
+      fehler.push(`${titel}: ${e.message}`);
+    }
+  }
+  await Promise.all([ladeStand(), ladeMotive()]);
+  melde(`${geloescht} Motiv(e) gelöscht` + (fehler.length ? `, ${fehler.length} nicht möglich: ${fehler[0]}` : ''), fehler.length > 0);
+});
+
 const FILTER = [
   ['aktiv', 'Aktive'], ['draft', 'Entwürfe'], ['ready', 'Übernommen'],
   ['archived', 'Verworfen'], ['alle', 'Alle'],
@@ -425,6 +488,8 @@ async function ladeMotive() {
   }
   zeichneFilter();
   const liste = gefiltert();
+  for (const id of [..._auswahl]) if (!_motive.some((d) => d.id === id)) _auswahl.delete(id);
+  zeichneWahlLeiste();
   $('anzahl').textContent = _motive.length ? `(${liste.length} von ${_motive.length})` : '';
   if (!liste.length) {
     $('karten').innerHTML = _motive.length
@@ -434,6 +499,7 @@ async function ladeMotive() {
   }
   $('karten').innerHTML = liste.map((d) => `
     <div class="karte">
+      <label class="karte-wahl" title="Für Sammel-Löschen auswählen"><input type="checkbox" data-wahl="${d.id}"${_auswahl.has(d.id) ? ' checked' : ''} aria-label="Motiv auswählen"></label>
       ${d.image_url ? `<img class="schachbrett" src="${vorschau(d.image_url, 400)}" alt=""
                             loading="lazy" decoding="async">` : '<div style="aspect-ratio:2/3;background:var(--bild-grund)"></div>'}
       <div class="info">
