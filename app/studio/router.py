@@ -993,6 +993,17 @@ def angebot_speichern(design_id: int, produkt: str, daten: dict,
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.delete("/produkte/{product_id}")
+def entwurf_loeschen(product_id: int, db: Session = Depends(get_db)) -> dict:
+    """Einen Entwurf/fehlgeschlagenes Produkt loeschen. Nichts bei eBay, nichts Aktives."""
+    from app.studio import angebote
+
+    try:
+        return angebote.loesche_entwurf(db, product_id)
+    except angebote.AngebotFehler as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.post("/radar/fussball-kollektion")
 def radar_fussball_kollektion(db: Session = Depends(get_db)) -> dict:
     """Die feste, markenfreie Fussball-Kollektion als Empfehlungen laden. Kostenlos, erzeugt kein Bild."""

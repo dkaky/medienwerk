@@ -125,6 +125,7 @@
           <span class="spacer"></span>
           <button class="btn sm" onclick="loadProducts()" title="Liste neu laden">Aktualisieren</button>
         </h2>
+        <div id="prodWahlLeiste" style="display:none;padding:12px 20px;border-bottom:1px solid var(--line);gap:8px;align-items:center;flex-wrap:wrap"></div>
         <div id="prodFehlerHinweis" style="display:none;padding:12px 20px;border-bottom:1px solid var(--line)">
           <span class="neg">Nur Entwürfe mit Upload-Fehler.</span>
           <button class="btn sm ghost" style="margin-left:8px" onclick="zeigeNurFehler(false)">alle anzeigen</button>
@@ -946,6 +947,60 @@
 
     let prodPoll = null;
     let _prodRows = [];
+    const _prodAuswahl = new Set();
+
+    function zeichneProdWahl() {
+      const leiste = $("prodWahlLeiste");
+      const entwuerfe = _prodRows.filter(p => p.product_id && (p.listing_status === "draft" || p.listing_status === "fehler"));
+      for (const id of [..._prodAuswahl]) if (!entwuerfe.some(p => p.product_id === id)) _prodAuswahl.delete(id);
+      if (!entwuerfe.length) { leiste.style.display = "none"; leiste.innerHTML = ""; return; }
+      const n = _prodAuswahl.size;
+      leiste.style.display = "flex";
+      leiste.innerHTML = `
+        <button type="button" class="btn sm ghost" data-prodaktion="alle">Alle ${entwuerfe.length} Entwürfe auswählen</button>
+        ${n ? `<button type="button" class="btn sm ghost" data-prodaktion="keine">Auswahl aufheben</button>
+        <button type="button" class="btn sm ghost" data-prodaktion="loeschen" style="color:var(--bad)">${n} ausgewählte löschen</button>` : ""}
+        <span class="muted" id="prodWahlStatus">${n ? n + " ausgewählt" : ""}</span>`;
+    }
+
+    document.addEventListener("change", ev => {
+      const i = ev.target.closest("input[data-prodwahl]");
+      if (!i) return;
+      const id = Number(i.dataset.prodwahl);
+      if (i.checked) _prodAuswahl.add(id); else _prodAuswahl.delete(id);
+      zeichneProdWahl();
+    });
+
+    document.addEventListener("click", async ev => {
+      const k = ev.target.closest("[data-prodaktion]");
+      if (!k || k.disabled) return;
+      const art = k.dataset.prodaktion;
+      if (art === "alle" || art === "keine") {
+        _prodRows.filter(p => p.product_id && (p.listing_status === "draft" || p.listing_status === "fehler"))
+          .forEach(p => { if (art === "alle") _prodAuswahl.add(p.product_id); else _prodAuswahl.delete(p.product_id); });
+        renderProducts(); return;
+      }
+      if (art !== "loeschen") return;
+      if (!k.dataset.bereit) {
+        const alt = k.textContent;
+        k.dataset.bereit = "1";
+        k.textContent = `Ja, ${_prodAuswahl.size} endgültig löschen`;
+        $("prodWahlStatus").textContent = "Zum Bestätigen noch einmal klicken. Bei eBay wird nichts gelöscht.";
+        setTimeout(() => { if (k.isConnected && k.dataset.bereit) { delete k.dataset.bereit; k.textContent = alt; zeichneProdWahl(); } }, 8000);
+        return;
+      }
+      document.querySelectorAll("[data-prodaktion]").forEach(b => { b.disabled = true; });
+      const ids = [..._prodAuswahl];
+      let ok = 0; const fehler = [];
+      for (const [i, id] of ids.entries()) {
+        $("prodWahlStatus").textContent = `Lösche ${i + 1} von ${ids.length} …`;
+        try { await api("DELETE", "/api/v1/studio/produkte/" + id); ok++; _prodAuswahl.delete(id); }
+        catch (e) { fehler.push(String((e && e.message) || e)); }
+      }
+      await loadProducts();
+      const st = $("prodWahlStatus");
+      if (st) st.textContent = `${ok} gelöscht` + (fehler.length ? `, ${fehler.length} nicht möglich: ${fehler[0]}` : "");
+    });
     async function loadPodProductsFallback(status) {
       const [dash, produkte, angebote] = await Promise.all([
         api("GET", "/api/v1/pod/dashboard"),
@@ -959,6 +1014,7 @@
         return {
           pod: true,
           listing_id: "pod-" + l.id,
+          product_id: l.product_id,
           title: p.title || ("POD Produkt #" + l.product_id),
           listing_status: l.status || "active",
           price_eur: l.price_eur,
@@ -974,6 +1030,7 @@
         .map(p => ({
           pod: true,
           listing_id: "pod-product-" + p.id,
+          product_id: p.id,
           title: p.title,
           listing_status: "fehler",
           price_eur: p.target_price_eur,
@@ -1031,6 +1088,7 @@
         (p.ebay_sku||"").toLowerCase().includes(q) ||
         String(p.ebay_item_id||"").includes(q) ||
         ("#"+p.listing_id).includes(q) || String(p.listing_id).includes(q)) : basis;
+      zeichneProdWahl();
       const body = $("productsBody");
       if (!rows.length) {
         const leer = q ? `kein Treffer für „${esc(q)}"`
@@ -1050,8 +1108,9 @@
         const marginCell = (multi && p.margin_min != null)
           ? `<span>${pct(p.margin_min)}</span><span class="muted" style="font-size:10.5px">–${pct(p.margin_max)}</span>`
           : ((p.price_eur&&p.profit_eur!=null)?pct(p.profit_eur/p.price_eur):'<span class="muted">–</span>');
+        const loeschbar = p.product_id && (p.listing_status === "draft" || p.listing_status === "fehler");
         return `<tr>
-          <td class="title-cell" title="${esc(p.title)}">${p.image ? `<img src="${esc(p.image)}" style="width:26px;height:26px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:7px" onerror="this.style.display='none'">` : ""}${esc(p.title)}</td>
+          <td class="title-cell" title="${esc(p.title)}">${loeschbar ? `<input type="checkbox" data-prodwahl="${p.product_id}" ${_prodAuswahl.has(p.product_id) ? "checked" : ""} aria-label="Entwurf auswählen" style="margin-right:8px;vertical-align:middle">` : ""}${p.image ? `<img src="${esc(p.image)}" style="width:26px;height:26px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:7px" onerror="this.style.display='none'">` : ""}${esc(p.title)}</td>
           <td><span class="badge ${esc(p.listing_status)}">${esc(statusText(p.listing_status))}</span>${p.publish_queued?'<br><span class="pos" style="font-size:10.5px">⏫ lädt hoch…</span>':''}${(!p.publish_queued&&p.publish_error)?`<br><span class="neg" style="font-size:10.5px" title="${esc(p.publish_error)}">Upload-Fehler</span>`:''}</td>
           <td class="num">${priceCell}</td>
           <td class="num">${p.quantity ?? '–'}</td>

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import Settings
@@ -105,3 +105,30 @@ def setze(db: Session, s: Settings, design_id: int, produkt_key: str, *, preis_e
     z.preis_eur, z.farben_aus, z.groessen_aus = preis, json.dumps(f_aus), json.dumps(g_aus)
     db.commit()
     return optionen(db, design_id, produkt_key)
+
+
+def loesche_entwurf(db: Session, product_id: int) -> dict:
+    """Ein Entwurf oder fehlgeschlagenes Produkt lokal entfernen.
+
+    Nur Status draft/fehler, nie mit aktivem eBay-Angebot und nie, wenn eine Bestellung
+    daran haengt. Bei eBay wird nichts geloescht - dafuer gibt es "Von eBay loeschen".
+    """
+    produkt = db.get(PodProduct, product_id)
+    if produkt is None:
+        raise AngebotFehler("Eintrag nicht gefunden.")
+    if produkt.status not in ("draft", "fehler"):
+        raise AngebotFehler(f"Nur Entwuerfe und Fehler lassen sich loeschen (Status: {produkt.status}).")
+    angebote_ = db.scalars(select(PodListing).where(PodListing.product_id == product_id)).all()
+    if any(a.status == "active" for a in angebote_):
+        raise AngebotFehler("Hat ein aktives eBay-Angebot - erst dort beenden.")
+    from app.studio.models import PodOrder
+
+    ids = [a.id for a in angebote_]
+    if ids and db.scalar(select(func.count()).select_from(PodOrder).where(PodOrder.listing_id.in_(ids))):
+        raise AngebotFehler("Es gibt Bestellungen dazu - bleibt zur Dokumentation erhalten.")
+    for a in angebote_:
+        db.delete(a)
+    titel = produkt.title
+    db.delete(produkt)
+    db.commit()
+    return {"geloescht": product_id, "titel": titel}
