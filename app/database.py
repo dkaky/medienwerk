@@ -7,6 +7,7 @@ Datei nutzen koennen.
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Iterator
 
@@ -17,6 +18,13 @@ from app.config import get_settings
 
 settings = get_settings()
 
+
+def in_synchronisiertem_ordner(pfad: str | Path) -> bool:
+    """Liegt die Datei in einem OneDrive-/Dropbox-/Google-Drive-Ordner?"""
+    teile = [p.lower() for p in Path(pfad).resolve().parts]
+    return any(t.startswith("onedrive") or t in ("dropbox", "google drive") for t in teile)
+
+
 _connect_args: dict = {}
 if settings.database_url.startswith("sqlite"):
     # timeout=30: bei parallelen Schreibern (Server + Batch-Jobs) auf Locks warten
@@ -26,6 +34,12 @@ if settings.database_url.startswith("sqlite"):
     db_file = settings.database_url.split("///", 1)[-1]
     if db_file and db_file != ":memory:":
         Path(db_file).parent.mkdir(parents=True, exist_ok=True)
+        if in_synchronisiertem_ordner(db_file):
+            logging.getLogger(__name__).warning(
+                "Die Datenbank %s liegt in einem OneDrive-/Cloud-Ordner. Die Synchronisation legt "
+                "dann Konfliktkopien an (pod_studio-<PC>.db) und Schreibzugriffe landen in der "
+                "falschen Datei. DATABASE_URL auf einen lokalen Ordner ausserhalb von OneDrive setzen.",
+                Path(db_file).resolve())
 
 _engine_kwargs: dict = {"pool_pre_ping": True, "future": True}
 if settings.database_url.startswith("sqlite"):
