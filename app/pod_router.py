@@ -51,15 +51,32 @@ class LedgerIn(BaseModel):
     note: str | None = None
 
 
-def _product(x: PodProduct) -> dict:
+def _produktbild_klein(design: StudioDesign | None) -> str | None:
+    """Vorschaubild fuer eine Zeile in der Angebotsliste: das Motivbild, ohne Mockup-Suche."""
+    return design.image_url if design is not None else None
+
+
+def _product(x: PodProduct, design: StudioDesign | None = None) -> dict:
     return {"id": x.id, "title": x.title, "status": x.status, "provider": x.provider,
             "base_cost_eur": x.base_cost_eur, "target_price_eur": x.target_price_eur,
-            "stock_mode": x.stock_mode, "created_at": x.created_at}
+            "stock_mode": x.stock_mode, "created_at": x.created_at,
+            "design_id": x.design_id, "image": _produktbild_klein(design)}
 
 
-def _listing(x: PodListing) -> dict:
+def _listing(x: PodListing, verkaeufe: int = 0) -> dict:
     return {"id": x.id, "product_id": x.product_id, "channel": x.channel, "status": x.status,
-            "price_eur": x.price_eur, "quantity_available": x.quantity_available, "url": x.url}
+            "price_eur": x.price_eur, "quantity_available": x.quantity_available, "url": x.url,
+            "sales_total": verkaeufe}
+
+
+def _verkaeufe_je_listing(db: Session) -> dict[int, int]:
+    """Anzahl Bestellungen je Angebot - stornierte/erstattete zaehlen nicht als Verkauf."""
+    zeilen = db.execute(
+        select(PodOrder.listing_id, func.count())
+        .where(PodOrder.listing_id.is_not(None), PodOrder.status.notin_(("cancelled", "refunded")))
+        .group_by(PodOrder.listing_id)
+    ).all()
+    return {listing_id: n for listing_id, n in zeilen}
 
 
 def _produktbild(design: StudioDesign | None, p: dict) -> dict:
@@ -171,7 +188,10 @@ def dashboard(db: Session = Depends(get_db)) -> dict:
 
 @router.get("/products")
 def products(db: Session = Depends(get_db)) -> list[dict]:
-    return [_product(x) for x in db.scalars(select(PodProduct).order_by(PodProduct.updated_at.desc())).all()]
+    produkte = list(db.scalars(select(PodProduct).order_by(PodProduct.updated_at.desc())).all())
+    design_ids = {p.design_id for p in produkte if p.design_id}
+    designs = {d.id: d for d in db.scalars(select(StudioDesign).where(StudioDesign.id.in_(design_ids)))} if design_ids else {}
+    return [_product(x, designs.get(x.design_id)) for x in produkte]
 
 
 @router.post("/products", status_code=201)
@@ -183,7 +203,9 @@ def create_product(body: ProductIn, db: Session = Depends(get_db)) -> dict:
 
 @router.get("/listings")
 def listings(db: Session = Depends(get_db)) -> list[dict]:
-    return [_listing(x) for x in db.scalars(select(PodListing).order_by(PodListing.updated_at.desc())).all()]
+    verkaeufe = _verkaeufe_je_listing(db)
+    return [_listing(x, verkaeufe.get(x.id, 0))
+            for x in db.scalars(select(PodListing).order_by(PodListing.updated_at.desc())).all()]
 
 
 @router.post("/listings", status_code=201)
