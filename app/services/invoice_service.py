@@ -419,6 +419,109 @@ def generate_missing_pod_sale_invoices(db: Session, *, limit: int = 2000) -> dic
     return {"erzeugt": erzeugt, "uebersprungen": uebersprungen, "fehler": fehler}
 
 
+def _kosten_art(t: dict) -> str:
+    """Gebuehrenart aus den Feldern, die eBay je nach Transaktionsart nutzt."""
+    for feld in ("feeType", "feeJurisdiction", "transactionMemo", "bookingEntry"):
+        v = t.get(feld)
+        if isinstance(v, str) and v:
+            return v
+    return "eBay-Gebühr"
+
+
+def _render_ebay_kosten_beleg_html(*, nummer: str, datum: datetime, betrag: Decimal,
+                                   art: str, bestellung: str | None) -> str:
+    """Selbst erzeugter ERSATZBELEG fuer eine eBay-Gebuehr - KEINE eBay-Originalrechnung.
+
+    eBay bietet keine Schnittstelle an, ueber die sich die echten PDF-Rechnungen (mit
+    eBays eigener USt-ID, massgeblich fuer den Vorsteuerabzug) automatisch abrufen
+    liessen - nur der manuelle Download im Verkaeufer-Cockpit. Dieser Beleg dokumentiert
+    die einzelne Gebuehrentransaktion aus der Finances API fuer die laufende Uebersicht.
+    """
+    s = get_settings()
+    bezug = f"<div>Bestellung: {html.escape(bestellung)}</div>" if bestellung else ""
+    return f"""<!doctype html><html lang="de"><head><meta charset="utf-8">
+<title>Kostenbeleg {html.escape(nummer)}</title>
+<style>body{{font-family:Arial,sans-serif;color:#111;max-width:760px;margin:24px auto;padding:0 20px}}
+h1{{font-size:20px}} .muted{{color:#666;font-size:12px}}
+.note{{margin-top:18px;padding:10px 12px;background:#fff3cd;border:1px solid #ffe08a;border-radius:6px;font-size:13px}}
+table{{width:100%;border-collapse:collapse;margin-top:18px}} td{{border-bottom:1px solid #ccc;padding:8px}}
+td.n{{text-align:right}}</style></head>
+<body>
+<h1>Kostenbeleg (Ersatzbeleg)</h1>
+<div class="muted">{html.escape(s.seller_name)} · Nr. {html.escape(nummer)} · {datum.strftime('%d.%m.%Y')}</div>
+<table><tr><td>eBay-Gebühr: {html.escape(art)}</td>{bezug}<td class="n"><b>{_eur(betrag)}</b></td></tr></table>
+<div class="note">Von diesem System selbst erzeugt aus den eBay-Finanzdaten (Finances API) -
+KEINE eBay-Originalrechnung. eBay stellt echte PDF-Rechnungen mit eigener USt-ID nur im
+Verkäufer-Cockpit unter „Zahlungen → Rechnungen" zum manuellen Download bereit. Für den
+Vorsteuerabzug beim Finanzamt ist die eBay-Originalrechnung massgeblich, bitte zusätzlich
+herunterladen und hier hochladen.</div>
+</body></html>"""
+
+
+def generate_missing_ebay_kosten_belege(db: Session, *, year: int, limit: int = 5000) -> dict:
+    """Fuer JEDE eBay-Gebuehrentransaktion (Finances API) eines Jahres, die noch keinen
+    Kostenbeleg hat, einen erzeugen - Verkaufsgebuehren je Bestellung UND kontobezogene
+    Gebuehren (Shop-Abo, Anzeigen ohne Bestellbezug).
+
+    Liest die beim Finanzbericht zwischengespeicherten Rohtransaktionen - kein eigener
+    eBay-Aufruf. Ohne gecachte Transaktionen (Bericht fuer dieses Jahr noch nie geladen)
+    passiert nichts, kein Fehler (fuer den automatischen Scheduler-Lauf).
+    """
+    from app.services import finance_service
+
+    txs = finance_service.lade_finance_transaktionen(year)
+    vorhandene_refs = {
+        r for (r,) in db.execute(
+            select(Invoice.reference_id).where(Invoice.type == "ebay_kosten")
+        ).all() if r
+    }
+    erzeugt = uebersprungen = fehler = 0
+    for t in txs[:limit]:
+        typ = t.get("transactionType")
+        oid = finance_service.order_ref(t)
+        if typ == "SALE":
+            betrag = Decimal(str((t.get("totalFeeAmount") or {}).get("value") or "0"))
+            art = "Verkaufsgebühr"
+        elif typ in ("NON_SALE_CHARGE", "FEE"):
+            betrag = abs(Decimal(str((t.get("amount") or {}).get("value") or "0")))
+            art = _kosten_art(t)
+        else:
+            continue
+        if betrag <= 0:
+            continue
+        ref = str(t.get("transactionId") or f"{typ}-{t.get('transactionDate')}-{betrag}")
+        if ref in vorhandene_refs:
+            uebersprungen += 1
+            continue
+        try:
+            datum_txt = str(t.get("transactionDate") or "")
+            datum = datetime.fromisoformat(datum_txt.replace("Z", "+00:00")) if datum_txt \
+                else datetime.now(timezone.utc)
+            number = _next_sale_invoice_number(db, typen=("ebay_kosten",))
+            # Eigene Nummernkreis-Praefix-Variante ("K" statt der Rechnungsnummer), damit
+            # ein Kostenbeleg auf den ersten Blick nicht wie eine Verkaufsrechnung aussieht.
+            number = f"K-{number}"
+            content = _render_ebay_kosten_beleg_html(
+                nummer=number, datum=datum, betrag=betrag, art=art, bestellung=oid or None
+            ).encode("utf-8")
+            stored = get_storage().store(content=content, period=_period(datum),
+                                         file_type="ebay_kosten", ref_id=ref, ext="html")
+            inv = Invoice(
+                type="ebay_kosten", reference_id=ref, invoice_number=number, invoice_date=datum,
+                amount=betrag, currency="EUR",
+                note=(f"{art}, Bestellung {oid}" if oid else art),
+                file_path=stored.file_path, file_hash=stored.file_hash,
+            )
+            db.add(inv)
+            db.commit()
+            erzeugt += 1
+            vorhandene_refs.add(ref)
+        except Exception:  # noqa: BLE001 - eine kaputte Transaktion darf die anderen nicht stoppen
+            db.rollback()
+            fehler += 1
+    return {"erzeugt": erzeugt, "uebersprungen": uebersprungen, "fehler": fehler}
+
+
 def backfill_invoices(db: Session, *, limit: int = 5000) -> dict:
     """Erzeugt fehlende Belege fuer ALLE Verkaeufe und alle Kaeufe.
 
@@ -645,6 +748,7 @@ def invoice_summary(db: Session) -> dict:
     pod_sales = agg("pod_sales")
     purchases = agg("aliexpress_purchase")
     other = agg("betriebsausgabe")
+    ebay_kosten = agg("ebay_kosten")
     # Wieviele Sales/Orders haben noch KEINEN Beleg? (Luecken-Anzeige)
     n_sales = db.scalar(select(func.count()).select_from(Sale)) or 0
     n_orders = db.scalar(select(func.count()).select_from(OrderAliexpress)) or 0
@@ -672,7 +776,8 @@ def invoice_summary(db: Session) -> dict:
         "purchases_missing": max(0, purchases["count"] - purch_orig),
         "sales_originals": sales_orig, "purchase_originals": purch_orig,
         "other_expenses": other,
-        "expenses_total": round(purchases["sum"] + other["sum"], 2),
+        "ebay_kosten": ebay_kosten,
+        "expenses_total": round(purchases["sum"] + other["sum"] + ebay_kosten["sum"], 2),
         "problems": problems,
     }
 

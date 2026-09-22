@@ -45,7 +45,7 @@ def _utc(wann):
     return wann
 
 
-def _order_ref(t: dict) -> str:
+def order_ref(t: dict) -> str:
     """Order-Nr.: direktes Feld ODER references[ORDER_ID] (so kommen AD_FEEs).
 
     MODULWEIT, damit Gebuehren-Sync und Diagnose denselben Bestellbezug sehen.
@@ -87,7 +87,7 @@ async def sync_ebay_fees(db: Session, *, days: int = 90, date_from=None, date_to
     # + NON_SALE_CHARGE (v.a. AD_FEE = Anzeigengebuehr, order-referenziert).
     fee_by_order: dict[str, Decimal] = {}
     for t in txs:
-        oid = _order_ref(t)
+        oid = order_ref(t)
         if not oid:
             continue  # z.B. Shop-Abo (OTHER_FEES ohne Order) -> keine Order-Zuordnung
         ttype = t.get("transactionType")
@@ -420,7 +420,7 @@ async def ebay_finance_report(*, year: int, refresh: bool = False) -> dict:
             b["gebuehren"] += abs(amt)
             # Ohne Bestellbezug (Shop-Abo, Einstellgebuehren) landet die Gebuehr an
             # KEINEM Verkauf -> der Steuerbericht kennt sie sonst gar nicht.
-            if not _order_ref(t):
+            if not order_ref(t):
                 b["gebuehren_ohne_order"] += abs(amt)
         elif typ == "SHIPPING_LABEL":
             b["versandlabel"] += abs(amt)
@@ -468,6 +468,21 @@ def _tx_periode(datum: str) -> tuple[int, int]:
     return int(datum[:4]), int(datum[5:7])
 
 
+def lade_finance_transaktionen(year: int) -> list[dict]:
+    """Die beim letzten Finanzbericht mitgespeicherten Rohtransaktionen eines Jahres.
+
+    Leere Liste, wenn noch nie ein Bericht fuer dieses Jahr geladen wurde - kein
+    Fehler, damit ein automatischer Lauf (Scheduler) nicht deswegen abbricht.
+    """
+    import json
+    from pathlib import Path
+
+    cache = Path("./data") / f"finance_transactions_{year}.json"
+    if not cache.exists():
+        return []
+    return json.loads(cache.read_text(encoding="utf-8-sig"))
+
+
 def finance_report_details(*, year: int, period: str, kategorie: str) -> dict:
     """Einzelposten, aus denen sich EINE Zahl im Finanzbericht zusammensetzt.
 
@@ -475,15 +490,11 @@ def finance_report_details(*, year: int, period: str, kategorie: str) -> dict:
     genau wie im Bericht. ``kategorie`` ist brutto/gebuehren/versandlabel/erstattung/netto.
     Liest die im Bericht mitgespeicherten Rohtransaktionen - kein neuer eBay-Aufruf.
     """
-    import json
-    from pathlib import Path
-
-    cache = Path("./data") / f"finance_transactions_{year}.json"
-    if not cache.exists():
+    txs = lade_finance_transaktionen(year)
+    if not txs:
         raise FileNotFoundError(
             "Noch keine Einzelposten gespeichert - einmal oben auf 'aktualisieren' klicken, "
             "dann liegen sie vor.")
-    txs = json.loads(cache.read_text(encoding="utf-8-sig"))
 
     if period.endswith("gesamt"):
         monate_gesucht = set(range(1, 13))
@@ -507,7 +518,7 @@ def finance_report_details(*, year: int, period: str, kategorie: str) -> dict:
         typ = t.get("transactionType")
         amt = _dec((t.get("amount") or {}).get("value")) or Decimal("0")
         fee = _dec((t.get("totalFeeAmount") or {}).get("value")) or Decimal("0")
-        oid = _order_ref(t)
+        oid = order_ref(t)
         memo = t.get("transactionMemo") or t.get("feeType") or ""
 
         if kategorie == "brutto" and typ == "SALE":
@@ -581,7 +592,7 @@ async def gebuehren_aufschluesselung(*, year: int) -> dict:
         if d[:4] != str(year):
             continue
         typ = t.get("transactionType")
-        oid = _order_ref(t)          # wie im Gebuehren-Sync: inkl. references[ORDER_ID]
+        oid = order_ref(t)          # wie im Gebuehren-Sync: inkl. references[ORDER_ID]
         if typ == "SALE":
             fee = _dec((t.get("totalFeeAmount") or {}).get("value")) or Decimal("0")
             if fee and oid:

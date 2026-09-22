@@ -56,6 +56,30 @@ async def _fee_sync_job() -> None:
         db.close()
 
 
+async def _ebay_kosten_job() -> None:
+    """eBay-Finanztransaktionen des laufenden Jahres auffrischen und daraus fuer jede
+    NEUE Gebuehrentransaktion einen Kostenbeleg anlegen (Ausgabe, Belege-Seite).
+
+    Kein eigener API-Aufruf noetig, wenn der Finanzbericht ohnehin gecacht ist -
+    dieser Lauf besorgt genau das (refresh=True), damit ein Kostenbeleg entsteht,
+    sobald eBay die Gebuehr abgerechnet hat, nicht erst beim naechsten Handklick
+    auf 'aktualisieren' im Finanzbericht.
+    """
+    db = SessionLocal()
+    try:
+        from app.services import finance_service, invoice_service
+
+        jahr = datetime.now(timezone.utc).year
+        await finance_service.ebay_finance_report(year=jahr, refresh=True)
+        erg = invoice_service.generate_missing_ebay_kosten_belege(db, year=jahr)
+        if erg.get("erzeugt"):
+            logger.info("scheduler: eBay-Kostenbelege", extra=erg)
+    except Exception as exc:  # noqa: BLE001 - ein Job darf die Loop nie crashen
+        logger.error("scheduler: ebay kosten job failed", extra={"error": str(exc)[:200]})
+    finally:
+        db.close()
+
+
 async def _ad_rate_sync_job() -> None:
     """Echte Promoted-Listings-Anzeigenraten (Marketing API) taeglich nachziehen.
 
@@ -259,6 +283,8 @@ def start_scheduler() -> AsyncIOScheduler:
     )
     sched.add_job(_fee_sync_job, CronTrigger(hour="*/2", minute=25),
                   id="fee_sync_2h", replace_existing=True)
+    sched.add_job(_ebay_kosten_job, CronTrigger(hour="*/2", minute=40),
+                  id="ebay_kosten_2h", replace_existing=True)
     sched.add_job(_ad_rate_sync_job, CronTrigger(hour=2, minute=30),
                   id="ad_rate_sync_daily", replace_existing=True)
     sched.add_job(_listing_stats_job, CronTrigger(hour=3, minute=0),
@@ -288,6 +314,9 @@ def start_scheduler() -> AsyncIOScheduler:
     sched.add_job(_marktcheck_job,
                   DateTrigger(run_date=datetime.now(timezone.utc) + timedelta(minutes=7)),
                   id="studio_marktcheck_startup", replace_existing=True)
+    sched.add_job(_ebay_kosten_job,
+                  DateTrigger(run_date=datetime.now(timezone.utc) + timedelta(minutes=2)),
+                  id="ebay_kosten_startup", replace_existing=True)
 
     sched.start()
     _scheduler = sched
