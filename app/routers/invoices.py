@@ -54,17 +54,6 @@ def pod_verkaufsrechnungen_nachtragen(db: Session = Depends(get_db)):
     return invoice_service.generate_missing_pod_sale_invoices(db)
 
 
-# --- Kostenbelege fuer eBay-Gebuehren (Ausgaben-Seite) --------------------------
-# Entstehen automatisch je Gebuehrentransaktion (Scheduler, siehe app/scheduler.py);
-# dieser Knopf holt Fehlendes nach oder wirkt, solange der Scheduler noch nicht lief.
-@router.post("/ebay-kosten/nachtragen")
-def ebay_kosten_nachtragen(year: int | None = None, db: Session = Depends(get_db)):
-    from datetime import datetime, timezone
-
-    y = year or datetime.now(timezone.utc).year
-    return invoice_service.generate_missing_ebay_kosten_belege(db, year=y)
-
-
 # --- Original-Belege (echte Downloads vom lokalen Backfill-Client) ---
 # Auth: NICHT per Login-Session, sondern per X-Backfill-Token-Header (AuthMiddleware
 # laesst nur /originals/* mit gueltigem Token durch).

@@ -161,7 +161,6 @@
           <div class="kpi" id="kpi_problem" style="cursor:pointer" onclick="belFilter('problem')" title="Belege, aus denen sich keine Rechnung erzeugen liess — Grund steht in der Zeile"><div class="label">Problemfälle</div><div class="val" id="b_problem" style="color:var(--bad)">–</div><div class="sub">Rechnung nicht möglich</div></div>
           <div class="kpi" id="kpi_ae" hidden style="cursor:pointer" onclick="belFilter('aliexpress_purchase')" title="Nur Wareneinkäufe anzeigen"><div class="label">Kaufbelege (Wareneinkauf)</div><div class="val accent" id="b_purch">–</div><div class="sub" id="b_purch_sum">–</div></div>
           <div class="kpi" id="kpi_ohne" hidden style="cursor:pointer" onclick="belFilter('ohne_beleg')" title="Nur Käufe anzeigen, zu denen der Beleg fehlt"><div class="label">Käufe ohne Beleg</div><div class="val warn" id="b_miss_p">–</div><div class="sub">Kaufbeleg fehlt</div></div>
-          <div class="kpi" id="kpi_kosten" style="cursor:pointer" onclick="belFilter('ebay_kosten')" title="Nur eBay-Gebühren anzeigen (selbst erzeugte Kostenbelege, keine eBay-Originalrechnungen)"><div class="label">eBay-Gebühren</div><div class="val" style="color:var(--bad)" id="b_kosten">–</div><div class="sub" id="b_kosten_sum">–</div></div>
           <div class="kpi" id="kpi_sonst" style="cursor:pointer" onclick="belFilter('betriebsausgabe')" title="Nur sonstige Betriebsausgaben anzeigen"><div class="label">Sonstige Ausgaben</div><div class="val" id="b_other">–</div><div class="sub" id="b_other_sum">–</div></div>
         </div>
         <section class="card">
@@ -177,7 +176,6 @@
               <option value="pod_sales">Verkaufsrechnungen (eigene Motive)</option>
               <option value="problem">Problemfälle</option>
               <option value="aliexpress_purchase">Wareneinkauf</option>
-              <option value="ebay_kosten">eBay-Gebühren</option>
               <option value="betriebsausgabe">Sonstige Ausgabe</option>
             </select>
           </h2>
@@ -1487,7 +1485,7 @@
         const st = d.stats;
         // aktive Kachel hervorheben
         const kacheln = { all: "kpi_alle", problem: "kpi_problem", einnahme: "kpi_einnahme",
-                          aliexpress_purchase: "kpi_ae", ebay_kosten: "kpi_kosten",
+                          aliexpress_purchase: "kpi_ae",
                           ohne_beleg: "kpi_ohne", betriebsausgabe: "kpi_sonst" };
         Object.entries(kacheln).forEach(([wert, id]) => {
           const el = $(id); if (!el) return;
@@ -1497,13 +1495,11 @@
         });
         const pod = st.pod_sales_invoices || { count: 0, sum: 0 };
         const sales = st.sales_invoices || { count: 0, sum: 0 };
-        const kosten = st.ebay_kosten || { count: 0, sum: 0 };
         $("b_alle").textContent = (st.purchase_invoices.count || 0)
-          + ((st.other_expenses || {}).count || 0) + pod.count + sales.count + kosten.count;
+          + ((st.other_expenses || {}).count || 0) + pod.count + sales.count;
         $("b_einnahme").textContent = pod.count + sales.count;
         $("b_einnahme_sum").textContent = "Σ " + eur(st.income_total ?? (pod.sum + sales.sum));
         $("b_purch").textContent = st.purchase_invoices.count; $("b_purch_sum").textContent = "Σ " + eur(st.purchase_invoices.sum) + " · " + (st.purchase_originals ?? 0) + " mit Beleg";
-        $("b_kosten").textContent = kosten.count; $("b_kosten_sum").textContent = "Σ " + eur(kosten.sum);
         $("b_miss_p").textContent = st.purchases_missing;
         $("b_problem").textContent = st.problems ?? 0;
         const _oe = st.other_expenses || { count: 0, sum: 0 };
@@ -1523,11 +1519,9 @@
           const cur = i.currency === "CNY" ? cny(i.amount) : eur(i.amount);
           const typ = i.type === "pod_sales" || i.type === "ebay_sales"
             ? '<span class="badge ok">eBay-Verkauf</span>'
-            : i.type === "ebay_kosten"
-              ? '<span class="badge" style="color:var(--bad);background:color-mix(in srgb, var(--bad) 12%, transparent);border-color:color-mix(in srgb, var(--bad) 35%, transparent)">eBay-Gebühr</span>'
-              : i.type === "betriebsausgabe"
-                ? '<span class="badge" style="color:var(--warn);background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35)">Sonstige Ausgabe</span>'
-                : '<span class="badge" style="color:var(--accent-2);background:rgba(56,189,248,.12);border-color:rgba(56,189,248,.3)">Wareneinkauf</span>';
+            : i.type === "betriebsausgabe"
+              ? '<span class="badge" style="color:var(--warn);background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35)">Sonstige Ausgabe</span>'
+              : '<span class="badge" style="color:var(--accent-2);background:rgba(56,189,248,.12);border-color:rgba(56,189,248,.3)">Wareneinkauf</span>';
           // „Original"/„Platzhalter" als Typ entfaellt – ob ein echter Beleg da ist,
           // zeigt der Beleg-Knopf (blass = noch keiner).
           const echterBeleg = i.type === "aliexpress_purchase" ? i.is_original : i.has_file;
