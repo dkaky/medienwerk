@@ -385,6 +385,54 @@ def generate_pod_sale_invoice(db: Session, *, order_id: int) -> dict:
     return _invoice_dict(inv) | {"created": True}
 
 
+async def hole_original_pod_rechnungen(db: Session, *, limit: int = 50) -> dict:
+    """Ersetzt die selbst gebaute Verkaufsrechnung durch die ECHTE eBay-Rechnung/Packzettel
+    (PDF), fuer jede POD-Bestellung, die noch keine hat.
+
+    Holt eine Browser-Sitzung mit dem gespeicherten eBay-Login (app/studio/ebay_rechnungen.py)
+    und zieht die PDFs in einem Rutsch. Schlaegt das fehl (z. B. nicht angemeldet, eBay hat
+    noch keine Rechnung ausgestellt), bleibt die zuvor erzeugte Ersatzrechnung bestehen -
+    nichts geht dadurch verloren, es kommt nur (noch) keine bessere hinzu.
+    """
+    from app.studio import ebay_rechnungen
+
+    zeilen = db.execute(
+        select(Invoice.id, Invoice.reference_id, Invoice.is_original)
+        .where(Invoice.type == "pod_sales", Invoice.is_original.is_(False))
+        .limit(limit)
+    ).all()
+    if not zeilen:
+        return {"geholt": 0, "fehlgeschlagen": 0, "fehler": []}
+
+    nummern = [z.reference_id for z in zeilen if z.reference_id]
+    ergebnisse = await ebay_rechnungen.rechnungen_pdf(nummern)
+
+    geholt = 0
+    fehlermeldungen: list[str] = []
+    for inv_id, ref, _ in zeilen:
+        r = ergebnisse.get(ref)
+        if r is None or isinstance(r, Exception):
+            if isinstance(r, Exception):
+                fehlermeldungen.append(f"{ref}: {str(r)[:150]}")
+            continue
+        try:
+            inv = db.get(Invoice, inv_id)
+            if inv is None:
+                continue
+            period = (inv.invoice_date or datetime.now(timezone.utc)).strftime("%Y-%m")
+            stored = get_storage().store(content=r, period=period, file_type="pod_sales_original",
+                                         ref_id=ref, ext="pdf")
+            inv.file_path = stored.file_path
+            inv.file_hash = stored.file_hash
+            inv.is_original = True
+            db.commit()
+            geholt += 1
+        except Exception as exc:  # noqa: BLE001 - eine kaputte Zeile darf die anderen nicht stoppen
+            db.rollback()
+            fehlermeldungen.append(f"{ref}: {str(exc)[:150]}")
+    return {"geholt": geholt, "fehlgeschlagen": len(fehlermeldungen), "fehler": fehlermeldungen[:10]}
+
+
 def generate_missing_pod_sale_invoices(db: Session, *, limit: int = 2000) -> dict:
     """Fuer JEDE bezahlte POD-Bestellung, die noch keine Verkaufsrechnung hat, eine erzeugen.
 

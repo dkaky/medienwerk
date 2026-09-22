@@ -54,6 +54,16 @@ def pod_verkaufsrechnungen_nachtragen(db: Session = Depends(get_db)):
     return invoice_service.generate_missing_pod_sale_invoices(db)
 
 
+@router.post("/pod-verkauf/original-nachtragen")
+async def pod_verkaufsrechnungen_original_nachtragen(db: Session = Depends(get_db)):
+    """Die selbst gebauten Verkaufsrechnungen durch die echte eBay-Rechnung/Packzettel (PDF)
+    ersetzen - braucht ein bei eBay angemeldetes Browser-Profil (scripts/ebay_anmelden.py)."""
+    try:
+        return await invoice_service.hole_original_pod_rechnungen(db)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"eBay-Rechnungen holen fehlgeschlagen: {str(exc)[:300]}")
+
+
 # --- Original-Belege (echte Downloads vom lokalen Backfill-Client) ---
 # Auth: NICHT per Login-Session, sondern per X-Backfill-Token-Header (AuthMiddleware
 # laesst nur /originals/* mit gueltigem Token durch).

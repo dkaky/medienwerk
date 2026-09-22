@@ -151,4 +151,10 @@ async def gleiche_ab(db: Session, ebay: Any, *, tage: int = 60, erzwingen: bool 
         ergebnis["rechnungen"] = invoice_service.generate_missing_pod_sale_invoices(db)
     except Exception as exc:  # noqa: BLE001 - Rechnungslauf darf den Bestellabgleich nie reissen
         logger.error("Bestellabgleich: Verkaufsrechnungen fehlgeschlagen: %s", str(exc)[:200])
+    try:
+        from app.services import invoice_service
+
+        ergebnis["original_rechnungen"] = await invoice_service.hole_original_pod_rechnungen(db)
+    except Exception as exc:  # noqa: BLE001 - dito: darf den Bestellabgleich nie reissen
+        logger.error("Bestellabgleich: eBay-Original-Rechnungen fehlgeschlagen: %s", str(exc)[:200])
     return ergebnis
