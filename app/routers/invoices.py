@@ -46,14 +46,8 @@ def backfill(db: Session = Depends(get_db)):
 
 
 # --- Verkaufsrechnungen fuer eigene, bei eBay verkaufte Motive (Studio/POD) -----
-# Eigener Bereich, getrennt von der Belegablage (die zeigt nur Ausgaben). Entstehen
-# automatisch bei jedem Bestellabgleich; dieser Knopf holt Fehlendes nach.
-@router.get("/pod-verkauf")
-def pod_verkaufsrechnungen(db: Session = Depends(get_db)):
-    """Alle Verkaufsrechnungen fuer eigene Motive. Aendert nichts."""
-    return invoice_service.list_pod_sale_invoices(db)
-
-
+# Stehen zusammen mit den Belegen in EINER Liste (siehe /list) - entstehen automatisch
+# bei jedem Bestellabgleich; dieser Knopf holt Fehlendes nach.
 @router.post("/pod-verkauf/nachtragen")
 def pod_verkaufsrechnungen_nachtragen(db: Session = Depends(get_db)):
     """Fuer jede bezahlte POD-Bestellung ohne Rechnung eine erzeugen (Nachtrag/Reparatur)."""
@@ -505,17 +499,62 @@ def rechnung_anzeigen(invoice_id: int, db: Session = Depends(get_db)):
                     headers={"Content-Disposition": f'inline; filename="{name}"'})
 
 
+_AUTOPRINT_SKRIPT = b"<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));</script>"
+
+
 @router.get("/{invoice_id}/download")
-def download(invoice_id: int, db: Session = Depends(get_db)):
-    """Belegdatei herunterladen/anzeigen (HTML-Rechnung / TXT-Beleg)."""
+def download(invoice_id: int, db: Session = Depends(get_db), drucken: bool = False):
+    """Belegdatei herunterladen/anzeigen (HTML-Rechnung / TXT-Beleg).
+
+    ``drucken=true``: bei einer HTML-Rechnung oeffnet sich sofort der Druckdialog
+    (der Beleg selbst bleibt unveraendert, das Skript wird nur der Antwort beigefuegt)."""
     try:
         data, name, ctype = invoice_service.read_invoice_file(db, invoice_id=invoice_id)
     except PersistentError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    if drucken and ctype.startswith("text/html") and b"</body>" in data:
+        data = data.replace(b"</body>", _AUTOPRINT_SKRIPT + b"</body>", 1)
     inline = ctype.startswith("text/html") or ctype.startswith("image/") or ctype == "application/pdf"
     disposition = "inline" if inline else "attachment"
     return Response(content=data, media_type=ctype,
                     headers={"Content-Disposition": f'{disposition}; filename="{name}"'})
+
+
+@router.get("/drucken")
+def mehrere_drucken(ids: str, db: Session = Depends(get_db)):
+    """Mehrere Belege zu EINEM Druckvorgang zusammenfassen (Sammeldruck der Auswahl).
+
+    Nur HTML-Belege (selbst erzeugte Rechnungen) lassen sich zusammenfuegen - Fotos/PDFs
+    von Hand hochgeladener Kaufbelege bleiben aussen vor und werden separat genannt,
+    damit nichts stillschweigend fehlt."""
+    try:
+        invoice_ids = [int(x) for x in ids.split(",") if x.strip()]
+    except ValueError:
+        raise HTTPException(status_code=422, detail="ids muss eine Liste von Zahlen sein, z. B. 1,2,3")
+    if not invoice_ids:
+        raise HTTPException(status_code=422, detail="Keine Belege ausgewaehlt.")
+    seiten: list[bytes] = []
+    uebersprungen: list[str] = []
+    for iid in invoice_ids:
+        try:
+            data, name, ctype = invoice_service.read_invoice_file(db, invoice_id=iid)
+        except PersistentError:
+            uebersprungen.append(str(iid))
+            continue
+        if not ctype.startswith("text/html"):
+            uebersprungen.append(name)
+            continue
+        koerper = data.split(b"<body>", 1)
+        koerper = koerper[1].rsplit(b"</body>", 1)[0] if len(koerper) == 2 else data
+        seiten.append(b'<section style="page-break-after:always">' + koerper + b"</section>")
+    if not seiten:
+        raise HTTPException(status_code=404, detail="Keine der ausgewaehlten Belege lassen sich drucken "
+                            "(nur selbst erzeugte Rechnungen, keine hochgeladenen Fotos/PDFs).")
+    hinweis = (f'<p style="color:#b00;font-family:sans-serif">Nicht enthalten (eigene Datei, bitte '
+              f'einzeln oeffnen): {", ".join(uebersprungen)}</p>' if uebersprungen else "")
+    seite = (b'<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Belege drucken</title></head>'
+            b"<body>" + hinweis.encode("utf-8") + b"".join(seiten) + _AUTOPRINT_SKRIPT + b"</body></html>")
+    return Response(content=seite, media_type="text/html; charset=utf-8")
 
 
 @router.post("/{invoice_id}/replace-file")

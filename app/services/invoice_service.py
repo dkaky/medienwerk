@@ -586,11 +586,10 @@ def list_invoices(db: Session, *, type: str = "all", limit: int = 3000) -> dict:
 
     Angezeigtes Datum = TRANSAKTIONSDATUM (Verkaufs-/Bestelldatum), NICHT das
     Erstell-/Backfill-Datum des Belegs (sonst steht bei allen der Backfill-Tag)."""
-    # Belegablage = AUSGABEN (AliExpress-Käufe + sonstige Betriebsausgaben). eBay-
-    # Einnahmen laufen komplett ueber den eBay-Finanzbericht -> hier NIE anzeigen
-    # (bleiben in der DB). Kein Query-Limit-Verlust: eBay direkt in der WHERE raus.
-    stmt = select(Invoice).where(Invoice.type.notin_(("ebay_sales", "pod_sales")))
-    if type and type not in ("all", "ebay_sales", "pod_sales"):
+    # Alles zusammen: Verkaufsrechnungen (Einnahmen) UND Belege (Ausgaben) in EINER
+    # Liste, per Filter/Kachel trennbar - keine eigene Seite mehr dafuer.
+    stmt = select(Invoice)
+    if type and type != "all":
         stmt = stmt.where(Invoice.type == type)
     stmt = stmt.limit(min(max(limit, 1), 3000))
     invoices = db.scalars(stmt).all()
@@ -621,6 +620,7 @@ def list_invoices(db: Session, *, type: str = "all", limit: int = 3000) -> dict:
     items = []
     for i in invoices:
         d = _invoice_dict(i)
+        d["richtung"] = "einnahme" if i.type in ("ebay_sales", "pod_sales") else "ausgabe"
         if i.type == "ebay_sales":
             tx = sdate.get(i.sale_id)
             d["date"] = tx.isoformat() if tx is not None else None
@@ -636,23 +636,13 @@ def list_invoices(db: Session, *, type: str = "all", limit: int = 3000) -> dict:
     return {"invoices": items, "stats": invoice_summary(db)}
 
 
-def list_pod_sale_invoices(db: Session, *, limit: int = 3000) -> dict:
-    """Alle Verkaufsrechnungen fuer eigene, bei eBay verkaufte Motive - eigener Reiter,
-    getrennt von den Wareneinkaeufen in der Belegablage (Einnahmen vs. Ausgaben)."""
-    stmt = (select(Invoice).where(Invoice.type == "pod_sales")
-            .order_by(Invoice.invoice_date.desc()).limit(min(max(limit, 1), 3000)))
-    invoices = db.scalars(stmt).all()
-    summe = sum((float(i.amount) for i in invoices if i.amount is not None), 0.0)
-    return {"invoices": [_invoice_dict(i) for i in invoices],
-            "anzahl": len(invoices), "summe_eur": round(summe, 2)}
-
-
 def invoice_summary(db: Session) -> dict:
     """Anzahl + Summe je Belegtyp (Verkauf EUR, Einkauf CNY)."""
     def agg(t):
         rows = db.scalars(select(Invoice).where(Invoice.type == t)).all()
         return {"count": len(rows), "sum": round(sum(float(r.amount or 0) for r in rows), 2)}
     sales = agg("ebay_sales")
+    pod_sales = agg("pod_sales")
     purchases = agg("aliexpress_purchase")
     other = agg("betriebsausgabe")
     # Wieviele Sales/Orders haben noch KEINEN Beleg? (Luecken-Anzeige)
@@ -668,6 +658,8 @@ def invoice_summary(db: Session) -> dict:
                    and (i.receipt_data or {}).get("problem"))
     return {
         "sales_invoices": sales, "purchase_invoices": purchases,
+        "pod_sales_invoices": pod_sales,
+        "income_total": round(sales["sum"] + pod_sales["sum"], 2),
         "sales_total": n_sales, "orders_total": n_orders,
         "sales_missing": max(0, int(n_sales) - sales["count"]),
         # „Kaeufe ohne Beleg" = Kaufbeleg-Zeilen ohne echtes Original. Genau das zeigt

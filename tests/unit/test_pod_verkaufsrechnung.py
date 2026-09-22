@@ -113,17 +113,56 @@ def test_nachtragen_erzeugt_fuer_alle_faelligen_bestellungen_genau_eine_rechnung
         _aufraeumen(db, order_id)
 
 
-def test_liste_zeigt_nur_pod_sales_und_belege_zeigt_sie_nicht(db):
+def test_download_mit_drucken_fuegt_autoprint_skript_ein(db, client):
+    order_id = "20-TEST-001"
+    try:
+        uebernehme(db, [_roh_bestellung(order_id)])
+        zeile = db.query(PodOrder).filter_by(channel="ebay", external_id=order_id).first()
+        inv = invoice_service.generate_pod_sale_invoice(db, order_id=zeile.id)
+        normal = client.get(f"/api/v1/invoices/{inv['id']}/download")
+        assert "window.print()" not in normal.text
+        gedruckt = client.get(f"/api/v1/invoices/{inv['id']}/download?drucken=true")
+        assert "window.print()" in gedruckt.text
+        assert "Rechnung" in gedruckt.text  # der eigentliche Beleg bleibt drin
+    finally:
+        _aufraeumen(db, order_id)
+
+
+def test_mehrere_drucken_fasst_ausgewaehlte_html_belege_zusammen(db, client):
+    order_a, order_b = "20-TEST-001", "20-TEST-002"
+    try:
+        uebernehme(db, [_roh_bestellung(order_a), _roh_bestellung(order_b)])
+        za = db.query(PodOrder).filter_by(channel="ebay", external_id=order_a).first()
+        zb = db.query(PodOrder).filter_by(channel="ebay", external_id=order_b).first()
+        ia = invoice_service.generate_pod_sale_invoice(db, order_id=za.id)
+        ib = invoice_service.generate_pod_sale_invoice(db, order_id=zb.id)
+        r = client.get(f"/api/v1/invoices/drucken?ids={ia['id']},{ib['id']}")
+        assert r.status_code == 200
+        assert r.text.count("page-break-after") == 2
+        assert "window.print()" in r.text
+        assert order_a in r.text and order_b in r.text
+    finally:
+        _aufraeumen(db, order_a)
+        _aufraeumen(db, order_b)
+
+
+def test_mehrere_drucken_ohne_treffer_meldet_klaren_fehler(client):
+    r = client.get("/api/v1/invoices/drucken?ids=999999999")
+    assert r.status_code == 404
+
+
+def test_verkaufsrechnung_steht_zusammen_mit_den_belegen_in_einer_liste(db):
     order_id = "20-TEST-001"
     try:
         uebernehme(db, [_roh_bestellung(order_id)])
         zeile = db.query(PodOrder).filter_by(channel="ebay", external_id=order_id).first()
         invoice_service.generate_pod_sale_invoice(db, order_id=zeile.id)
-        liste = invoice_service.list_pod_sale_invoices(db)
-        assert liste["anzahl"] >= 1
-        assert any(i["reference_id"] == order_id for i in liste["invoices"])
-        belege = invoice_service.list_invoices(db, type="all")
-        assert all(i.get("reference_id") != order_id or i.get("type") != "pod_sales"
-                   for i in belege["invoices"])
+        alle = invoice_service.list_invoices(db, type="all")
+        treffer = [i for i in alle["invoices"] if i["reference_id"] == order_id]
+        assert len(treffer) == 1
+        assert treffer[0]["type"] == "pod_sales"
+        assert treffer[0]["richtung"] == "einnahme"
+        nur_verkauf = invoice_service.list_invoices(db, type="pod_sales")
+        assert any(i["reference_id"] == order_id for i in nur_verkauf["invoices"])
     finally:
         _aufraeumen(db, order_id)
