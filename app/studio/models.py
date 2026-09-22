@@ -190,6 +190,10 @@ class PodOrder(TimestampMixin, Base):
     note: Mapped[Optional[str]] = mapped_column(Text)
     # Was genau bestellt wurde (Titel, Menge, Produktart, Farbe, Groesse, Motiv-Nummer) als JSON.
     positionen_json: Mapped[Optional[str]] = mapped_column(Text)
+    # Name + Anschrift + E-Mail des Kaeufers (aus der eBay-Bestellung) als JSON -
+    # fuer die selbst ausgestellte Verkaufsrechnung. Keine eigene Tabelle: es ist
+    # ein Feld, das nur beim Rechnungdruck gebraucht wird.
+    kaeufer_json: Mapped[Optional[str]] = mapped_column(Text)
 
 
 class PodLedgerEntry(TimestampMixin, Base):

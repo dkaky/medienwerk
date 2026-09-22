@@ -53,6 +53,22 @@ def _zeit(text: str | None) -> datetime | None:
         return None
 
 
+def _kaeufer(b: dict) -> dict:
+    """Name, Anschrift und E-Mail des Kaeufers aus der eBay-Bestellung - fuer die
+    Verkaufsrechnung. eBay liefert das in fulfillmentStartInstructions[0].shippingStep.shipTo."""
+    schritte = b.get("fulfillmentStartInstructions") or []
+    ship_to = ((schritte[0] if schritte else {}).get("shippingStep") or {}).get("shipTo") or {}
+    adresse = ship_to.get("contactAddress") or {}
+    return {
+        "name": ship_to.get("fullName") or (b.get("buyer") or {}).get("username") or "",
+        "strasse": " ".join(filter(None, [adresse.get("addressLine1"), adresse.get("addressLine2")])),
+        "plz": adresse.get("postalCode") or "",
+        "ort": adresse.get("city") or "",
+        "land": adresse.get("countryCode") or "",
+        "email": ship_to.get("email") or "",
+    }
+
+
 def _position(pos: dict) -> dict:
     """Eine Bestellposition: was, in welcher Farbe und Groesse, welches Motiv (aus der Artikelnummer)."""
     from app.studio import mockup_plan
@@ -113,6 +129,7 @@ def uebernehme(db: Session, bestellungen: list[dict[str, Any]]) -> dict:
         zeile.listing_id = _angebot(db, positionen)
         zeile.note = titel or None
         zeile.positionen_json = json.dumps([_position(p) for p in positionen], ensure_ascii=False)
+        zeile.kaeufer_json = json.dumps(_kaeufer(b), ensure_ascii=False)
     db.commit()
     return {"gelesen": len(bestellungen), "neu": neu, "aktualisiert": aktualisiert}
 
@@ -128,4 +145,10 @@ async def gleiche_ab(db: Session, ebay: Any, *, tage: int = 60, erzwingen: bool 
     ergebnis = uebernehme(db, bestellungen)
     if ergebnis["neu"]:
         logger.info("Bestellabgleich: %s neue Bestellung(en) von eBay", ergebnis["neu"])
+    try:
+        from app.services import invoice_service
+
+        ergebnis["rechnungen"] = invoice_service.generate_missing_pod_sale_invoices(db)
+    except Exception as exc:  # noqa: BLE001 - Rechnungslauf darf den Bestellabgleich nie reissen
+        logger.error("Bestellabgleich: Verkaufsrechnungen fehlgeschlagen: %s", str(exc)[:200])
     return ergebnis

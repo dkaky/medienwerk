@@ -9,6 +9,7 @@ from __future__ import annotations
 import csv
 import html
 import io
+import json
 import re
 import zipfile
 from datetime import datetime, timedelta, timezone
@@ -133,10 +134,12 @@ def _eur(value) -> str:
     return f"{Decimal(str(value or 0)):.2f} €".replace(".", ",")
 
 
-def _next_sale_invoice_number(db: Session) -> str:
+def _next_sale_invoice_number(db: Session, *, typen: tuple[str, ...] = ("ebay_sales",)) -> str:
     s = get_settings()
+    # ebay_sales (Dropshipping-Aera) und pod_sales (eigene Motive) teilen sich EINE
+    # fortlaufende Nummerierung - keine Luecken/Doppelungen, falls beide je Belege haben.
     count = db.scalar(
-        select(func.count()).select_from(Invoice).where(Invoice.type == "ebay_sales")
+        select(func.count()).select_from(Invoice).where(Invoice.type.in_(typen))
     ) or 0
     return f"{s.invoice_number_prefix}-{datetime.now(timezone.utc).year}-{count + 1:04d}"
 
@@ -258,6 +261,162 @@ def generate_sale_invoice(db: Session, *, sale_id: int) -> dict:
     db.commit()
     db.refresh(inv)
     return _invoice_dict(inv) | {"created": True}
+
+
+def _render_pod_sale_invoice_html(*, number: str, date: datetime, order,
+                                  positionen: list[dict], kaeufer: dict, mit_ust: bool = False) -> str:
+    """Wie ``_render_sale_invoice_html``, aber fuer eine POD-Bestellung (Studio) mit
+    mehreren Positionen statt genau einer ``Sale``-Zeile."""
+    s = get_settings()
+    total = Decimal(str(order.sale_total_eur or 0))
+    buyer_lines = [kaeufer.get("name") or "Käufer"]
+    for k in ("strasse", "plz", "ort", "land"):
+        if kaeufer.get(k):
+            buyer_lines.append(str(kaeufer[k]))
+    buyer = "<br>".join(html.escape(x) for x in buyer_lines if x)
+    seller_addr = "<br>".join(
+        html.escape(teil.strip())
+        for teil in s.seller_address.replace("|", "\n").split("\n")
+        if teil.strip()
+    )
+    tax_line = f"<div>Steuernr./USt-IdNr.: {html.escape(s.seller_tax_id)}</div>" if s.seller_tax_id else ""
+    leistung = (order.ordered_at or date).strftime("%d.%m.%Y")
+
+    # Einzelpreis je Position ueber den Mengenanteil aus dem Gesamtbetrag geschaetzt -
+    # eBay liefert den Positionspreis nicht separat in der Bestellliste, nur die Summe.
+    gesamt_menge = sum(max(1, int(p.get("menge") or 1)) for p in positionen) or 1
+    zeilen = []
+    for n, p in enumerate(positionen, start=1):
+        menge = max(1, int(p.get("menge") or 1))
+        anteil = (total * menge / gesamt_menge).quantize(Decimal("0.01"))
+        einzel = (anteil / menge).quantize(Decimal("0.01"))
+        titel = p.get("titel") or "Artikel"
+        zeilen.append(f'<tr><td>{n}</td><td>{html.escape(titel)}</td><td class="n">{menge}</td>'
+                      f'<td class="n">{_eur(einzel)}</td><td class="n">{_eur(anteil)}</td></tr>')
+    zeilen_html = "".join(zeilen) or '<tr><td colspan="5">Keine Positionen bekannt</td></tr>'
+
+    if mit_ust:
+        satz = Decimal(str(s.ust_satz))
+        netto = (total / (1 + satz)).quantize(Decimal("0.01"))
+        ust = total - netto
+        prozent = f"{satz * 100:.0f}"
+        summen = (f'<tfoot><tr><td colspan="4" class="n">Nettobetrag</td><td class="n">{_eur(netto)}</td></tr>'
+                  f'<tr><td colspan="4" class="n">zzgl. {prozent} % USt</td><td class="n">{_eur(ust)}</td></tr>'
+                  f'<tr class="tot"><td colspan="4" class="n">Gesamtbetrag (brutto)</td>'
+                  f'<td class="n">{_eur(total)}</td></tr></tfoot></table>')
+        hinweis = (f'<div class="note">Alle Preise inkl. {prozent} % Umsatzsteuer. '
+                   f'Leistungsdatum: {leistung}.</div>')
+    else:
+        summen = (f'<tfoot><tr class="tot"><td colspan="4" class="n">Gesamtbetrag</td>'
+                  f'<td class="n">{_eur(total)}</td></tr></tfoot></table>')
+        hinweis = ('<div class="note">Gemäß § 19 UStG (Kleinunternehmerregelung) wird keine '
+                   f'Umsatzsteuer berechnet und ausgewiesen. Leistungsdatum: {leistung}.</div>')
+    return f"""<!doctype html><html lang="de"><head><meta charset="utf-8">
+<title>Rechnung {html.escape(number)}</title>
+<style>body{{font-family:Arial,sans-serif;color:#111;max-width:760px;margin:24px auto;padding:0 20px}}
+h1{{font-size:22px}} .row{{display:flex;justify-content:space-between;gap:20px}}
+table{{width:100%;border-collapse:collapse;margin-top:22px}} th,td{{border-bottom:1px solid #ccc;padding:8px;text-align:left}}
+td.n,th.n{{text-align:right}} .tot{{font-weight:bold}} .muted{{color:#666;font-size:12px}}
+.note{{margin-top:18px;padding:10px 12px;background:#f5f5f5;border-radius:6px;font-size:13px}}</style></head>
+<body>
+<div class="row"><div><b>{html.escape(s.seller_name)}</b><br>{seller_addr}{tax_line}
+{('<div>'+html.escape(s.seller_email)+'</div>') if s.seller_email else ''}</div>
+<div style="text-align:right"><h1>Rechnung</h1>
+<div>Nr.: <b>{html.escape(number)}</b></div>
+<div>Datum: {date.strftime('%d.%m.%Y')}</div>
+<div class="muted">eBay-Bestellung: {html.escape(order.external_id or '')}</div></div></div>
+<div style="margin-top:26px"><div class="muted">Rechnung an</div>{buyer}</div>
+<table><thead><tr><th>Pos.</th><th>Beschreibung</th><th class="n">Menge</th><th class="n">Einzel</th><th class="n">Betrag</th></tr></thead>
+<tbody>{zeilen_html}</tbody>
+{summen}
+{hinweis}
+<div class="muted" style="margin-top:24px">Vielen Dank für Ihren Einkauf.</div>
+</body></html>"""
+
+
+def generate_pod_sale_invoice(db: Session, *, order_id: int) -> dict:
+    """Erzeugt die Verkaufsrechnung (HTML) fuer eine eigene POD-Bestellung (Studio-Motiv,
+    bei eBay verkauft) und legt sie ab - separat von den Wareneinkaeufen in der Belegablage.
+
+    Ab dem Stichtag der Regelbesteuerung mit USt-Ausweis, davor nach § 19.
+    Idempotent: existiert bereits eine Verkaufsrechnung zur Bestellung, wird sie
+    zurueckgegeben statt neu erzeugt.
+    """
+    from app.studio.models import PodOrder
+
+    order = db.get(PodOrder, order_id)
+    if order is None:
+        raise PersistentError("Bestellung nicht gefunden")
+
+    ref = str(order.external_id or order.id)
+    existing = db.scalar(
+        select(Invoice).where(Invoice.type == "pod_sales", Invoice.reference_id == ref)
+    )
+    if existing is not None:
+        return _invoice_dict(existing) | {"created": False}
+
+    try:
+        positionen = json.loads(order.positionen_json or "[]")
+    except ValueError:
+        positionen = []
+    try:
+        kaeufer = json.loads(order.kaeufer_json or "{}")
+    except ValueError:
+        kaeufer = {}
+
+    now = datetime.now(timezone.utc)
+    number = _next_sale_invoice_number(db, typen=("ebay_sales", "pod_sales"))
+    content = _render_pod_sale_invoice_html(
+        number=number, date=now, order=order, positionen=positionen, kaeufer=kaeufer,
+        mit_ust=regelbesteuert(order.ordered_at or now)).encode("utf-8")
+    stored = get_storage().store(content=content, period=_period(order.ordered_at or now),
+                                 file_type="pod_sales", ref_id=ref, ext="html")
+    positions_kurz = "; ".join(f"{p.get('menge', 1)}x {p.get('titel', '')}".strip()
+                               for p in positionen)[:480] or order.note
+    inv = Invoice(
+        type="pod_sales", reference_id=ref, invoice_number=number,
+        invoice_date=order.ordered_at or now,
+        amount=Decimal(str(order.sale_total_eur or 0)), currency="EUR",
+        note=positions_kurz, file_path=stored.file_path, file_hash=stored.file_hash,
+    )
+    db.add(inv)
+    db.commit()
+    db.refresh(inv)
+    return _invoice_dict(inv) | {"created": True}
+
+
+def generate_missing_pod_sale_invoices(db: Session, *, limit: int = 2000) -> dict:
+    """Fuer JEDE bezahlte POD-Bestellung, die noch keine Verkaufsrechnung hat, eine erzeugen.
+
+    Wird nach jedem Bestellabgleich aufgerufen (automatisch, bei jedem neuen Verkauf) -
+    und heilt nebenbei fehlende Rechnungen aus Zeiten nach, in denen der Automatismus
+    noch nicht bestand. Stornierte/schwebende Bestellungen zaehlen nicht als Verkauf.
+    """
+    from app.studio.models import PodOrder
+
+    vorhandene_refs = {
+        r for (r,) in db.execute(
+            select(Invoice.reference_id).where(Invoice.type == "pod_sales")
+        ).all() if r
+    }
+    faellig = db.scalars(
+        select(PodOrder).where(PodOrder.status.notin_(("cancelled", "pending")))
+        .order_by(PodOrder.id).limit(limit)
+    ).all()
+    erzeugt = uebersprungen = fehler = 0
+    for order in faellig:
+        ref = str(order.external_id or order.id)
+        if ref in vorhandene_refs:
+            uebersprungen += 1
+            continue
+        try:
+            r = generate_pod_sale_invoice(db, order_id=order.id)
+            erzeugt += 1 if r.get("created") else 0
+            uebersprungen += 0 if r.get("created") else 1
+        except Exception:  # noqa: BLE001 - eine kaputte Bestellung darf die anderen nicht stoppen
+            db.rollback()
+            fehler += 1
+    return {"erzeugt": erzeugt, "uebersprungen": uebersprungen, "fehler": fehler}
 
 
 def backfill_invoices(db: Session, *, limit: int = 5000) -> dict:
@@ -430,8 +589,8 @@ def list_invoices(db: Session, *, type: str = "all", limit: int = 3000) -> dict:
     # Belegablage = AUSGABEN (AliExpress-Käufe + sonstige Betriebsausgaben). eBay-
     # Einnahmen laufen komplett ueber den eBay-Finanzbericht -> hier NIE anzeigen
     # (bleiben in der DB). Kein Query-Limit-Verlust: eBay direkt in der WHERE raus.
-    stmt = select(Invoice).where(Invoice.type != "ebay_sales")
-    if type and type not in ("all", "ebay_sales"):
+    stmt = select(Invoice).where(Invoice.type.notin_(("ebay_sales", "pod_sales")))
+    if type and type not in ("all", "ebay_sales", "pod_sales"):
         stmt = stmt.where(Invoice.type == type)
     stmt = stmt.limit(min(max(limit, 1), 3000))
     invoices = db.scalars(stmt).all()
@@ -475,6 +634,17 @@ def list_invoices(db: Session, *, type: str = "all", limit: int = 3000) -> dict:
         items.append(d)
     items.sort(key=lambda x: x.get("date") or "", reverse=True)
     return {"invoices": items, "stats": invoice_summary(db)}
+
+
+def list_pod_sale_invoices(db: Session, *, limit: int = 3000) -> dict:
+    """Alle Verkaufsrechnungen fuer eigene, bei eBay verkaufte Motive - eigener Reiter,
+    getrennt von den Wareneinkaeufen in der Belegablage (Einnahmen vs. Ausgaben)."""
+    stmt = (select(Invoice).where(Invoice.type == "pod_sales")
+            .order_by(Invoice.invoice_date.desc()).limit(min(max(limit, 1), 3000)))
+    invoices = db.scalars(stmt).all()
+    summe = sum((float(i.amount) for i in invoices if i.amount is not None), 0.0)
+    return {"invoices": [_invoice_dict(i) for i in invoices],
+            "anzahl": len(invoices), "summe_eur": round(summe, 2)}
 
 
 def invoice_summary(db: Session) -> dict:

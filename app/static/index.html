@@ -148,6 +148,7 @@
       <div class="page-head"><h1>Buchhaltung</h1><p>Belege, Kontobewegungen und der Export für den Steuerberater.</p></div>
       <div class="subtabs" id="belSubtabs">
         <button data-bsub="belegablage" class="active">Belege</button>
+        <button data-bsub="verkaufsrechnungen">Verkaufsrechnungen</button>
         <button data-bsub="konto">Konto</button>
         <button data-bsub="finanzbericht">eBay-Finanzbericht</button>
       </div>
@@ -189,6 +190,28 @@
       <!-- Sub: eBay-Finanzbericht (eigene Seite, kein Popup) -->
       <!-- Kontoansicht: jede Bewegung auf dem Geschaeftskonto mit Beleg + Kategorie.
            Ein Buchhaltungsprogramm denkt vom KONTO her – jeder Euro muss erklaert sein. -->
+      <!-- Sub: Verkaufsrechnungen = EINNAHMEN (eigene Motive, bei eBay verkauft) -
+           bewusst getrennt von der Belegablage oben (die zeigt nur Ausgaben). -->
+      <div class="subview" id="bsub-verkaufsrechnungen">
+        <div class="kpis">
+          <div class="kpi"><div class="label">Verkaufsrechnungen</div><div class="val" id="vr_anzahl">–</div></div>
+          <div class="kpi"><div class="label">Summe</div><div class="val ok" id="vr_summe">–</div></div>
+        </div>
+        <section class="card">
+          <h2>Verkaufsrechnungen <span class="tag">Einnahmen</span>
+            <span class="muted" style="font-size:12px;font-weight:400;margin-left:8px">Entstehen automatisch bei jedem Verkauf eines eigenen Motivs bei eBay</span>
+            <span class="spacer" style="flex:1"></span>
+            <button class="btn sm" onclick="vrNachtragen()" title="Fuer jeden bezahlten Verkauf ohne Rechnung eine erzeugen">Fehlende nachtragen</button>
+          </h2>
+          <div class="body tight"><div class="table-scroll">
+            <table>
+              <thead><tr><th>Datum</th><th>Nr.</th><th>eBay-Bestellung</th><th>Artikel</th><th class="num">Betrag</th><th></th></tr></thead>
+              <tbody id="vrBody"><tr><td colspan="6" class="empty">lade …</td></tr></tbody>
+            </table>
+          </div></div>
+        </section>
+      </div>
+
       <div class="subview" id="bsub-konto">
         <div class="kpis">
           <div class="kpi" id="kk_offen" style="cursor:pointer" onclick="kontoFilter('ohne_beleg')" title="Abbuchungen ohne Beleg – hier liegt die Arbeit"><div class="label">Ohne Beleg</div><div class="val" id="k_offen" style="color:var(--bad)">–</div><div class="sub" id="k_offen_sum">–</div></div>
@@ -389,7 +412,8 @@
       document.querySelectorAll("#view-belege .subview").forEach(v => v.classList.toggle("active", v.id === "bsub-" + name));
       document.querySelectorAll("#belSubtabs button").forEach(b => b.classList.toggle("active", b.dataset.bsub === name));
       (name === "finanzbericht" ? loadFinanceReportView
-        : name === "konto" ? loadKonto : loadBelege)();
+        : name === "konto" ? loadKonto
+        : name === "verkaufsrechnungen" ? loadVerkaufsrechnungen : loadBelege)();
     }
     function loadBelegeView() {
       const b = document.querySelector("#belSubtabs button.active");
@@ -624,6 +648,38 @@
             <button class="btn" onclick="closeModal()">Schließen</button>
           </div>`;
       } catch (e) { toast("Netzwerkfehler", true); if (btn) { btn.disabled = false; btn.textContent = "Eigenbeleg erstellen"; } }
+    }
+
+    // -------- Verkaufsrechnungen (eigene Motive, bei eBay verkauft) --------
+    async function loadVerkaufsrechnungen() {
+      const body = $("vrBody");
+      body.innerHTML = `<tr><td colspan="6" class="empty">lade …</td></tr>`;
+      try {
+        const d = await api("GET", "/api/v1/invoices/pod-verkauf");
+        $("vr_anzahl").textContent = d.anzahl;
+        $("vr_summe").textContent = eur(d.summe_eur);
+        if (!d.invoices.length) {
+          body.innerHTML = `<tr><td colspan="6" class="empty">noch keine Verkaufsrechnungen — entstehen automatisch bei Verkäufen eigener Motive</td></tr>`;
+          return;
+        }
+        body.innerHTML = d.invoices.map(i => `<tr>
+          <td>${i.date ? new Date(i.date).toLocaleDateString("de-DE") : "–"}</td>
+          <td>${esc(i.invoice_number || "–")}</td>
+          <td>${esc(i.reference_id || "–")}</td>
+          <td>${esc(i.note || "–")}</td>
+          <td class="num">${eur(i.amount)}</td>
+          <td><a class="btn sm" href="/api/v1/invoices/${i.id}/download" target="_blank" rel="noopener">Rechnung</a></td>
+        </tr>`).join("");
+      } catch (e) {
+        body.innerHTML = `<tr><td colspan="6" class="empty neg">Verkaufsrechnungen konnten nicht geladen werden.</td></tr>`;
+      }
+    }
+    async function vrNachtragen() {
+      try {
+        const r = await api("POST", "/api/v1/invoices/pod-verkauf/nachtragen");
+        toast(r.erzeugt ? `${r.erzeugt} Rechnung(en) nachgetragen` : "Alle Verkäufe haben schon eine Rechnung");
+        loadVerkaufsrechnungen();
+      } catch (e) {}
     }
 
     // -------- eBay-Finanzbericht (visuell: Grafiken + Tabelle) --------

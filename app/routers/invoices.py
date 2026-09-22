@@ -45,6 +45,21 @@ def backfill(db: Session = Depends(get_db)):
     return invoice_service.backfill_invoices(db)
 
 
+# --- Verkaufsrechnungen fuer eigene, bei eBay verkaufte Motive (Studio/POD) -----
+# Eigener Bereich, getrennt von der Belegablage (die zeigt nur Ausgaben). Entstehen
+# automatisch bei jedem Bestellabgleich; dieser Knopf holt Fehlendes nach.
+@router.get("/pod-verkauf")
+def pod_verkaufsrechnungen(db: Session = Depends(get_db)):
+    """Alle Verkaufsrechnungen fuer eigene Motive. Aendert nichts."""
+    return invoice_service.list_pod_sale_invoices(db)
+
+
+@router.post("/pod-verkauf/nachtragen")
+def pod_verkaufsrechnungen_nachtragen(db: Session = Depends(get_db)):
+    """Fuer jede bezahlte POD-Bestellung ohne Rechnung eine erzeugen (Nachtrag/Reparatur)."""
+    return invoice_service.generate_missing_pod_sale_invoices(db)
+
+
 # --- Original-Belege (echte Downloads vom lokalen Backfill-Client) ---
 # Auth: NICHT per Login-Session, sondern per X-Backfill-Token-Header (AuthMiddleware
 # laesst nur /originals/* mit gueltigem Token durch).
