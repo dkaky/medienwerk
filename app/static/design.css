@@ -110,6 +110,8 @@ nav.tabs button.active, nav.tabs a.active, .nav-item.active { color: var(--ink);
 .kpi .val, .kpi .value { margin-top: 4px; font-size: 26px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
 .kpi .sub { margin-top: 4px; color: var(--muted); font-size: 12px; }
 .kpi .val.ok { color: var(--ok); } .kpi .val.warn { color: var(--warn); } .kpi .val.bad { color: var(--bad); }
+button.kpi { display: block; width: 100%; text-align: left; font: inherit; cursor: pointer; }
+button.kpi:hover { border-color: var(--ink); }
 
 /* ---------- Karten ---------- */
 .card, .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 24px; }

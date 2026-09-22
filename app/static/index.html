@@ -653,18 +653,23 @@
     }
     function renderFinanceReport(r) {
       const g = r.gesamt || {};
+      _finanzJahr = r.year;
       const mon = (r.monate || []).map((m, i) => ({ label: _MONL[i] || ("M" + (i + 1)), brutto: m.brutto, gebuehren: m.gebuehren, netto: m.netto }));
-      const card = (label, val, cls) => `<div class="kpi"><div class="label">${label}</div><div class="val ${cls || ''}">${_fmtE0(val)}</div></div>`;
+      // Kacheln UND Tabellenzellen sind jetzt Knoepfe: data-period + data-kategorie
+      // oeffnen im Modal die Einzelposten, aus denen sich die Zahl zusammensetzt.
+      const card = (label, val, cls, period, kategorie) => `<button type="button" class="kpi finanz-klick" data-period="${esc(period)}" data-kategorie="${kategorie}" title="Einzelposten anzeigen"><div class="label">${label}</div><div class="val ${cls || ''}">${_fmtE0(val)}</div></button>`;
       const QT = ["rgba(20,184,166,.10)", "rgba(56,189,248,.10)", "rgba(167,139,250,.10)", "rgba(251,191,36,.10)"];
+      const zk = (val, kat, period, farbe, bold) => `<td class="num finanz-klick" data-period="${esc(period)}" data-kategorie="${kat}" style="cursor:pointer;text-decoration:underline dotted;${farbe ? 'color:'+farbe+';' : ''}${bold ? 'font-weight:700' : ''}" title="Einzelposten anzeigen">${eur(val)}</td>`;
       const qrow = (q, style, bold) => `<tr style="${style || ''}">
         <td style="${bold ? 'font-weight:700' : 'font-weight:600'}">${esc(q.period)}</td>
         <td class="num">${q.count}</td>
-        <td class="num">${eur(q.brutto)}</td>
-        <td class="num" style="color:var(--warn)">${eur(q.gebuehren)}</td>
-        <td class="num">${eur(q.versandlabel)}</td>
-        <td class="num" style="color:var(--bad)">${eur(q.erstattung)}</td>
-        <td class="num" style="color:var(--ok);font-weight:${bold ? 700 : 600}">${eur(q.netto)}</td></tr>`;
+        ${zk(q.brutto, "brutto", q.period, "var(--ok)", bold)}
+        ${zk(q.gebuehren, "gebuehren", q.period, "var(--warn)", bold)}
+        ${zk(q.versandlabel, "versandlabel", q.period, null, bold)}
+        ${zk(q.erstattung, "erstattung", q.period, "var(--bad)", bold)}
+        ${zk(q.netto, "netto", q.period, "var(--ok)", true)}</tr>`;
       const stand = r.cached_at ? `Stand ${new Date(r.cached_at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })} Uhr` : "";
+      const gp = g.period || `${r.year} gesamt`;
       $("finanzInhalt").innerHTML = `
         <section class="card" style="padding:18px">
           <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px">
@@ -674,12 +679,12 @@
             <span class="muted" style="font-size:11.5px">${stand}</span>
             <button class="btn sm" onclick="loadFinanceReportView(true)" title="Frisch aus der eBay-Finances-API neu berechnen (~15–30 s)">aktualisieren</button>
           </div>
-          <p class="muted" style="font-size:12px;margin:2px 0 14px">Offizieller Einnahmen-/Zahlungs-Nachweis für den Steuerberater. Lädt aus dem Cache (täglich aufgefrischt).</p>
+          <p class="muted" style="font-size:12px;margin:2px 0 14px">Offizieller Einnahmen-/Zahlungs-Nachweis für den Steuerberater. Lädt aus dem Cache (täglich aufgefrischt). Auf eine Zahl klicken zeigt, woraus sie sich zusammensetzt.</p>
           <div class="kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
-            ${card("Umsatz brutto", g.brutto, "ok")}
-            ${card("eBay-Gebühren", g.gebuehren, "warn")}
-            ${card("Versandlabel", g.versandlabel, "warn")}
-            ${card("Netto-Auszahlung", g.netto, "accent")}
+            ${card("Umsatz brutto", g.brutto, "ok", gp, "brutto")}
+            ${card("eBay-Gebühren", g.gebuehren, "warn", gp, "gebuehren")}
+            ${card("Versandlabel", g.versandlabel, "warn", gp, "versandlabel")}
+            ${card("Netto-Auszahlung", g.netto, "accent", gp, "netto")}
           </div>
           <div style="font-size:12.5px;font-weight:600;margin:2px 0 4px">Umsatz je Monat (brutto)</div>
           ${svgBars(mon, "brutto", "var(--accent)", 175)}
@@ -701,6 +706,38 @@
         </section>
         `;
     }
+
+    let _finanzJahr = null;
+    const FINANZ_KAT_NAME = { brutto: "Umsatz brutto", gebuehren: "eBay-Gebühren",
+      versandlabel: "Versandlabel", erstattung: "Erstattung", netto: "Netto-Auszahlung" };
+    document.addEventListener("click", async (ev) => {
+      const t = ev.target.closest(".finanz-klick");
+      if (!t) return;
+      const { period, kategorie } = t.dataset;
+      $("m_title").textContent = `${FINANZ_KAT_NAME[kategorie] || kategorie} – ${period}`;
+      $("modalBody").innerHTML = `<div class="muted" style="padding:12px">Lade Einzelposten …</div>`;
+      $("modal").classList.add("open");
+      document.querySelector("#modal .modal-card")?.classList.add("wide");
+      try {
+        const d = await api("GET", `/api/v1/invoices/ebay-finance-report/details?year=${_finanzJahr}&period=${encodeURIComponent(period)}&kategorie=${kategorie}`);
+        if (!d.zeilen.length) {
+          $("modalBody").innerHTML = `<div class="muted" style="padding:12px">Keine Einzelposten in diesem Zeitraum.</div>`;
+          return;
+        }
+        $("modalBody").innerHTML = `
+          <div class="muted" style="font-size:12px;margin-bottom:8px">${d.anzahl} Posten · Summe ${eur(d.summe_eur)}</div>
+          <div class="table-scroll" style="max-height:60vh"><table style="font-size:12.5px;width:100%;border-collapse:collapse">
+            <thead><tr><th>Datum</th><th>Bezeichnung</th><th class="num">Betrag</th></tr></thead>
+            <tbody>${d.zeilen.map(z => `<tr>
+              <td style="white-space:nowrap">${esc(z.datum)}</td>
+              <td>${esc(z.bezeichnung)}</td>
+              <td class="num" style="color:${z.betrag_eur < 0 ? 'var(--bad)' : 'var(--ok)'}">${eur(z.betrag_eur)}</td>
+            </tr>`).join("")}</tbody>
+          </table></div>`;
+      } catch (e) {
+        $("modalBody").innerHTML = `<div class="neg" style="padding:12px">${esc(e.message || String(e))}</div>`;
+      }
+    });
 
     // -------- Health --------
     // Vollstaendigkeits-Pruefungen des Kontos. Frueher standen sie im

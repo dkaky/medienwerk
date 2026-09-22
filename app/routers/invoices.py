@@ -272,6 +272,26 @@ async def ebay_finance(year: int | None = None, format: str = "csv",
     return rep
 
 
+@router.get("/ebay-finance-report/details")
+async def ebay_finance_details(period: str, kategorie: str, year: int | None = None):
+    """Einzelposten hinter EINER Zahl im eBay-Finanzbericht (Klick auf eine Kachel/Zelle).
+
+    Liest aus den beim letzten Bericht mitgespeicherten Rohtransaktionen - kein neuer
+    eBay-Aufruf, also schnell. Ohne vorherigen Bericht (noch nie geladen/aktualisiert)
+    kommt eine verstaendliche Fehlermeldung statt eines leeren Ergebnisses.
+    """
+    from datetime import datetime, timezone
+
+    from app.services import finance_service
+    y = year or datetime.now(timezone.utc).year
+    if kategorie not in ("brutto", "gebuehren", "versandlabel", "erstattung", "netto"):
+        raise HTTPException(status_code=422, detail=f"Unbekannte Kategorie '{kategorie}'.")
+    try:
+        return finance_service.finance_report_details(year=y, period=period, kategorie=kategorie)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 @router.get("/ebay-gebuehren-aufschluesselung")
 async def ebay_gebuehren_aufschluesselung(year: int | None = None):
     """DIAGNOSE (nur lesen): eBay-Gebuehren nach Art – welche haengen an keiner Bestellung?

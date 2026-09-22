@@ -453,9 +453,93 @@ async def ebay_finance_report(*, year: int, refresh: bool = False) -> dict:
     try:
         cache.parent.mkdir(parents=True, exist_ok=True)
         cache.write_text(json.dumps(rep, ensure_ascii=False), encoding="utf-8")
+        # Die rohen Transaktionen extra zwischenspeichern: der Bericht zeigt nur
+        # Summen, aber "worauf beruht diese Zahl?" verlangt die Einzelposten -
+        # ohne diese Datei muessten wir dafuer erneut 1600 Zeilen von eBay holen.
+        (Path("./data") / f"finance_transactions_{year}.json").write_text(
+            json.dumps(txs, ensure_ascii=False), encoding="utf-8")
     except Exception:  # noqa: BLE001
         pass
     return rep
+
+
+def _tx_periode(datum: str) -> tuple[int, int]:
+    """(Jahr, Monat) aus einem eBay-Transaktionsdatum ('2026-09-17T12:03:00.000Z')."""
+    return int(datum[:4]), int(datum[5:7])
+
+
+def finance_report_details(*, year: int, period: str, kategorie: str) -> dict:
+    """Einzelposten, aus denen sich EINE Zahl im Finanzbericht zusammensetzt.
+
+    ``period`` ist ``"{jahr} gesamt"``, ``"{jahr} Q{1-4}"`` oder ``"{jahr}-{monat}"``
+    genau wie im Bericht. ``kategorie`` ist brutto/gebuehren/versandlabel/erstattung/netto.
+    Liest die im Bericht mitgespeicherten Rohtransaktionen - kein neuer eBay-Aufruf.
+    """
+    import json
+    from pathlib import Path
+
+    cache = Path("./data") / f"finance_transactions_{year}.json"
+    if not cache.exists():
+        raise FileNotFoundError(
+            "Noch keine Einzelposten gespeichert - einmal oben auf 'aktualisieren' klicken, "
+            "dann liegen sie vor.")
+    txs = json.loads(cache.read_text(encoding="utf-8-sig"))
+
+    if period.endswith("gesamt"):
+        monate_gesucht = set(range(1, 13))
+    elif " Q" in period:
+        q = int(period.rsplit("Q", 1)[1])
+        monate_gesucht = set(range(q * 3 - 2, q * 3 + 1))
+    else:
+        monate_gesucht = {int(period.split("-")[1])}
+
+    zeilen: list[dict] = []
+    for t in txs:
+        d = str(t.get("transactionDate") or "")
+        if d[:4] != str(year) or len(d) < 7:
+            continue
+        try:
+            _, monat = _tx_periode(d)
+        except ValueError:
+            continue
+        if monat not in monate_gesucht:
+            continue
+        typ = t.get("transactionType")
+        amt = _dec((t.get("amount") or {}).get("value")) or Decimal("0")
+        fee = _dec((t.get("totalFeeAmount") or {}).get("value")) or Decimal("0")
+        oid = _order_ref(t)
+        memo = t.get("transactionMemo") or t.get("feeType") or ""
+
+        if kategorie == "brutto" and typ == "SALE":
+            zeilen.append({"datum": d[:10], "bezeichnung": f"Verkauf {oid or ''}".strip(),
+                           "betrag_eur": float(amt + fee)})
+        elif kategorie == "gebuehren":
+            if typ == "SALE" and fee:
+                zeilen.append({"datum": d[:10],
+                               "bezeichnung": f"Verkaufsgebühr, Bestellung {oid or 'unbekannt'}",
+                               "betrag_eur": -float(fee)})
+            elif typ in ("NON_SALE_CHARGE", "FEE"):
+                bez = memo or ("mit Bestellbezug" if oid else "ohne Bestellbezug (z. B. Shop-Abo)")
+                zeilen.append({"datum": d[:10], "bezeichnung": f"Gebühr: {bez}",
+                               "betrag_eur": -float(abs(amt))})
+        elif kategorie == "versandlabel" and typ == "SHIPPING_LABEL":
+            zeilen.append({"datum": d[:10], "bezeichnung": f"Versandlabel {oid or ''}".strip(),
+                           "betrag_eur": -float(abs(amt))})
+        elif kategorie == "erstattung" and typ == "REFUND":
+            zeilen.append({"datum": d[:10], "bezeichnung": f"Erstattung {oid or ''}".strip(),
+                           "betrag_eur": -float(abs(amt))})
+        elif kategorie == "netto" and typ in ("SALE", "NON_SALE_CHARGE", "FEE", "SHIPPING_LABEL", "REFUND"):
+            vorzeichen = 1 if typ == "SALE" else -1
+            wert = (amt + fee) if typ == "SALE" else abs(amt)
+            art = {"SALE": "Verkauf", "NON_SALE_CHARGE": "Gebühr", "FEE": "Gebühr",
+                  "SHIPPING_LABEL": "Versandlabel", "REFUND": "Erstattung"}[typ]
+            zeilen.append({"datum": d[:10], "bezeichnung": f"{art} {oid or memo or ''}".strip(),
+                           "betrag_eur": vorzeichen * float(wert)})
+
+    zeilen.sort(key=lambda z: z["datum"], reverse=True)
+    return {"year": year, "period": period, "kategorie": kategorie,
+            "anzahl": len(zeilen), "summe_eur": round(sum(z["betrag_eur"] for z in zeilen), 2),
+            "zeilen": zeilen[:500]}
 
 
 async def gebuehren_aufschluesselung(*, year: int) -> dict:
