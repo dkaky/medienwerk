@@ -906,6 +906,21 @@ async def veroeffentliche(db, design: Any, *, produkt_key: str, ebay: Any, s: Se
         ergaenzt = sorted(set(merkmale) - set(basis))
         from app.studio import verkaufstext
 
+        # Ohne diese Angabe weist eBay auf Rechnung UND Angebot 0% USt. aus, egal was der
+        # Preis tatsaechlich enthaelt (Vorfall 22.09.2026). s.ust_satz ist ein Bruch (0.19).
+        # Bewusst NICHT invoice_service.regelbesteuert(): die liest die globalen, gecachten
+        # Einstellungen statt des hier uebergebenen ``s`` (in Tests mit eigenem Settings()
+        # eine echte Diskrepanz - und auch in Produktion soll das lokale ``s`` gelten).
+        vat_prozent = None
+        try:
+            from datetime import date as _date
+
+            ab_text = (s.ust_regelbesteuerung_ab or "").strip()
+            if ab_text and _date.today() >= _date.fromisoformat(ab_text):
+                vat_prozent = round(s.ust_satz * 100, 2)
+        except ValueError:
+            pass
+
         vtext = await asyncio.to_thread(verkaufstext.fuer, db, design, s=s, bildordner=bildordner)
         t = titel(design, p, name=vtext.name, abteilung=abteilung)
         text = beschreibung(design, p, s, druck=seiten.beschreibung if p.textil else None,
@@ -931,7 +946,8 @@ async def veroeffentliche(db, design: Any, *, produkt_key: str, ebay: Any, s: Se
                 image_varies_by=["Farbe"], aspects=merkmale)
             for nummer in skus:
                 await ebay.create_offer(nummer, price_eur=betrag, category_id=p.kategorie_id,
-                                        quantity=menge, listing_description=text)
+                                        quantity=menge, listing_description=text,
+                                        vat_percentage=vat_prozent)
             listing_id = await ebay.publish_offer_by_inventory_item_group(gruppe(design.id, p))
             bestand = menge * len(skus)
         else:
@@ -942,7 +958,8 @@ async def veroeffentliche(db, design: Any, *, produkt_key: str, ebay: Any, s: Se
                 aspects={**merkmale, "Farbe": [TASSENFARBE]}, brand=marke(s), mpn=mpn(design.id, p))
             angebot_id = await ebay.create_offer(nummer, price_eur=betrag,
                                                  category_id=p.kategorie_id, quantity=menge,
-                                                 listing_description=text)
+                                                 listing_description=text,
+                                                 vat_percentage=vat_prozent)
             listing_id = await ebay.publish_listing(angebot_id, title=t, category_id=p.kategorie_id)
             bestand = menge
     except Exception as exc:

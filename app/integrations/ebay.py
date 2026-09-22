@@ -129,8 +129,13 @@ class EbayClient(abc.ABC):
     async def create_offer(self, sku: str, *, price_eur: float, category_id: str,
                            quantity: int, merchant_location_key: Optional[str] = None,
                            listing_policies: Optional[dict] = None,
-                           listing_description: Optional[str] = None) -> str:
-        """Inventory API: Offer zur SKU anlegen, gibt offerId zurueck (noch unpubliziert)."""
+                           listing_description: Optional[str] = None,
+                           vat_percentage: Optional[float] = None) -> str:
+        """Inventory API: Offer zur SKU anlegen, gibt offerId zurueck (noch unpubliziert).
+
+        ``vat_percentage`` (z.B. 19.0): ohne diese Angabe zeigt eBay auf Rechnung/Angebot
+        0% USt., unabhaengig vom tatsaechlichen Angebotspreis (Vorfall 22.09.2026 -
+        Rechnungen wiesen 0% aus, obwohl die Preise die USt. schon enthalten)."""
 
     @abc.abstractmethod
     async def delete_inventory_item(self, sku: str) -> None:
@@ -181,7 +186,8 @@ class MockEbayClient(EbayClient):
     async def create_offer(self, sku: str, *, price_eur: float, category_id: str,
                            quantity: int, merchant_location_key: Optional[str] = None,
                            listing_policies: Optional[dict] = None,
-                           listing_description: Optional[str] = None) -> str:
+                           listing_description: Optional[str] = None,
+                           vat_percentage: Optional[float] = None) -> str:
         return f"offer_{self._seed(sku) % 1_000_000_000}"
 
     async def create_shipping_fulfillment(self, ebay_order_id: str, *, tracking_number: str,
@@ -965,7 +971,8 @@ class RealEbayClient(EbayClient):
     async def create_offer(self, sku: str, *, price_eur: float, category_id: str,
                            quantity: int, merchant_location_key: Optional[str] = None,
                            listing_policies: Optional[dict] = None,
-                           listing_description: Optional[str] = None) -> str:
+                           listing_description: Optional[str] = None,
+                           vat_percentage: Optional[float] = None) -> str:
         """createOffer: Offer zur SKU anlegen -> offerId (mit Policies/Location fuer Publish)."""
         client = self._http()
         headers = await self._auth_headers(content=True)
@@ -988,6 +995,8 @@ class RealEbayClient(EbayClient):
             body["listingDescription"] = listing_description[:500000]
         if merchant_location_key:
             body["merchantLocationKey"] = merchant_location_key
+        if vat_percentage is not None:
+            body["tax"] = {"applyTax": True, "vatPercentage": round(float(vat_percentage), 2)}
         pol = {k: v for k, v in {
             "paymentPolicyId": (listing_policies or {}).get("payment"),
             "fulfillmentPolicyId": (listing_policies or {}).get("fulfillment"),

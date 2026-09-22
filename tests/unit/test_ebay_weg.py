@@ -227,6 +227,27 @@ async def test_tasse_ist_ein_einzelangebot_in_weiss(db, tmp_path):
     assert e["listing_id"] == "222222222222"
 
 
+async def test_angebot_weist_die_mwst_aus_ohne_sind_es_immer_0_prozent(db, tmp_path):
+    """Vorfall 22.09.2026: eBay-Rechnungen zeigten 0% USt., obwohl die Preise sie enthalten -
+    create_offer muss den Satz mitgeben, sonst nimmt eBay 0% an."""
+    design_ab = _motiv(db, tmp_path, titel="Bergpanorama Version A, freigestellt")
+    design_vorher = _motiv(db, tmp_path, titel="Bergpanorama Version B, freigestellt")
+
+    s_ab = _settings(tmp_path, ust_regelbesteuerung_ab="2020-01-01")  # laengst regelbesteuert
+    ebay = _FakeEbay()
+    await ebay_weg.veroeffentliche(db, design_ab, produkt_key="tasse", ebay=ebay, s=s_ab,
+                                   bildordner=tmp_path)
+    artikel = next(a for a in ebay.aufrufe if a[0] == "angebot")
+    assert artikel[2]["vat_percentage"] == 19.0
+
+    s_vorher = _settings(tmp_path, ust_regelbesteuerung_ab="2099-01-01")  # noch nicht so weit
+    ebay2 = _FakeEbay()
+    await ebay_weg.veroeffentliche(db, design_vorher, produkt_key="tasse", ebay=ebay2, s=s_vorher,
+                                   bildordner=tmp_path)
+    artikel2 = next(a for a in ebay2.aufrufe if a[0] == "angebot")
+    assert artikel2[2]["vat_percentage"] is None
+
+
 async def test_echte_fotos_werden_gerendert_und_nicht_doppelt_bezahlt(db, tmp_path):
     _vorlagen_datei(tmp_path)
     s = _settings(tmp_path, dynamic_mockups_api_key="k")
